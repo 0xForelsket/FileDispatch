@@ -27,8 +27,8 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="grid h-screen grid-cols-[280px_1fr]">
-        <aside className="flex flex-col gap-6 border-r border-border p-5">
+      <div className="flex h-screen flex-col lg:grid lg:grid-cols-[240px_1fr]">
+        <aside className="flex flex-col gap-6 border-b border-border p-5 lg:border-b-0 lg:border-r">
           <div className="space-y-1">
             <h1 className="text-xl font-semibold">File Dispatch</h1>
             <p className="text-xs text-muted-foreground">
@@ -40,9 +40,13 @@ function App() {
             <SettingsPanel />
           </div>
         </aside>
-        <main className="flex flex-col gap-8 overflow-y-auto p-6">
-          <RuleList />
-          <ActivityLog />
+        <main className="flex flex-col gap-8 overflow-y-auto p-6 lg:p-8">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+            <RuleList />
+            <div className="border-t border-border pt-6">
+              <ActivityLog />
+            </div>
+          </div>
         </main>
       </div>
     </div>

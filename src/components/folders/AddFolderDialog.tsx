@@ -4,7 +4,17 @@ import { FolderPlus } from "lucide-react";
 
 import { useFolderStore } from "@/stores/folderStore";
 
-export function AddFolderDialog() {
+interface AddFolderDialogProps {
+  className?: string;
+  label?: string;
+  showIcon?: boolean;
+}
+
+export function AddFolderDialog({
+  className,
+  label = "Add Folder",
+  showIcon = true,
+}: AddFolderDialogProps) {
   const addFolder = useFolderStore((state) => state.addFolder);
   const [isOpen, setIsOpen] = useState(false);
   const [path, setPath] = useState("");
@@ -30,12 +40,15 @@ export function AddFolderDialog() {
   return (
     <>
       <button
-        className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground"
+        className={
+          className ??
+          "inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground"
+        }
         onClick={() => setIsOpen(true)}
         type="button"
       >
-        <FolderPlus className="h-4 w-4" />
-        Add Folder
+        {showIcon ? <FolderPlus className="h-4 w-4" /> : null}
+        {label}
       </button>
       {isOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

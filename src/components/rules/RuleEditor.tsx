@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Eye } from "lucide-react";
 
 import type { Condition, ConditionGroup, Rule } from "@/types";
 import { useRuleStore } from "@/stores/ruleStore";
@@ -150,12 +151,13 @@ export function RuleEditor({ open, onClose, folderId, rule }: RuleEditorProps) {
 
         <div className="mt-6 flex items-center justify-between gap-2">
           <button
-            className="rounded-md border border-border px-3 py-1.5 text-sm"
+            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm"
             onClick={handlePreview}
             type="button"
             disabled={!draft.id}
             title={draft.id ? "Preview rule" : "Save rule first to preview"}
           >
+            <Eye className="h-4 w-4" />
             Preview
           </button>
           <div className="flex items-center gap-2">

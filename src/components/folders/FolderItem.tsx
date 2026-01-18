@@ -11,13 +11,14 @@ interface FolderItemProps {
 }
 
 export function FolderItem({ folder, selected, onSelect, onToggle, onRemove }: FolderItemProps) {
+  const nameClass = folder.enabled ? "font-medium" : "font-medium line-through";
   return (
     <div
       className={`rounded-lg border px-3 py-2 text-sm transition ${
         selected
-          ? "border-primary bg-primary/10"
+          ? "border-primary/60 bg-primary/10"
           : "border-border hover:border-primary/50"
-      }`}
+      } ${folder.enabled ? "" : "opacity-60"}`}
     >
       <button
         className="flex w-full items-center gap-2 text-left"
@@ -26,14 +27,16 @@ export function FolderItem({ folder, selected, onSelect, onToggle, onRemove }: F
       >
         <Folder className="h-4 w-4" />
         <div className="flex-1">
-          <div className="font-medium">{folder.name}</div>
+          <div className={nameClass}>{folder.name}</div>
           <div className="text-xs text-muted-foreground truncate">{folder.path}</div>
         </div>
       </button>
       <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
         <button
           className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${
-            folder.enabled ? "bg-emerald-100 text-emerald-700" : "bg-muted"
+            folder.enabled
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-muted text-muted-foreground"
           }`}
           onClick={() => onToggle(!folder.enabled)}
           type="button"

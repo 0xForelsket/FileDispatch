@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 
 import { useFolderStore } from "@/stores/folderStore";
 import { useRuleStore } from "@/stores/ruleStore";
@@ -9,6 +9,7 @@ import { RuleEditor } from "@/components/rules/RuleEditor";
 
 export function RuleList() {
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
+  const folders = useFolderStore((state) => state.folders);
   const rules = useRuleStore((state) => state.rules);
   const toggleRule = useRuleStore((state) => state.toggleRule);
   const deleteRule = useRuleStore((state) => state.deleteRule);
@@ -25,11 +26,19 @@ export function RuleList() {
 
   if (!selectedFolderId) {
     return (
-      <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-        Select a folder to view its rules.
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+        <Sparkles className="h-6 w-6" />
+        <div>
+          <div className="font-medium text-foreground">No folder selected</div>
+          <div className="text-xs text-muted-foreground">
+            Select a folder to view its rules.
+          </div>
+        </div>
       </div>
     );
   }
+
+  const folderName = folders.find((folder) => folder.id === selectedFolderId)?.name;
 
   const moveRule = (from: number, to: number) => {
     if (to < 0 || to >= rules.length) return;
@@ -57,8 +66,27 @@ export function RuleList() {
       </div>
       <div className="space-y-3">
         {rules.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-            No rules yet. Create one to start organizing files.
+          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            <Sparkles className="h-6 w-6" />
+            <div>
+              <div className="font-medium text-foreground">
+                No rules for {folderName ?? "this folder"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Create rules to automatically organize files in this folder.
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Try a template: Sort by file type • Clean up old files
+            </div>
+            <button
+              className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted"
+              onClick={handleCreate}
+              type="button"
+            >
+              <Plus className="h-4 w-4" />
+              Create Rule
+            </button>
           </div>
         ) : (
           rules.map((rule, index) => (
