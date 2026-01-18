@@ -166,12 +166,12 @@ export function PresetImportDialog({ folderId }: PresetImportDialogProps) {
   return (
     <>
       <button
-        className="group flex items-center gap-2 rounded-xl border border-white/60 bg-white/50 px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm backdrop-blur-md transition-all hover:bg-white hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
+        className="group flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/40 px-4 py-2 text-xs font-semibold text-slate-500 shadow-sm backdrop-blur-md transition-all hover:bg-white/70 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400 dark:hover:bg-white/10"
         onClick={handlePick}
         type="button"
         disabled={loading}
       >
-        <FileUp className="h-3.5 w-3.5 text-blue-600 dark:text-cyan-400" />
+        <FileUp className="h-3.5 w-3.5 text-slate-400 dark:text-neutral-500 group-hover:text-blue-600 dark:group-hover:text-cyan-400" />
         Import Preset
       </button>
       {modal}

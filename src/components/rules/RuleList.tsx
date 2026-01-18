@@ -57,9 +57,9 @@ export function RuleList() {
   return (
     <section>
       <div className="mb-6 flex items-center justify-between px-1">
-        <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-slate-900 drop-shadow-sm dark:text-neutral-200">
-          <Terminal className="h-4 w-4 text-blue-600 dark:text-cyan-500" />
-          Logic Gates
+        <h3 className="flex items-center gap-2 text-sm font-semibold tracking-[0.2em] text-slate-800 drop-shadow-sm dark:text-neutral-200">
+          <Terminal className="h-4 w-4 text-blue-600 dark:text-cyan-400" />
+          Rules
         </h3>
         <div className="flex items-center gap-2">
           <PresetImportDialog folderId={selectedFolderId} />
@@ -69,7 +69,7 @@ export function RuleList() {
             type="button"
           >
             <Plus className="h-3.5 w-3.5 transition-transform group-hover:rotate-90" />
-            New Logic Gate
+            New Rule
             <kbd className="rounded-md border border-white/60 bg-white/80 px-1.5 py-0.5 text-[10px] font-mono text-blue-700 dark:border-white/10 dark:bg-white/5 dark:text-cyan-200">
               {newRuleShortcut}
             </kbd>
@@ -79,7 +79,7 @@ export function RuleList() {
       <div className="grid gap-4">
         {rules.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-200/60 p-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-neutral-500">
-            No logic gates yet. Create one to start organizing files.
+            No rules yet. Create one to start organizing files.
           </div>
         ) : (
           rules.map((rule, index) => (

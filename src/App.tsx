@@ -55,7 +55,7 @@ function App() {
   }, [theme]);
 
   const activeFolder = folders.find((folder) => folder.id === selectedFolderId);
-  const gridColor = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
+  const gridColor = isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)";
 
   const activeLogs = useMemo(() => {
     if (!selectedFolderId) return logs;
@@ -85,10 +85,10 @@ function App() {
   return (
     <div className={`${isDark ? "dark" : ""} relative h-screen w-full overflow-hidden`}>
       <div className="absolute inset-0 z-0 bg-[#f8fafc] transition-colors duration-700 dark:bg-[#0a0a0a]">
-        <div className="animate-pulse-slow absolute left-[-10%] top-[-20%] h-[50vw] w-[50vw] rounded-full bg-blue-500/10 blur-[120px] dark:bg-cyan-500/10" />
-        <div className="animate-pulse-slower absolute bottom-[-10%] right-[-10%] h-[40vw] w-[40vw] rounded-full bg-indigo-500/10 blur-[100px] dark:bg-violet-500/10" />
+        <div className="animate-pulse-slow absolute left-[-10%] top-[-20%] h-[50vw] w-[50vw] rounded-full bg-blue-500/10 opacity-70 blur-[120px] dark:bg-cyan-500/10" />
+        <div className="animate-pulse-slower absolute bottom-[-10%] right-[-10%] h-[40vw] w-[40vw] rounded-full bg-indigo-500/10 opacity-60 blur-[100px] dark:bg-violet-500/10" />
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.35] mix-blend-overlay dark:opacity-[0.15]"
+          className="pointer-events-none absolute inset-0 opacity-[0.2] mix-blend-overlay dark:opacity-[0.1]"
           style={{
             backgroundImage:
               "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.5'/%3E%3C/svg%3E\")",
@@ -98,7 +98,7 @@ function App() {
           className="pointer-events-none absolute inset-0"
           style={{
             backgroundImage: `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(to right, ${gridColor} 1px, transparent 1px)`,
-            backgroundSize: "60px 60px",
+            backgroundSize: "80px 80px",
           }}
         />
       </div>
@@ -218,7 +218,7 @@ function App() {
           </header>
 
           <div className="custom-scrollbar flex-1 overflow-y-auto p-8 pb-20">
-            <div className="mx-auto max-w-6xl space-y-12">
+            <div className="mx-auto max-w-7xl space-y-10">
               <RuleList />
               <ActivityLog />
             </div>

@@ -47,7 +47,7 @@ export interface NotifyAction {
   message: string;
 }
 
-export type OpenAction = {};
+export type OpenAction = object;
 
 export interface PauseAction {
   durationSeconds: number;

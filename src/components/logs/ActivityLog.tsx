@@ -52,8 +52,8 @@ export function ActivityLog() {
   return (
     <section className="pb-8">
       <div className="mb-6 flex items-center justify-between px-1">
-        <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-slate-900 drop-shadow-sm dark:text-neutral-200">
-          <Activity className="h-4 w-4 text-blue-600 dark:text-cyan-500" />
+        <h3 className="flex items-center gap-2 text-sm font-semibold tracking-[0.2em] text-slate-800 drop-shadow-sm dark:text-neutral-200">
+          <Activity className="h-4 w-4 text-blue-600 dark:text-cyan-400" />
           Event Stream
         </h3>
         <div className="flex gap-2">
@@ -68,7 +68,7 @@ export function ActivityLog() {
           </div>
           <div className="relative">
             <select
-              className="appearance-none rounded-xl border border-white/40 bg-white/50 px-3 py-2 pr-9 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:bg-white/70 focus:outline-none focus:ring-2 focus:ring-blue-400/40 dark:border-white/10 dark:bg-black/30 dark:text-neutral-300 dark:hover:bg-black/50 dark:focus:ring-cyan-500/40"
+              className="appearance-none rounded-full border border-slate-200/70 bg-white/70 px-3 py-2 pr-9 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400/30 dark:border-white/10 dark:bg-black/20 dark:text-neutral-300 dark:hover:bg-black/40 dark:focus:ring-cyan-500/40"
               value={ruleFilter}
               onChange={(e) => setRuleFilter(e.target.value)}
             >
@@ -85,7 +85,7 @@ export function ActivityLog() {
           </div>
           <div className="relative">
             <select
-              className="appearance-none rounded-xl border border-white/40 bg-white/50 px-3 py-2 pr-9 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:bg-white/70 focus:outline-none focus:ring-2 focus:ring-blue-400/40 dark:border-white/10 dark:bg-black/30 dark:text-neutral-300 dark:hover:bg-black/50 dark:focus:ring-cyan-500/40"
+              className="appearance-none rounded-full border border-slate-200/70 bg-white/70 px-3 py-2 pr-9 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400/30 dark:border-white/10 dark:bg-black/20 dark:text-neutral-300 dark:hover:bg-black/40 dark:focus:ring-cyan-500/40"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as LogStatus | "all")}
             >
@@ -129,9 +129,13 @@ export function ActivityLog() {
                 <div className="w-28">
                   <StatusPill status={entry.status} label={entry.actionType} />
                 </div>
-                <div className="flex-1 truncate pr-4 text-slate-600 transition-colors group-hover:text-slate-900 dark:text-neutral-400 dark:group-hover:text-white">
-                  <span className="mr-2 select-none text-slate-400/60 dark:text-neutral-600">~/</span>
-                  {formatDetail(entry)}
+                <div className="flex-1 pr-4">
+                  <div className="truncate text-slate-700 transition-colors group-hover:text-slate-900 dark:text-neutral-300 dark:group-hover:text-white">
+                    {formatOperation(entry)}
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-slate-400 dark:text-neutral-600">
+                    {formatRuleLabel(entry)}
+                  </div>
                 </div>
                 <div className="w-24 text-right text-slate-400 transition-colors group-hover:text-slate-600 dark:text-neutral-600 dark:group-hover:text-neutral-400">
                   {formatBytes(getSizeBytes(entry))}
@@ -185,12 +189,63 @@ function formatTime(value: string) {
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-function formatDetail(entry: LogEntry) {
+function formatOperation(entry: LogEntry) {
   const fileName = entry.filePath.split(/[/\\]/).pop() ?? entry.filePath;
-  if (entry.ruleName) {
-    return `${fileName} → ${entry.ruleName}`;
+  const destination = entry.actionDetail?.destinationPath;
+  const action = humanizeAction(entry.actionType);
+
+  if (destination) {
+    return `${action} → ${destination}`;
   }
-  return `${fileName} → ${entry.actionType}`;
+
+  return `${action} → ${fileName}`;
+}
+
+function formatRuleLabel(entry: LogEntry) {
+  if (entry.ruleName) {
+    return `Rule: ${entry.ruleName}`;
+  }
+  if (entry.actionType === "undo") {
+    return "Undo action";
+  }
+  return "Manual action";
+}
+
+function humanizeAction(value: string) {
+  switch (value) {
+    case "move":
+      return "Move";
+    case "copy":
+      return "Copy";
+    case "rename":
+      return "Rename";
+    case "sortIntoSubfolder":
+      return "Sort";
+    case "archive":
+      return "Archive";
+    case "unarchive":
+      return "Unarchive";
+    case "delete":
+      return "Trash";
+    case "deletePermanently":
+      return "Delete";
+    case "runScript":
+      return "Run Script";
+    case "notify":
+      return "Notify";
+    case "open":
+      return "Open";
+    case "pause":
+      return "Pause";
+    case "continue":
+      return "Continue";
+    case "undo":
+      return "Undo";
+    case "ignore":
+      return "Ignore";
+    default:
+      return value;
+  }
 }
 
 function getSizeBytes(entry: LogEntry) {
