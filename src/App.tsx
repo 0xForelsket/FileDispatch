@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { ActivityLog } from "@/components/logs/ActivityLog";
 import { FolderList } from "@/components/folders/FolderList";
 import { RuleList } from "@/components/rules/RuleList";
-import { SettingsPanel } from "@/components/settings/SettingsPanel";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { useFolders } from "@/hooks/useFolders";
 import { useLogs } from "@/hooks/useLogs";
 import { useRules } from "@/hooks/useRules";
@@ -36,8 +36,8 @@ function App() {
             </p>
           </div>
           <FolderList />
-          <div className="mt-auto">
-            <SettingsPanel />
+          <div className="mt-auto border-t border-border pt-4">
+            <SettingsDialog />
           </div>
         </aside>
         <main className="flex flex-col gap-8 overflow-y-auto p-6 lg:p-8">

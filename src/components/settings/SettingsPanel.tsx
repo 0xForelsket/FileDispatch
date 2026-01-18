@@ -3,7 +3,11 @@ import { enable, disable } from "@tauri-apps/plugin-autostart";
 
 import { ThemeMode, useSettingsStore } from "@/stores/settingsStore";
 
-export function SettingsPanel() {
+interface SettingsPanelProps {
+  showTitle?: boolean;
+}
+
+export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
   const settings = useSettingsStore((state) => state.settings);
   const setSettings = useSettingsStore((state) => state.setSettings);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
@@ -23,7 +27,7 @@ export function SettingsPanel() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Settings</h2>
+      {showTitle ? <h2 className="text-lg font-semibold">Settings</h2> : null}
       <div className="grid gap-3 text-sm">
         <label className="flex items-center justify-between gap-4">
           <span>Theme</span>
