@@ -60,28 +60,38 @@ export function ActivityLog() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <select
-            className="rounded-xl border border-white/40 bg-white/40 px-2 py-1.5 text-xs text-slate-600 shadow-sm backdrop-blur-sm focus:outline-none dark:border-white/10 dark:bg-black/20 dark:text-neutral-400"
-            value={ruleFilter}
-            onChange={(e) => setRuleFilter(e.target.value)}
-          >
+          <div className="relative">
+            <select
+              className="appearance-none rounded-xl border border-white/40 bg-white/50 px-3 py-2 pr-9 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:bg-white/70 focus:outline-none focus:ring-2 focus:ring-blue-400/40 dark:border-white/10 dark:bg-black/30 dark:text-neutral-300 dark:hover:bg-black/50 dark:focus:ring-cyan-500/40"
+              value={ruleFilter}
+              onChange={(e) => setRuleFilter(e.target.value)}
+            >
             <option value="all">Rule: All</option>
             {ruleOptions.map((name) => (
               <option key={name} value={name}>
                 {name}
               </option>
             ))}
-          </select>
-          <select
-            className="rounded-xl border border-white/40 bg-white/40 px-2 py-1.5 text-xs text-slate-600 shadow-sm backdrop-blur-sm focus:outline-none dark:border-white/10 dark:bg-black/20 dark:text-neutral-400"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as LogStatus | "all")}
-          >
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-neutral-500">
+              ▾
+            </span>
+          </div>
+          <div className="relative">
+            <select
+              className="appearance-none rounded-xl border border-white/40 bg-white/50 px-3 py-2 pr-9 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:bg-white/70 focus:outline-none focus:ring-2 focus:ring-blue-400/40 dark:border-white/10 dark:bg-black/30 dark:text-neutral-300 dark:hover:bg-black/50 dark:focus:ring-cyan-500/40"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as LogStatus | "all")}
+            >
             <option value="all">Status: All</option>
             <option value="success">Success</option>
             <option value="error">Error</option>
             <option value="skipped">Skipped</option>
-          </select>
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-neutral-500">
+              ▾
+            </span>
+          </div>
         </div>
       </div>
 
