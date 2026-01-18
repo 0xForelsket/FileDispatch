@@ -3,6 +3,7 @@ import { Edit3, MoreVertical, Trash2, Zap } from "lucide-react";
 
 import type { Condition, Rule } from "@/types";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { formatShortcut } from "@/lib/shortcuts";
 
 interface RuleItemProps {
   rule: Rule;
@@ -27,6 +28,7 @@ export function RuleItem({
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerSummary = summarizeConditions(rule.conditions.conditions);
   const actionSummary = summarizeAction(rule.actions[0]);
+  const deleteShortcut = formatShortcut({ key: "Del" });
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -130,6 +132,9 @@ export function RuleItem({
               >
                 <Trash2 className="h-3 w-3" />
                 Delete
+                <kbd className="ml-auto rounded border border-white/50 bg-white/80 px-1 py-0.5 text-[10px] font-mono text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400">
+                  {deleteShortcut}
+                </kbd>
               </button>
             </div>
           ) : null}
@@ -178,6 +183,8 @@ function summarizeConditions(conditions: Condition[]) {
     case "dateModified":
     case "dateAdded":
       return `${first.type.replace("date", "").toLowerCase()} ${first.operator.type}`;
+    case "currentTime":
+      return `time ${first.operator.type}`;
     case "shellScript":
       return "shell script";
     case "nested":

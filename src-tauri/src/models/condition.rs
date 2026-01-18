@@ -1,4 +1,4 @@
-use chrono::NaiveDate;
+use chrono::{NaiveDate, NaiveTime};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,6 +26,7 @@ pub enum Condition {
     DateCreated(DateCondition),
     DateModified(DateCondition),
     DateAdded(DateCondition),
+    CurrentTime(TimeCondition),
     Kind(KindCondition),
     ShellScript(ShellCondition),
     Nested(ConditionGroup),
@@ -85,6 +86,21 @@ pub enum SizeUnit {
 #[serde(rename_all = "camelCase")]
 pub struct DateCondition {
     pub operator: DateOperator,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TimeCondition {
+    pub operator: TimeOperator,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum TimeOperator {
+    Is { time: NaiveTime },
+    IsBefore { time: NaiveTime },
+    IsAfter { time: NaiveTime },
+    Between { start: NaiveTime, end: NaiveTime },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

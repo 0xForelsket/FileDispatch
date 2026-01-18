@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Bell, Monitor, Settings, Shield, User, X } from "lucide-react";
 
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
+import { formatShortcut, matchesShortcut } from "@/lib/shortcuts";
 
 const tabs = [
   { id: "general", label: "General", icon: Settings },
@@ -15,6 +16,18 @@ const tabs = [
 export function SettingsDialog() {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
+  const shortcutLabel = useMemo(() => formatShortcut({ key: ",", ctrlOrMeta: true }), []);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (matchesShortcut(event, { key: ",", ctrlOrMeta: true })) {
+        event.preventDefault();
+        setOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const modal =
     open && typeof document !== "undefined"
@@ -121,6 +134,9 @@ export function SettingsDialog() {
       >
         <Settings className="h-4 w-4" />
         Settings
+        <kbd className="ml-auto rounded-md border border-white/60 bg-white/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400">
+          {shortcutLabel}
+        </kbd>
       </button>
       {modal}
     </>

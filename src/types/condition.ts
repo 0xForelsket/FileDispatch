@@ -47,6 +47,16 @@ export interface DateCondition {
   operator: DateOperator;
 }
 
+export type TimeOperator =
+  | { type: "is"; time: string }
+  | { type: "isBefore"; time: string }
+  | { type: "isAfter"; time: string }
+  | { type: "between"; start: string; end: string };
+
+export interface TimeCondition {
+  operator: TimeOperator;
+}
+
 export type FileKind =
   | "file"
   | "folder"
@@ -75,6 +85,7 @@ export type Condition =
   | { type: "dateCreated"; operator: DateOperator }
   | { type: "dateModified"; operator: DateOperator }
   | { type: "dateAdded"; operator: DateOperator }
+  | { type: "currentTime"; operator: TimeOperator }
   | { type: "kind"; kind: FileKind; negate: boolean }
   | { type: "shellScript"; command: string }
   | { type: "nested"; matchType: MatchType; conditions: Condition[] };

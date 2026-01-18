@@ -10,7 +10,7 @@ use crate::core::executor::{ActionExecutor, ActionOutcome, ActionResultStatus};
 use crate::core::watcher::FileEvent;
 use crate::models::{
     ActionDetails, ActionType, Condition, ConditionGroup, DateOperator, FileKind, LogEntry,
-    LogStatus, MatchType, Rule, SizeUnit, StringOperator, TimeUnit,
+    LogStatus, MatchType, Rule, SizeUnit, StringOperator, TimeOperator, TimeUnit,
 };
 use crate::storage::database::Database;
 use crate::storage::log_repo::LogRepository;
@@ -200,6 +200,10 @@ pub(crate) fn evaluate_condition(
             matched: evaluate_date(info.added, &cond.operator),
             captures: HashMap::new(),
         }),
+        Condition::CurrentTime(cond) => Ok(EvaluationResult {
+            matched: evaluate_time(&cond.operator),
+            captures: HashMap::new(),
+        }),
         Condition::Kind(cond) => Ok(EvaluationResult {
             matched: evaluate_kind(info.kind.clone(), cond.kind.clone(), cond.negate),
             captures: HashMap::new(),
@@ -301,6 +305,26 @@ pub(crate) fn evaluate_date(date: chrono::DateTime<Utc>, operator: &DateOperator
     }
 }
 
+pub(crate) fn evaluate_time(operator: &TimeOperator) -> bool {
+    let now = chrono::Local::now().time();
+    evaluate_time_with(now, operator)
+}
+
+fn evaluate_time_with(now: chrono::NaiveTime, operator: &TimeOperator) -> bool {
+    match operator {
+        TimeOperator::Is { time } => now == *time,
+        TimeOperator::IsBefore { time } => now < *time,
+        TimeOperator::IsAfter { time } => now > *time,
+        TimeOperator::Between { start, end } => {
+            if start <= end {
+                now >= *start && now <= *end
+            } else {
+                now >= *start || now <= *end
+            }
+        }
+    }
+}
+
 fn to_duration(amount: u32, unit: &TimeUnit) -> Duration {
     match unit {
         TimeUnit::Minutes => Duration::minutes(amount as i64),
@@ -393,4 +417,98 @@ fn action_type_to_string(action_type: &ActionType) -> String {
         ActionType::Ignore => "ignore",
     }
     .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{evaluate_group, evaluate_time_with};
+    use crate::models::{
+        Condition, ConditionGroup, MatchType, StringCondition, StringOperator, TimeOperator,
+    };
+    use chrono::NaiveTime;
+    use crate::utils::file_info::FileInfo;
+    use std::fs;
+    use tempfile::tempdir;
+
+    fn file_info_for(name: &str) -> FileInfo {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join(name);
+        fs::write(&path, b"test").unwrap();
+        FileInfo::from_path(&path).unwrap()
+    }
+
+    #[test]
+    fn nested_group_matches_any() {
+        let info = file_info_for("invoice_2024.pdf");
+        let top = ConditionGroup {
+            match_type: MatchType::All,
+            conditions: vec![
+                Condition::Name(StringCondition {
+                    operator: StringOperator::Contains,
+                    value: "invoice".to_string(),
+                    case_sensitive: false,
+                }),
+                Condition::Nested(ConditionGroup {
+                    match_type: MatchType::Any,
+                    conditions: vec![
+                        Condition::Extension(StringCondition {
+                            operator: StringOperator::Is,
+                            value: "pdf".to_string(),
+                            case_sensitive: false,
+                        }),
+                        Condition::Extension(StringCondition {
+                            operator: StringOperator::Is,
+                            value: "docx".to_string(),
+                            case_sensitive: false,
+                        }),
+                    ],
+                }),
+            ],
+        };
+
+        let result = evaluate_group(&top, &info).unwrap();
+        assert!(result.matched);
+    }
+
+    #[test]
+    fn nested_group_respects_none() {
+        let info = file_info_for("report.txt");
+        let top = ConditionGroup {
+            match_type: MatchType::All,
+            conditions: vec![Condition::Nested(ConditionGroup {
+                match_type: MatchType::None,
+                conditions: vec![Condition::Extension(StringCondition {
+                    operator: StringOperator::Is,
+                    value: "txt".to_string(),
+                    case_sensitive: false,
+                })],
+            })],
+        };
+
+        let result = evaluate_group(&top, &info).unwrap();
+        assert!(!result.matched);
+    }
+
+    #[test]
+    fn current_time_between_handles_wraparound() {
+        let now = NaiveTime::from_hms_opt(1, 30, 0).unwrap();
+        let operator = TimeOperator::Between {
+            start: NaiveTime::from_hms_opt(23, 0, 0).unwrap(),
+            end: NaiveTime::from_hms_opt(2, 0, 0).unwrap(),
+        };
+        assert!(evaluate_time_with(now, &operator));
+    }
+
+    #[test]
+    fn current_time_before_after() {
+        let now = NaiveTime::from_hms_opt(9, 0, 0).unwrap();
+        let before = TimeOperator::IsBefore {
+            time: NaiveTime::from_hms_opt(10, 0, 0).unwrap(),
+        };
+        let after = TimeOperator::IsAfter {
+            time: NaiveTime::from_hms_opt(8, 30, 0).unwrap(),
+        };
+        assert!(evaluate_time_with(now, &before));
+        assert!(evaluate_time_with(now, &after));
+    }
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus, Terminal } from "lucide-react";
 
 import { useFolderStore } from "@/stores/folderStore";
@@ -6,6 +6,7 @@ import { useRuleStore } from "@/stores/ruleStore";
 import type { Rule } from "@/types";
 import { RuleItem } from "@/components/rules/RuleItem";
 import { RuleEditor } from "@/components/rules/RuleEditor";
+import { formatShortcut, matchesShortcut } from "@/lib/shortcuts";
 
 export function RuleList() {
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
@@ -18,10 +19,24 @@ export function RuleList() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
 
-  const handleCreate = () => {
+  const handleCreate = useCallback(() => {
     setEditingRule(null);
     setEditorOpen(true);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedFolderId || editorOpen) return;
+    const handler = (event: KeyboardEvent) => {
+      if (matchesShortcut(event, { key: "n", ctrlOrMeta: true })) {
+        event.preventDefault();
+        handleCreate();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedFolderId, editorOpen, handleCreate]);
+
+  const newRuleShortcut = formatShortcut({ key: "N", ctrlOrMeta: true });
 
   if (!selectedFolderId) {
     return null;
@@ -52,6 +67,9 @@ export function RuleList() {
         >
           <Plus className="h-3.5 w-3.5 transition-transform group-hover:rotate-90" />
           New Logic Gate
+          <kbd className="rounded-md border border-white/60 bg-white/80 px-1.5 py-0.5 text-[10px] font-mono text-blue-700 dark:border-white/10 dark:bg-white/5 dark:text-cyan-200">
+            {newRuleShortcut}
+          </kbd>
         </button>
       </div>
       <div className="grid gap-4">
