@@ -1,0 +1,54 @@
+[package]
+name = "file-dispatch"
+version = "0.1.0"
+description = "Automated file organization for Linux and Windows"
+authors = ["File Dispatch Contributors"]
+edition = "2021"
+
+[lib]
+name = "file_dispatch_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-store = "2"
+tauri-plugin-log = "2"
+tauri-plugin-dialog = "2"
+
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+crossbeam-channel = "0.5"
+directories = "5"
+filetime = "0.2"
+fs_extra = "1"
+glob = "0.3"
+infer = "0.16"
+notify = "6"
+r2d2 = "0.8"
+r2d2_sqlite = "0.24"
+regex = "1"
+rusqlite = { version = "0.31", features = ["bundled", "chrono"] }
+rusqlite_migration = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+tracing = "0.1"
+trash = "3"
+uuid = { version = "1", features = ["v4", "serde"] }
+walkdir = "2"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+
+[dev-dependencies]
+tempfile = "3"

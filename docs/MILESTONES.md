@@ -35,11 +35,11 @@ This document outlines the development plan for File Dispatch v0.1 MVP. The plan
 **Technical Notes:**
 ```bash
 # Project initialization
-npm create tauri-app@latest file-dispatch -- --template react-ts
+bunx create-tauri-app@latest file-dispatch --template react-ts --manager bun --tauri-version 2
 cd file-dispatch
-npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p
-npx shadcn@latest init
+bun add -D tailwindcss postcss autoprefixer
+bunx tailwindcss init -p
+bunx shadcn@latest init
 ```
 
 ---
@@ -517,70 +517,3 @@ fn test_full_pipeline() {
 - [ ] Continue matching rules action
 - [ ] Rule duplication
 - [ ] Keyboard shortcuts
-
-### P2 Features (v0.3)
-
-- [ ] Content search (text files)
-- [ ] Subfolder depth condition
-- [ ] Folder item count condition
-- [ ] Trash auto-cleanup feature
-- [ ] Rule groups/folders
-- [ ] Sync action
-- [ ] JavaScript condition/action
-- [ ] Pattern counters ({counter})
-- [ ] Captured regex groups in actions
-
-### P3 Features (Future)
-
-- [ ] OCR for images/PDFs
-- [ ] Cloud sync for rules
-- [ ] Plugin system
-- [ ] macOS support
-- [ ] Localization
-
----
-
-## Risk Mitigation
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| File watcher unreliable on Windows | Medium | High | Implement polling fallback |
-| Complex UI takes too long | Medium | Medium | Simplify editor, iterate post-MVP |
-| Cross-platform build issues | Low | Medium | Test early, use Tauri's bundler |
-| Performance with large folders | Low | Medium | Virtualize lists, pagination |
-| SQLite corruption | Low | High | WAL mode, proper shutdown, backups |
-
----
-
-## Definition of Done
-
-A feature is considered "done" when:
-
-1. ✅ Code implemented and compiles without warnings
-2. ✅ Unit tests written and passing
-3. ✅ Integration tests passing (where applicable)
-4. ✅ Works on both Linux and Windows
-5. ✅ Error cases handled gracefully
-6. ✅ UI is styled and responsive
-7. ✅ Code reviewed (if team > 1)
-8. ✅ No known critical bugs
-
----
-
-## Daily Standup Template
-
-```markdown
-## Day N Standup
-
-**Yesterday:**
-- [Completed tasks]
-
-**Today:**
-- [Planned tasks]
-
-**Blockers:**
-- [Any issues]
-
-**Notes:**
-- [Discoveries, decisions, changes]
-```
