@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Edit3, MoreVertical, Trash2, Zap } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 import type { Condition, Rule } from "@/types";
-import { formatShortcut } from "@/lib/shortcuts";
+
 
 interface RuleItemProps {
   rule: Rule;
@@ -23,13 +23,11 @@ export function RuleItem({
   onToggle,
   onEdit,
   onDelete,
-  onDuplicate,
 }: RuleItemProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerSummary = summarizeConditions(rule.conditions.conditions);
   const actionSummary = summarizeAction(rule.actions[0]);
-  const deleteShortcut = formatShortcut({ key: "Del" });
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -44,81 +42,43 @@ export function RuleItem({
 
   return (
     <div
-      className={`group flex items-center gap-3 border-b border-[#1f1f24] px-3 py-2 text-[12px] ${
-        selected ? "bg-[#191a1e]" : "hover:bg-[#141519]"
-      } ${!rule.enabled ? "opacity-60" : ""}`}
+      onClick={onEdit}
+      className={`group flex items-center gap-2 px-2 py-1 font-mono text-xs cursor-pointer select-none border-l-2 ${
+        selected
+          ? "bg-[var(--selection-bg)] text-black border-[var(--selection-bg)]"
+          : "text-[var(--fg-primary)] border-transparent hover:bg-[var(--fg-primary)] hover:text-black hover:border-[var(--fg-primary)]"
+      } ${!rule.enabled ? "opacity-50 grayscale" : ""}`}
     >
-      <button
-        onClick={() => onToggle(!rule.enabled)}
-        className={`relative h-4 w-7 rounded-full transition-colors ${
-          rule.enabled ? "bg-[#c07a46]" : "bg-[#2a2b31]"
+      {/* Checkbox (Hex Style) */}
+      <div 
+        onClick={(e) => {
+            e.stopPropagation();
+            onToggle(!rule.enabled);
+        }}
+        className={`w-3 h-3 shrink-0 border border-current flex items-center justify-center cursor-pointer ${
+            rule.enabled ? "bg-current" : ""
         }`}
-        type="button"
-        title={rule.enabled ? "Disable rule" : "Enable rule"}
       >
-        <span
-          className={`absolute top-0.5 h-3 w-3 rounded-full bg-[#0c0d0f] transition-all ${
-            rule.enabled ? "left-3.5" : "left-0.5"
-          }`}
-        />
-      </button>
-
-      <button className="flex min-w-0 flex-1 items-start gap-2 text-left" onClick={onEdit} type="button">
-        <Zap className="mt-0.5 h-3.5 w-3.5 text-[#c07a46]" />
-        <div className="min-w-0">
-          <div className="truncate font-medium text-[#e7e1d8]">{rule.name}</div>
-          <div className="truncate font-mono text-[10px] text-[#8f8a82]">
-            {triggerSummary} → {actionSummary}
-          </div>
-        </div>
-      </button>
-
-      <div className="flex items-center gap-1 text-[#7c776f]">
-        <button
-          className="rounded-md p-1 transition-colors hover:bg-[#1f2025] hover:text-[#e7e1d8]"
-          onClick={onEdit}
-          type="button"
-        >
-          <Edit3 className="h-3.5 w-3.5" />
-        </button>
-        <div className="relative" ref={menuRef}>
-          <button
-            className="rounded-md p-1 transition-colors hover:bg-[#1f2025] hover:text-[#e7e1d8]"
-            onClick={() => setMenuOpen((open) => !open)}
-            type="button"
-          >
-            <MoreVertical className="h-3.5 w-3.5" />
-          </button>
-          {menuOpen ? (
-            <div className="absolute right-0 z-20 mt-2 w-36 rounded-md border border-[#2a2b31] bg-[#141518] p-1 text-[11px] shadow-lg">
-              <button
-                className="flex w-full items-center gap-2 rounded px-2 py-1 text-[#cfc9bf] hover:bg-[#1f2025]"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDuplicate();
-                }}
-                type="button"
-              >
-                Duplicate
-              </button>
-              <button
-                className="flex w-full items-center gap-2 rounded px-2 py-1 text-[#d28b7c] hover:bg-[#2a1916]"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDelete();
-                }}
-                type="button"
-              >
-                <Trash2 className="h-3 w-3" />
-                Delete
-                <kbd className="ml-auto rounded border border-[#2a2b31] px-1 text-[9px] text-[#8c8780]">
-                  {deleteShortcut}
-                </kbd>
-              </button>
-            </div>
-          ) : null}
-        </div>
+          {rule.enabled && <div className="w-1.5 h-1.5 bg-black" />}
       </div>
+
+      <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
+        <span className="truncate font-bold tracking-wider">{rule.name.toUpperCase()}</span>
+        <span className="truncate text-[9px] opacity-80 leading-tight">
+          {triggerSummary} &gt;&gt; {actionSummary}
+        </span>
+      </div>
+
+      {selected && (
+         <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="text-black hover:text-white hover:bg-black rounded-sm px-1"
+            >
+                <Trash2 className="h-3 w-3" />
+            </button>
+         </div>
+      )}
     </div>
   );
 }

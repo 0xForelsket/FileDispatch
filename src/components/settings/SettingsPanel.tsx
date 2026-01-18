@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { MagiSelect } from "@/components/ui/MagiSelect";
 import { enable, disable } from "@tauri-apps/plugin-autostart";
 
 import { ThemeMode, useSettingsStore } from "@/stores/settingsStore";
@@ -70,18 +71,19 @@ export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
               Match your system or pick a theme
             </div>
           </div>
-          <select
-            className="rounded-lg border border-slate-200/60 bg-white/60 px-2 py-1 text-sm text-slate-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-neutral-300"
+          <MagiSelect
+            width="w-32"
             value={settings.theme}
-            onChange={(e) => {
-              setSettings({ theme: e.target.value as ThemeMode });
+            onChange={(val) => {
+              setSettings({ theme: val as ThemeMode });
               void saveSettings();
             }}
-          >
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
+            options={[
+              { label: "System", value: "system" },
+              { label: "Light", value: "light" },
+              { label: "Dark", value: "dark" },
+            ]}
+          />
         </div>
       </section>
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FolderPlus } from "lucide-react";
+import { FolderPlus, X } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { useFolderStore } from "@/stores/folderStore";
@@ -44,68 +44,76 @@ export function AddFolderDialog({
   const modal =
     isOpen && typeof document !== "undefined"
       ? createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 font-sans">
             <div
-              className="absolute inset-0 bg-black/60"
+              className="absolute inset-0 bg-black/20 backdrop-blur-sm"
               onClick={() => setIsOpen(false)}
             />
-            <div className="relative w-full max-w-md overflow-hidden rounded-md border border-[#2a2b31] bg-[#101113] p-6 shadow-2xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-[#e7e1d8]">Add Folder</h2>
-                  <p className="text-[11px] text-[#7f7a73]">
-                    Watch a new location for automatic sorting.
-                  </p>
-                </div>
+            <div className="relative w-full max-w-md overflow-hidden bevel-out bg-panel p-1 shadow-2xl">
+              <div className="flex items-center justify-between bg-header px-2 py-1 select-none mb-4">
+                 <span className="text-xs font-bold text-fg-header tracking-wide">Add Folder</span>
+                 <button className="bg-panel bevel-out active:bevel-in p-0.5" onClick={() => setIsOpen(false)}>
+                    <X className="h-3 w-3 text-black" /> 
+                 </button>
               </div>
-              <div className="mt-5 space-y-4">
-                <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7f7a73]">
-                    Folder Path
-                  </label>
-                  <div className="mt-2 flex gap-2">
-                    <input
-                      className="w-full rounded-md border border-[#2a2b31] bg-[#141518] px-3 py-2 text-sm text-[#e7e1d8] outline-none transition focus:border-[#c07a46]"
-                      placeholder="/home/user/Downloads"
-                      value={path}
-                      onChange={(e) => setPath(e.target.value)}
-                    />
-                    <button
-                      className="rounded-md border border-[#2a2b31] bg-[#15171a] px-3 text-[11px] font-semibold text-[#cfc9bf] transition-colors hover:border-[#3a3b42]"
-                      onClick={handlePick}
-                      type="button"
-                    >
-                      Browse
-                    </button>
+              <div className="px-4 pb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-black font-sans">Add Folder</h2>
+                    <p className="text-[11px] text-gray-600">
+                      Watch a new location for automatic sorting.
+                    </p>
                   </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7f7a73]">
-                    Display Name
-                  </label>
-                  <input
-                    className="mt-2 w-full rounded-md border border-[#2a2b31] bg-[#141518] px-3 py-2 text-sm text-[#e7e1d8] outline-none transition focus:border-[#c07a46]"
-                    placeholder="Downloads"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
+                <div className="mt-5 space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                      Folder Path
+                    </label>
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        className="w-full bevel-in bg-white px-2 py-1 text-sm text-black outline-none transition-none focus:ring-0"
+                        placeholder="/home/user/Downloads"
+                        value={path}
+                        onChange={(e) => setPath(e.target.value)}
+                      />
+                      <button
+                        className="px-3 bevel-out active:bevel-in bg-panel text-[11px] font-bold text-black active:translate-y-[1px]"
+                        onClick={handlePick}
+                        type="button"
+                      >
+                        Browse
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                      Display Name
+                    </label>
+                    <input
+                      className="mt-2 w-full bevel-in bg-white px-2 py-1 text-sm text-black outline-none transition-none focus:ring-0"
+                      placeholder="Downloads"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  className="rounded-md border border-transparent px-3 py-1.5 text-[11px] text-[#8c8780] transition-colors hover:text-[#e7e1d8]"
-                  onClick={() => setIsOpen(false)}
-                  type="button"
-                >
-                  Cancel
-                </button>
-                <button
-                  className="rounded-md border border-[#c07a46] bg-[#c07a46] px-4 py-1.5 text-[11px] font-semibold text-[#0d0e10] transition-colors hover:bg-[#d38a52]"
-                  onClick={handleSave}
-                  type="button"
-                >
-                  Add Folder
-                </button>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    className="px-4 py-1.5 bevel-out active:bevel-in bg-panel text-[11px] font-bold text-black active:translate-y-[1px]"
+                    onClick={() => setIsOpen(false)}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-4 py-1.5 bevel-out active:bevel-in bg-panel text-[11px] font-bold text-black active:translate-y-[1px]"
+                    onClick={handleSave}
+                    type="button"
+                  >
+                    Add Folder
+                  </button>
+                </div>
               </div>
             </div>
           </div>,
@@ -118,7 +126,7 @@ export function AddFolderDialog({
       <button
         className={
           className ??
-          "inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground"
+          "flex items-center gap-2 bevel-out active:bevel-in bg-panel px-3 py-1.5 text-sm text-black active:translate-y-[1px]"
         }
         onClick={() => setIsOpen(true)}
         type="button"

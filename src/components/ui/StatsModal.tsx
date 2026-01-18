@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { BarChart3, Cpu, FileDigit, X } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 
-import { GlassCard } from "@/components/ui/GlassCard";
 import type { LogEntry } from "@/types";
 
 const WINDOW_HOURS = 10;
@@ -15,6 +14,8 @@ interface StatsModalProps {
   activeRules: number;
   logs: LogEntry[];
 }
+
+  /* ... (imports and logic same) ... */
 
 export function StatsModal({
   total,
@@ -77,113 +78,100 @@ export function StatsModal({
   }, [logs]);
 
   const efficiencyValue = Number.isFinite(efficiency) ? Math.min(Math.max(efficiency, 0), 100) : 0;
-  const avgSaved = statusCounts.deleted > 0 ? savedBytes / statusCounts.deleted : 0;
   const totalLabel = total.toLocaleString();
 
+  /* ... inside StatsModal component ... */
+  
   const modal =
     open && typeof document !== "undefined"
       ? createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-            <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-            <div className="relative w-full max-w-5xl overflow-hidden rounded-md border border-[#2a2b31] bg-[#101113] shadow-2xl">
-              <div className="flex items-center justify-between border-b border-[#1f1f24] p-5">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 font-mono text-[var(--fg-primary)]">
+            <div className="absolute inset-0 bg-black/90 backdrop-blur-md hex-bg" onClick={() => setOpen(false)} />
+            <div className="relative w-full max-w-5xl overflow-hidden magi-border bg-black shadow-[0_0_30px_rgba(255,157,0,0.3)]">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between bg-[var(--fg-primary)] px-4 py-2 select-none">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#1a1512] text-[#c07a46]">
-                    <BarChart3 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-[#e7e1d8]">Performance Stats</h2>
-                    <p className="text-[11px] text-[#7f7a73]">
-                      Tracking {activeRules} active {activeRules === 1 ? "rule" : "rules"} and {totalLabel} events.
-                    </p>
-                  </div>
+                  <div className="h-4 w-4 bg-black border border-white transform rotate-45" />
+                  <span className="text-xl font-serif font-black text-black tracking-[0.2em] transform scale-y-110">MAGI ANALYTICS</span>
                 </div>
                 <button
                   onClick={() => setOpen(false)}
-                  className="rounded-md p-1 text-[#8c8780] transition-colors hover:text-[#e7e1d8]"
+                  className="bg-black text-[var(--fg-primary)] border border-black hover:bg-white hover:text-black hover:border-white px-2 py-0.5 font-bold"
                   type="button"
                 >
-                  <X className="h-4 w-4" />
+                  TERMINATE
                 </button>
               </div>
 
-              <div className="custom-scrollbar max-h-[70vh] overflow-y-auto p-5">
-                <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <GlassCard className="flex h-36 flex-col justify-between p-4" hoverEffect>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="text-[10px] font-semibold uppercase tracking-widest text-[#7f7a73]">
-                          Throughput
-                        </div>
-                        <div className="mt-2 text-2xl font-semibold text-[#e7e1d8]">
-                          {totalLabel} <span className="text-sm font-normal text-[#7f7a73]">files</span>
-                        </div>
-                        <div className="mt-1 text-[11px] text-[#7f7a73]">
-                          {throughput.recent} in the last {WINDOW_HOURS}h window
-                        </div>
-                      </div>
-                      <div className="rounded-md bg-[#1a1512] p-2 text-[#c07a46]">
-                        <BarChart3 className="h-5 w-5" />
-                      </div>
-                    </div>
-                    <div className="mt-3 flex h-8 items-end gap-1">
+              <div className="p-6 bg-black grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+                 {/* Decorative Grid Lines */}
+                 <div className="absolute inset-0 pointer-events-none opacity-20 border-l border-r border-[var(--border-dim)] left-1/3 right-1/3" />
+
+                 <div className="md:col-span-3 mb-2 flex items-center justify-between border-b border-[var(--border-dim)] pb-2">
+                    <p className="text-xs text-[var(--fg-secondary)] tracking-widest uppercase">
+                        SYSTEM STATUS: <span className="text-white font-bold ml-2">NORMAL</span>
+                    </p>
+                    <p className="text-xs text-[var(--border-dim)]">
+                       ACTIVE PROTOCOLS: <span className="text-[var(--fg-primary)] font-bold">{activeRules}</span>
+                    </p>
+                 </div>
+
+                {/* Card 1: Throughput */}
+                <div className="magi-border-sm p-4 relative overflow-hidden group">
+                   <div className="absolute top-0 right-0 bg-[var(--fg-primary)] text-black text-[9px] font-bold px-1">DATA FLOW</div>
+                   <div className="text-[10px] text-[var(--border-dim)] uppercase tracking-[0.2em] mb-4">throughput</div>
+                   
+                   <div className="text-4xl font-serif font-bold text-white mb-2">{totalLabel}</div>
+                   <div className="flex items-end gap-1 h-12 mt-4">
                       {throughput.heights.map((height, index) => (
-                        <div
-                          key={`bar-${index}`}
-                          className="flex-1 rounded-sm bg-[#2a2b31] transition-colors hover:bg-[#c07a46]"
-                          style={{ height: `${height}%` }}
-                        />
+                          <div
+                            key={`bar-${index}`}
+                            className="flex-1 bg-[var(--fg-primary)]"
+                            style={{ height: `${Math.max(10, height)}%`, opacity: 0.5 + (height/200) }}
+                          />
                       ))}
-                    </div>
-                  </GlassCard>
+                   </div>
+                </div>
 
-                  <GlassCard className="flex h-36 flex-col justify-between p-4" hoverEffect>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="text-[10px] font-semibold uppercase tracking-widest text-[#7f7a73]">
-                          Efficiency
-                        </div>
-                        <div className="mt-2 text-2xl font-semibold text-[#e7e1d8]">
-                          {efficiencyValue.toFixed(0)}%
-                        </div>
+                {/* Card 2: Efficiency (Hexagon/Pie attempt or just Bar) */}
+                <div className="magi-border-sm p-4 relative overflow-hidden">
+                   <div className="absolute top-0 right-0 bg-[var(--fg-secondary)] text-black text-[9px] font-bold px-1">OPTIMIZATION</div>
+                   <div className="text-[10px] text-[var(--border-dim)] uppercase tracking-[0.2em] mb-4">efficiency_ratio</div>
+                   
+                   <div className="text-4xl font-serif font-bold text-[var(--fg-secondary)] mb-2">{efficiencyValue.toFixed(0)}<span className="text-lg">%</span></div>
+                   
+                   <div className="w-full bg-[var(--border-dim)] h-4 mt-4 relative">
+                      <div className="absolute inset-0 bg-[var(--fg-secondary)]" style={{ width: `${efficiencyValue}%` }} />
+                      {/* Ticks */}
+                      <div className="absolute inset-0 flex justify-between px-1">
+                          {[0,25,50,75,100].map(t => <div key={t} className="w-[1px] h-full bg-black/50" />)}
                       </div>
-                      <div className="rounded-md bg-[#121a14] p-2 text-[#7ed19c]">
-                        <Cpu className="h-5 w-5" />
-                      </div>
-                    </div>
-                    <div className="mt-auto">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#2a2b31]">
-                        <div
-                          className="h-full rounded-full bg-[#7ed19c]"
-                          style={{ width: `${efficiencyValue}%` }}
-                        />
-                      </div>
-                      <div className="mt-2 text-[10px] text-[#7f7a73]">
-                        {statusCounts.success} success · {statusCounts.error} error · {statusCounts.skipped} skipped
-                      </div>
-                    </div>
-                  </GlassCard>
+                   </div>
+                   <div className="flex justify-between text-[9px] mt-1 text-[var(--fg-secondary)] uppercase">
+                      <span>SYNC: {statusCounts.success}</span>
+                      <span className="text-[var(--fg-alert)]">ERR: {statusCounts.error}</span>
+                   </div>
+                </div>
 
-                  <GlassCard className="flex h-36 flex-col justify-between p-4" hoverEffect>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="text-[10px] font-semibold uppercase tracking-widest text-[#7f7a73]">
-                          Storage Saved
-                        </div>
-                        <div className="mt-2 text-2xl font-semibold text-[#e7e1d8]">
-                          {formatBytes(savedBytes)}
-                        </div>
-                      </div>
-                      <div className="rounded-md bg-[#1a1512] p-2 text-[#c07a46]">
-                        <FileDigit className="h-5 w-5" />
-                      </div>
-                    </div>
-                    <div className="mt-auto flex flex-col text-[11px] text-[#7f7a73]">
-                      <span>{statusCounts.deleted} deletions recorded</span>
-                      <span>{avgSaved ? `${formatBytes(avgSaved)} avg per delete` : "No deletions yet"}</span>
-                    </div>
-                  </GlassCard>
-                </section>
+                {/* Card 3: Storage */}
+                <div className="magi-border-sm p-4 relative overflow-hidden">
+                   <div className="absolute top-0 right-0 bg-white text-black text-[9px] font-bold px-1">RESOURCES</div>
+                   <div className="text-[10px] text-[var(--border-dim)] uppercase tracking-[0.2em] mb-4">reclaimed_space</div>
+                   
+                   <div className="text-4xl font-serif font-bold text-white mb-2">{formatBytes(savedBytes)}</div>
+                   <div className="mt-4 border-t border-[var(--border-dim)] pt-2 text-xs text-gray-400 font-mono">
+                      DELETION_EVENTS: <span className="text-white">{statusCounts.deleted}</span>
+                   </div>
+                </div>
+
+              </div>
+              
+              {/* Footer Decoration */}
+              <div className="bg-[var(--fg-primary)] h-2 w-full flex gap-1 px-4 py-[1px]">
+                  {Array.from({length: 20}).map((_, i) => (
+                      <div key={i} className="h-full w-4 bg-black/50" />
+                  ))}
               </div>
             </div>
           </div>,
@@ -195,11 +183,11 @@ export function StatsModal({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="group flex h-8 items-center gap-2 rounded-md border border-transparent px-2 text-[11px] font-semibold text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:text-[#d6d0c6]"
+        className="group flex items-center gap-2 px-2 py-1 border border-[var(--border-dim)] hover:bg-[var(--fg-primary)] hover:text-black text-xs font-mono text-[var(--fg-primary)] uppercase tracking-wider transition-colors"
         type="button"
       >
-        <BarChart3 className="h-4 w-4 text-[#c07a46] transition-colors group-hover:text-[#d38a52]" />
-        Stats
+        <BarChart3 className="h-3 w-3" />
+        STATUS
       </button>
       {modal}
     </>

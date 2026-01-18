@@ -5,12 +5,14 @@ import { open } from "@tauri-apps/plugin-dialog";
 
 import type { Preset } from "@/types";
 import { presetInstall, presetRead } from "@/lib/tauri";
-import { GlassCard } from "@/components/ui/GlassCard";
+
 import { useRuleStore } from "@/stores/ruleStore";
 
 interface PresetImportDialogProps {
   folderId: string;
 }
+
+  /* ... imports same ... */
 
 export function PresetImportDialog({ folderId }: PresetImportDialogProps) {
   const loadRules = useRuleStore((state) => state.loadRules);
@@ -75,76 +77,78 @@ export function PresetImportDialog({ folderId }: PresetImportDialogProps) {
   const modal =
     modalOpen && preset
       ? createPortal(
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60" onClick={() => setModalOpen(false)} />
-            <div className="relative w-full max-w-2xl overflow-hidden rounded-md border border-[#2a2b31] bg-[#101113] shadow-2xl">
-              <div className="flex items-center justify-between border-b border-[#1f1f24] p-5">
-                <div>
-                  <h2 className="text-lg font-semibold text-[#e7e1d8]">Install Preset</h2>
-                  <p className="text-[11px] text-[#7f7a73]">{preset.name}</p>
-                </div>
-                <button
-                  className="rounded-md p-1 text-[#8c8780] transition-colors hover:text-[#e7e1d8]"
-                  onClick={() => setModalOpen(false)}
-                  type="button"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 font-sans">
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
+            <div className="relative w-full max-w-2xl overflow-hidden bevel-out bg-panel shadow-2xl outline outline-1 outline-black/20">
+              <div className="flex items-center justify-between bg-header px-2 py-1 select-none mb-4">
+                 <div>
+                   <h2 className="text-xs font-bold text-fg-header tracking-wide">Install Preset</h2>
+                 </div>
+                 <button className="bg-panel bevel-out active:bevel-in p-0.5" onClick={() => setModalOpen(false)}>
+                    <X className="h-3 w-3 text-black" /> 
+                 </button>
               </div>
-              <div className="custom-scrollbar max-h-[60vh] overflow-y-auto p-5">
-                <div className="space-y-4 text-sm text-[#b6b0a7]">
-                  {preset.description ? (
-                    <GlassCard className="p-3 text-[11px] text-[#cfc9bf]">
-                      <p>{preset.description}</p>
-                    </GlassCard>
-                  ) : null}
-                  {preset.variables.length > 0 ? (
-                    <div className="space-y-3">
-                      <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7f7a73]">
-                        Variables
-                      </h3>
-                      <div className="space-y-3">
-                        {preset.variables.map((variable) => (
-                          <GlassCard key={variable.id} className="space-y-2 p-3">
-                            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[#7f7a73]">
-                              <span>{variable.name}</span>
-                              <span className="rounded border border-[#2a2b31] px-2 py-0.5 text-[9px]">
-                                {variable.type}
-                              </span>
-                            </div>
-                            <input
-                              className="w-full rounded-md border border-[#2a2b31] bg-[#141518] px-3 py-2 text-sm text-[#e7e1d8] outline-none transition focus:border-[#c07a46]"
-                              value={variables[variable.id] ?? variable.default ?? ""}
-                              placeholder={variable.default ?? "Enter value"}
-                              onChange={(e) =>
-                                setVariables((prev) => ({
-                                  ...prev,
-                                  [variable.id]: e.target.value,
-                                }))
-                              }
-                            />
-                          </GlassCard>
-                        ))}
-                      </div>
+
+              <div className="px-4 pb-4">
+                 <div className="mb-4">
+                    <p className="text-[11px] font-bold text-black">{preset.name}</p>
+                 </div>
+              
+                  <div className="custom-scrollbar max-h-[60vh] overflow-y-auto">
+                    <div className="space-y-4 text-sm text-black">
+                      {preset.description ? (
+                        <div className="p-3 bevel-in bg-white text-[11px] text-black">
+                          <p>{preset.description}</p>
+                        </div>
+                      ) : null}
+                      {preset.variables.length > 0 ? (
+                        <div className="space-y-3">
+                          <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                            Variables
+                          </h3>
+                          <div className="space-y-3">
+                            {preset.variables.map((variable) => (
+                              <div key={variable.id} className="space-y-2 p-3 border-2 border-dashed border-gray-400 bg-panel/50">
+                                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                                  <span>{variable.name}</span>
+                                  <span className="rounded border border-gray-400 px-2 py-0.5 text-[9px]">
+                                    {variable.type}
+                                  </span>
+                                </div>
+                                <input
+                                  className="w-full bevel-in bg-white px-2 py-1 text-sm text-black outline-none transition-none focus:ring-0"
+                                  value={variables[variable.id] ?? variable.default ?? ""}
+                                  placeholder={variable.default ?? "Enter value"}
+                                  onChange={(e) =>
+                                    setVariables((prev) => ({
+                                      ...prev,
+                                      [variable.id]: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 text-center text-[11px] text-gray-600 bg-white bevel-in">
+                          No variables needed. Ready to install.
+                        </div>
+                      )}
+                      {error ? <div className="text-[11px] text-red-600 font-medium">{error}</div> : null}
                     </div>
-                  ) : (
-                    <GlassCard className="p-3 text-center text-[11px] text-[#7f7a73]">
-                      No variables needed. Ready to install.
-                    </GlassCard>
-                  )}
-                  {error ? <div className="text-[11px] text-[#d28b7c]">{error}</div> : null}
-                </div>
-              </div>
-              <div className="flex items-center justify-between border-t border-[#1f1f24] px-5 py-3 text-[11px] text-[#7f7a73]">
-                <span>{presetSummary} included</span>
-                <button
-                  className="rounded-md border border-[#c07a46] bg-[#c07a46] px-4 py-1.5 text-[11px] font-semibold text-[#0d0e10] transition hover:bg-[#d38a52] disabled:opacity-50"
-                  onClick={handleInstall}
-                  type="button"
-                  disabled={loading}
-                >
-                  {loading ? "Installing…" : "Install Preset"}
-                </button>
+                  </div>
+                  <div className="flex items-center justify-between border-t-2 border-transparent pt-3 mt-3 text-[11px] text-gray-600">
+                    <span>{presetSummary} included</span>
+                    <button
+                      className="px-4 py-1.5 bevel-out active:bevel-in bg-panel text-[11px] font-bold text-black active:translate-y-[1px] disabled:opacity-50"
+                      onClick={handleInstall}
+                      type="button"
+                      disabled={loading}
+                    >
+                      {loading ? "Installing…" : "Install Preset"}
+                    </button>
+                  </div>
               </div>
             </div>
           </div>,
@@ -155,17 +159,17 @@ export function PresetImportDialog({ folderId }: PresetImportDialogProps) {
   return (
     <>
       <button
-        className="group flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/40 px-4 py-2 text-xs font-semibold text-slate-500 shadow-sm backdrop-blur-md transition-all hover:bg-white/70 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400 dark:hover:bg-white/10"
+        className="group flex items-center gap-2 px-3 py-1.5 bevel-out active:bevel-in bg-panel text-xs font-bold text-black active:translate-y-[1px]"
         onClick={handlePick}
         type="button"
         disabled={loading}
       >
-        <FileUp className="h-3.5 w-3.5 text-slate-400 dark:text-neutral-500 group-hover:text-blue-600 dark:group-hover:text-cyan-400" />
+        <FileUp className="h-3.5 w-3.5 text-black" />
         Import Preset
       </button>
       {modal}
       {error && !modalOpen ? (
-        <span className="ml-3 text-xs text-rose-500">{error}</span>
+        <span className="ml-3 text-xs text-red-600 font-medium">{error}</span>
       ) : null}
     </>
   );

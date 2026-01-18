@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Folder, MoreHorizontal } from "lucide-react";
+
 
 import { ActivityLog } from "@/components/logs/ActivityLog";
 import { AddFolderDialog } from "@/components/folders/AddFolderDialog";
@@ -14,9 +14,8 @@ import { useRules } from "@/hooks/useRules";
 import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
 import { useRuleStore } from "@/stores/ruleStore";
+import { useThemeStore } from "@/stores/themeStore";
 import type { Rule } from "@/types";
-
-const copper = "text-[#c07a46]";
 
 function App() {
   useFolders();
@@ -27,9 +26,11 @@ function App() {
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const rules = useRuleStore((state) => state.rules);
   const logs = useLogStore((state) => state.entries);
+  const { theme, toggleTheme } = useThemeStore();
 
   const [editorMode, setEditorMode] = useState<"empty" | "new" | "edit">("empty");
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
+  const [isLogExpanded, setIsLogExpanded] = useState(false);
 
   const effectiveMode = selectedFolderId ? editorMode : "empty";
   const effectiveRule = selectedFolderId ? editingRule : null;
@@ -72,20 +73,38 @@ function App() {
   };
 
   return (
-    <div className="dark h-screen w-screen bg-[#0c0d0f] text-[#e7e1d8]">
-      <div className="flex h-full flex-col font-sans">
-        <header className="flex h-11 items-center justify-between border-b border-[#1f1f24] px-4">
-          <div className="flex items-center gap-3 text-sm font-semibold tracking-wide">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#c07a46] shadow-[0_0_10px_rgba(192,122,70,0.45)]" />
-            File Dispatch
-            {activeFolder ? (
-              <span className="ml-4 flex items-center gap-2 rounded-full border border-[#2a2b31] bg-[#121316] px-2.5 py-0.5 text-[11px] font-medium text-[#a8a39b]">
-                <Folder className="h-3 w-3" />
-                {activeFolder.name}
-              </span>
-            ) : null}
+    <div className="h-screen w-screen bg-app text-fg-primary font-mono overflow-hidden flex flex-col hex-bg" data-theme={theme}>
+      {/* MAGI Header (NERV Style) */}
+      <header className="h-12 bg-black border-b-4 border-[var(--border-main)] flex items-center justify-between px-4 shrink-0 shadow-[0_0_15px_var(--border-main)] relative z-10">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+             {/* Simple Logo Placeholder */}
+             <div className="h-8 w-8 bg-black border-2 border-[var(--fg-alert)] flex items-center justify-center relative">
+                 <div className="absolute inset-0 border border-[var(--fg-alert)] rotate-45 scale-75"/>
+                 <span className="text-[var(--fg-alert)] font-bold text-xs z-10">NV</span>
+             </div>
+             <div className="flex flex-col">
+                <span className="text-3xl text-[var(--fg-alert)] leading-none eva-title origin-bottom-left">MAGI</span>
+                <span className="font-mono text-[10px] text-[var(--fg-primary)] tracking-[0.2em] leading-none">SYSTEM ONLINE</span>
+             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs">
+          {activeFolder ? (
+            <div className="hidden md:flex items-center gap-2 pl-4 border-l-2 border-[var(--border-dim)] h-8">
+              <span className="text-[10px] uppercase font-bold text-[var(--fg-secondary)] tracking-widest">ACTIVE NODE:</span>
+              <span className="text-sm font-bold text-white font-sans bg-[var(--fg-primary)] text-black px-1">{activeFolder.name.toUpperCase()}</span>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex items-center gap-4">
+           {/* Technical Status Indicators */}
+           <div className="hidden md:flex gap-1">
+              {[1,2,3].map(i => (
+                  <div key={i} className={`h-1 w-4 ${i===1 ? 'bg-[var(--fg-secondary)]' : 'bg-[var(--border-dim)]'}`} />
+              ))}
+           </div>
+
+          <div className="flex items-center gap-2">
             <StatsModal
               total={stats.total}
               efficiency={stats.efficiency}
@@ -93,55 +112,117 @@ function App() {
               activeRules={rules.filter((rule) => rule.enabled).length}
               logs={activeLogs}
             />
-            <SettingsDialog compact />
-            <button
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:text-[#cfc9bf]"
-              type="button"
+            <button 
+               onClick={toggleTheme}
+               className="px-2 py-1 bg-black border border-[var(--border-dim)] text-[10px] font-mono text-[var(--fg-primary)] hover:bg-[var(--fg-primary)] hover:text-black transition-colors uppercase tracking-wider"
             >
-              <MoreHorizontal className="h-4 w-4" />
+              SYSTEM: {theme.toUpperCase()}
+            </button>
+            <SettingsDialog compact />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area - Grid Layout */}
+      <div className="flex-1 flex p-4 gap-4 min-h-0 bg-black/80 backdrop-blur-sm">
+        
+        {/* Pane 1: Folders */}
+        <aside className="w-[260px] flex flex-col magi-border bg-black relative">
+          <AbsoluteCornerDecorations />
+          <div className="bg-[var(--fg-primary)] text-black px-2 py-1 text-sm font-bold font-serif flex justify-between items-center select-none shrink-0 tracking-widest uppercase mb-1">
+             <span>NODES</span>
+             <AddFolderDialog
+                className="bg-black text-[var(--fg-primary)] px-2 border border-black hover:bg-white hover:text-black font-mono text-xs"
+                label="INIT"
+                showIcon={false}
+             />
+          </div>
+          <div className="flex-1 overflow-y-auto px-1 pb-1 custom-scrollbar">
+            <FolderList />
+          </div>
+        </aside>
+
+        {/* Pane 2: Rules */}
+        <section className="w-[340px] flex flex-col magi-border bg-black relative">
+           <AbsoluteCornerDecorations color="var(--fg-secondary)" />
+          <div className="bg-[var(--fg-primary)] text-black px-2 py-1 text-sm font-bold font-serif flex justify-between items-center select-none shrink-0 tracking-widest uppercase mb-1">
+            <span>PROTOCOLS</span>
+            <button
+               onClick={handleNewRule}
+               className="bg-black text-[var(--fg-primary)] px-2 border border-black hover:bg-white hover:text-black font-mono text-xs"
+               title="New Rule"
+            >
+              NEW
             </button>
           </div>
-        </header>
+          <div className="flex-1 overflow-y-auto relative px-1 pb-1 custom-scrollbar">
+             <RuleList
+               selectedRuleId={effectiveRule?.id ?? ""}
+               onNewRule={handleNewRule}
+               onSelectRule={handleSelectRule}
+             />
+          </div>
+        </section>
 
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          <aside className="flex w-[240px] flex-col border-r border-[#1f1f24] bg-[#0f1012]">
-            <div className="flex items-center justify-between border-b border-[#1f1f24] px-3 py-3">
-              <span className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${copper}`}>
-                Folders
-              </span>
-              <AddFolderDialog
-                className="inline-flex items-center gap-1 rounded-md border border-[#2a2b31] bg-[#15171a] px-2 py-1 text-[11px] font-semibold text-[#cfc9bf] transition-colors hover:border-[#3a3b42]"
-                label="Add"
-                showIcon={false}
-              />
-            </div>
-            <FolderList />
-          </aside>
+        {/* Pane 3: Editor */}
+        <section className="flex-1 flex flex-col magi-border bg-black min-w-0 relative">
+           <AbsoluteCornerDecorations color="var(--fg-alert)" />
+           <div className="bg-[var(--fg-primary)] text-black px-2 py-1 text-sm font-bold font-serif select-none shrink-0 tracking-widest uppercase mb-1">
+             EXECUTIVE TERMINAL
+           </div>
+           <div className="flex-1 p-0 overflow-hidden relative">
+             {/* Scanlines Overlay */}
+             <div className="absolute inset-0 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjMDAwIiAvPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSJyZ2JhKDAsIDAsIDAsIDAuMik1IiAvPgo8L3N2Zz4=')] opacity-20 z-0" />
+             <div className="h-full overflow-y-auto custom-scrollbar relative z-10 p-4">
+                <RuleEditor
+                  mode={effectiveMode}
+                  onClose={handleCloseEditor}
+                  folderId={selectedFolderId ?? ""}
+                  rule={effectiveRule}
+                />
+             </div>
+           </div>
+        </section>
+      </div>
 
-          <section className="flex w-[300px] flex-col border-r border-[#1f1f24] bg-[#111214]">
-            <RuleList
-              selectedRuleId={effectiveRule?.id ?? ""}
-              onNewRule={handleNewRule}
-              onSelectRule={handleSelectRule}
-            />
-          </section>
-
-          <section className="flex min-w-0 flex-1 flex-col bg-[#0e0f11]">
-            <RuleEditor
-              mode={effectiveMode}
-              onClose={handleCloseEditor}
-              folderId={selectedFolderId ?? ""}
-              rule={effectiveRule}
-            />
-          </section>
-        </div>
-
-        <div className="h-56 border-t border-[#1f1f24] bg-[#0f1012]">
+      {/* Footer / Logs - Expandable */}
+      <div 
+        className={`transition-all duration-300 ease-in-out p-4 pt-0 ${
+          isLogExpanded 
+            ? "absolute bottom-0 left-0 right-0 h-[calc(100vh-3rem)] z-40 bg-black/95 backdrop-blur-sm" 
+            : "h-64 shrink-0 relative"
+        }`}
+      >
+        <div className="h-full w-full bg-black text-[var(--fg-secondary)] font-mono text-xs p-2 magi-border-sm overflow-y-auto custom-scrollbar relative shadow-lg">
+           <div className="absolute top-0 right-0 flex items-center z-10">
+              <div className="bg-[var(--fg-secondary)] text-black text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider">
+                  SYSTEM LOG
+              </div>
+              <button 
+                  onClick={() => setIsLogExpanded(!isLogExpanded)}
+                  className="ml-2 bg-[#1a1a12] text-[var(--fg-secondary)] border border-[var(--fg-secondary)] h-4 w-4 flex items-center justify-center hover:bg-[var(--fg-secondary)] hover:text-black transition-colors"
+                  title={isLogExpanded ? "Minimize" : "Maximize"}
+              >
+                  {isLogExpanded ? "▼" : "▲"}
+              </button>
+           </div>
           <ActivityLog />
         </div>
       </div>
     </div>
   );
+}
+
+// Decorative Corner Elements for that "Technical" look
+function AbsoluteCornerDecorations({ color = "var(--fg-primary)" }: { color?: string }) {
+    return (
+        <>
+            <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 pointer-events-none" style={{ borderColor: color }} />
+            <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 pointer-events-none" style={{ borderColor: color }} />
+            <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 pointer-events-none" style={{ borderColor: color }} />
+            <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 pointer-events-none" style={{ borderColor: color }} />
+        </>
+    );
 }
 
 export default App;

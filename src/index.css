@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
 
 @tailwind base;
 @tailwind components;
@@ -6,34 +6,64 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Default / Fallback */
+    --background: 0 0% 66%; /* NeXT Gray #AAAAAA */
+    --foreground: 0 0% 0%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 80%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 80%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 80%;
+    --accent-foreground: 0 0% 0%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 10% 3.9%;
-    --radius: 0.5rem;
+    --border: 0 0% 0%;
+    --input: 0 0% 100%;
+    --ring: 0 0% 0%;
+    --radius: 0rem; /* Sharp corners */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+
+    /* Semantic Theme Variables (MAGI System) */
+    --bg-app: #101010;      /* Dark Technical Gray */
+    --bg-panel: #000000;    /* Void Black */
+    --bg-header: #000000;   /* Black Title Bars */
+    --fg-primary: #FF9D00;  /* NGE Orange */
+    --fg-secondary: #2ECC71; /* Terminal Green */
+    --fg-alert: #FF0000;    /* Angel Red */
+    --fg-header: #FF9D00;   /* Orange Text on Header */
+    
+    --border-main: #FF9D00; /* Solid Orange Borders */
+    --border-dim: #995500;  /* Dim Orange */
+    
+    --selection-bg: #FF9D00;
+    --selection-fg: #000000;
   }
 
-  .dark {
+  [data-theme="classic"] {
+    /* MAGI System */
+    --bg-app: #101010;
+    --bg-panel: #000000;
+    --bg-header: #000000;
+    --fg-primary: #FF9D00;
+    --fg-header: #FF9D00;
+    
+    --border-main: #FF9D00;
+    --selection-bg: #FF9D00;
+    --selection-fg: #000000;
+  }
+
+  [data-theme="dark"] {
+    /* Original Dark Theme */
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
@@ -53,11 +83,18 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    
+    /* Semantic Overrides */
+    --bg-app: #0c0d0f;
+    --bg-panel: #111214;
+    --bg-header: #1f1f24; /* Or generic dark header */
+    --fg-primary: #e7e1d8;
+    --fg-header: #e7e1d8;
+    --border-light: #2a2b31;
+    --border-dark: #000000;
+    --border-darker: #000000;
+    --selection-bg: #2a2b31;
+    --selection-fg: #e7e1d8;
   }
 
   * {
@@ -65,53 +102,109 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
-      Arial, sans-serif;
+    @apply bg-background text-foreground font-sans;
   }
 }
 
 @layer utilities {
+  /* MAGI System Scrollbar */
   .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.4);
-    border-radius: 999px;
-  }
-  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.2);
+    width: 12px;
+    height: 12px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+    background: #000000;
+    border-left: 2px solid #FF9D00;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #FF9D00;
+    border: 1px solid #000000;
+  }
+  .custom-scrollbar::-webkit-scrollbar-button {
+    background: #FF9D00;
+    display: block;
+    height: 12px;
+    width: 12px;
   }
 
-  @keyframes pulse-slow {
-    0%,
-    100% {
-      opacity: 0.4;
-    }
-    50% {
-      opacity: 0.8;
-    }
+  /* MAGI Utilities */
+  .magi-border {
+    border: 2px solid var(--border-main);
+    box-shadow: 0 0 5px var(--border-main); /* Slight glow */
+  }
+  
+  .magi-border-sm {
+    border: 1px solid var(--border-main);
   }
 
-  @keyframes pulse-slower {
-    0%,
-    100% {
-      opacity: 0.25;
-    }
-    50% {
-      opacity: 0.6;
-    }
+  /* Hexagon Pattern Background */
+  .hex-bg {
+    background-color: #000000;
+    background-image: 
+        linear-gradient(30deg, #151515 12%, transparent 12.5%, transparent 87%, #151515 87.5%, #151515),
+        linear-gradient(150deg, #151515 12%, transparent 12.5%, transparent 87%, #151515 87.5%, #151515),
+        linear-gradient(30deg, #151515 12%, transparent 12.5%, transparent 87%, #151515 87.5%, #151515),
+        linear-gradient(150deg, #151515 12%, transparent 12.5%, transparent 87%, #151515 87.5%, #151515),
+        radial-gradient(transparent 20%, #000000 20%, #111111 21%, transparent 22%); /* Subtle interference */
+    background-size: 20px 35px;
+    background-position: 0 0, 0 0, 10px 18px, 10px 18px, 0 0;
   }
 
-  .animate-pulse-slow {
-    animation: pulse-slow 6s ease-in-out infinite;
+  /* Selection State */
+  .magi-selected {
+    background-color: var(--selection-bg);
+    color: var(--selection-fg);
+    font-weight: bold;
   }
 
-  .animate-pulse-slower {
-    animation: pulse-slower 9s ease-in-out infinite;
+  .focus-dotted {
+    outline: 1px dashed var(--fg-primary);
+    outline-offset: 2px;
+  }
+
+  .text-shadow-sm {
+      text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
+  }
+
+  /* MAGI Select Dropdown */
+  .magi-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #000000;
+    border: 1px solid var(--border-dim);
+    border-radius: 0;
+    padding-left: 0.5rem;
+    padding-right: 2rem;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    color-scheme: dark; /* Forces browser to use dark theme for native dropdown */
+    font-family: "Courier New", monospace;
+    font-size: 0.875rem; /* Increased from 0.75rem */
+    font-weight: 700;
+    color: var(--fg-primary);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23FF9D00' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.25rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+  }
+  .magi-select:focus {
+    border-color: var(--fg-primary);
+    outline: none;
+  }
+  
+  .magi-select option {
+    background-color: #000000;
+    color: var(--fg-primary);
+  }
+
+  /* Evangelion Title Style (Matisse-EB Approximation) */
+  .eva-title {
+    font-family: "Times New Roman", serif;
+    font-weight: 900;
+    transform: scaleX(0.7);
+    transform-origin: left;
+    display: inline-block;
+    letter-spacing: -0.05em;
   }
 }

@@ -1,6 +1,7 @@
 import { Plus, X } from "lucide-react";
+import { MagiSelect } from "@/components/ui/MagiSelect";
 
-import { GlassCard } from "@/components/ui/GlassCard";
+
 import type {
   Condition,
   ConditionGroup,
@@ -101,8 +102,8 @@ const matchOptions: { value: MatchType; label: string }[] = [
 ];
 
 const fieldClass =
-  "rounded-md border border-[#2a2b31] bg-[#141518] px-2.5 py-1.5 text-[11px] text-[#e7e1d8] shadow-none outline-none transition focus:border-[#c07a46] focus:ring-1 focus:ring-[#c07a46]/30";
-const smallFieldClass = `${fieldClass} w-20 px-2 py-1`;
+  "rounded-none bg-black border border-[var(--border-dim)] px-2 py-1 text-sm text-[var(--fg-primary)] font-bold font-mono shadow-none outline-none focus:border-[var(--fg-primary)] focus:text-[var(--fg-primary)] transition-colors";
+const smallFieldClass = `${fieldClass} w-20`;
 const longFieldClass = `${fieldClass} min-w-[220px]`;
 
 export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilderProps) {
@@ -140,19 +141,19 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7f7a73]">
-          Match
+        <span className="text-xs font-bold uppercase tracking-wider text-[var(--fg-primary)]">
+          Match Protocol:
         </span>
-        <div className="flex items-center gap-1 rounded-md border border-[#2a2b31] bg-[#141518] p-1">
+        <div className="flex items-center gap-1 border border-[var(--border-dim)] bg-black p-0.5">
           {matchOptions.map((option) => (
             <button
               key={option.value}
               type="button"
               onClick={() => updateGroup({ matchType: option.value })}
-              className={`rounded px-3 py-1 text-[11px] font-semibold transition-all ${
+              className={`rounded-none px-3 py-1 text-xs font-bold font-mono uppercase tracking-widest transition-none ${
                 group.matchType === option.value
-                  ? "bg-[#c07a46] text-[#0d0e10]"
-                  : "text-[#9a948b] hover:text-[#e7e1d8]"
+                  ? "bg-[var(--fg-primary)] text-black"
+                  : "text-[var(--border-dim)] hover:text-[var(--fg-primary)]"
               }`}
             >
               {option.label}
@@ -164,13 +165,13 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
       {group.conditions.map((condition, index) => {
         if (condition.type === "nested") {
           return (
-            <GlassCard key={index} className="space-y-3 p-3">
+            <div key={index} className="space-y-3 p-3 magi-border-sm bg-black/30 ml-4 relative border-l-4 border-l-[var(--fg-secondary)]">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7f7a73]">
-                  Nested Group
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--fg-secondary)]">
+                  NESTED LOGIC GATE
                 </span>
                 <button
-                  className="rounded-md border border-transparent p-1 text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:bg-[#1f2025] hover:text-[#e7e1d8]"
+                  className="p-1 text-[var(--fg-alert)] hover:bg-[var(--fg-alert)] hover:text-black border border-transparent hover:border-[var(--fg-alert)]"
                   onClick={() => removeCondition(index)}
                   type="button"
                   aria-label="Remove group"
@@ -192,27 +193,26 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
                 }
                 depth={depth + 1}
               />
-            </GlassCard>
+            </div>
           );
         }
 
         return (
-          <GlassCard key={index} className="p-3">
+          <div key={index} className="p-2 border border-[var(--border-dim)] bg-black relative group hover:border-[var(--fg-primary)] transition-colors">
+             {/* Tech Deco */}
+             <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[var(--border-dim)]" />
+             <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[var(--border-dim)]" />
+
             <div className="flex flex-wrap items-center gap-2">
-              <select
-                className={fieldClass}
+              <MagiSelect
+                width="w-40"
                 value={condition.type}
-                onChange={(e) => updateCondition(index, createCondition(e.target.value))}
-              >
-                {conditionTypes.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => updateCondition(index, createCondition(val))}
+                options={conditionTypes}
+              />
               {renderConditionFields(condition, (updated) => updateCondition(index, updated))}
               <button
-                className="ml-auto rounded-md border border-transparent p-1 text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:bg-[#1f2025] hover:text-[#e7e1d8]"
+                className="ml-auto p-1 text-[var(--fg-alert)] hover:bg-[var(--fg-alert)] hover:text-black"
                 onClick={() => removeCondition(index)}
                 type="button"
                 aria-label="Remove condition"
@@ -220,25 +220,25 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
                 <X className="h-4 w-4" />
               </button>
             </div>
-          </GlassCard>
+          </div>
         );
       })}
       <div className="flex flex-wrap items-center gap-3">
         <button
-          className="inline-flex items-center gap-2 rounded-md border border-[#2a2b31] bg-[#15171a] px-3 py-1.5 text-[11px] font-semibold text-[#cfc9bf] transition-colors hover:border-[#3a3b42]"
+          className="flex items-center gap-2 px-3 py-1.5 bg-black border border-[var(--fg-primary)] text-[var(--fg-primary)] hover:bg-[var(--fg-primary)] hover:text-black text-xs font-bold font-mono tracking-wider uppercase"
           type="button"
           onClick={() => addCondition()}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3 w-3" />
           Add Condition
         </button>
         <button
-          className="inline-flex items-center gap-2 rounded-md border border-[#2a2b31] bg-[#15171a] px-3 py-1.5 text-[11px] font-semibold text-[#cfc9bf] transition-colors hover:border-[#3a3b42]"
+          className="flex items-center gap-2 px-3 py-1.5 bg-black border border-[var(--fg-secondary)] text-[var(--fg-secondary)] hover:bg-[var(--fg-secondary)] hover:text-black text-xs font-bold font-mono tracking-wider uppercase"
           type="button"
           onClick={addGroup}
         >
-          <Plus className="h-4 w-4" />
-          Add Group
+          <Plus className="h-3 w-3" />
+          Add Logic Gate
         </button>
       </div>
     </div>
@@ -282,26 +282,21 @@ function renderConditionFields(
   ) {
     return (
       <>
-        <select
-          className={fieldClass}
+        <MagiSelect
+          width="w-36"
           value={condition.operator}
-          onChange={(e) =>
-            onChange({ ...condition, operator: e.target.value as StringOperator })
+          onChange={(val) =>
+            onChange({ ...condition, operator: val as StringOperator })
           }
-        >
-          {stringOperators.map((op) => (
-            <option key={op.value} value={op.value}>
-              {op.label}
-            </option>
-          ))}
-        </select>
+          options={stringOperators}
+        />
         <input
           className={fieldClass}
           placeholder="Value"
           value={condition.value}
           onChange={(e) => onChange({ ...condition, value: e.target.value })}
         />
-        <label className="flex items-center gap-2 text-[11px] text-[#8c8780]">
+        <label className="flex items-center gap-2 text-[11px] text-black">
           <input
             type="checkbox"
             checked={condition.caseSensitive}
@@ -317,23 +312,18 @@ function renderConditionFields(
     const operator = condition.operator;
     return (
       <>
-        <select
-          className={fieldClass}
+        <MagiSelect
+          width="w-32"
           value={operator.type}
-          onChange={(e) => {
-            const selected = sizeOperators.find((op) => op.value.type === e.target.value);
+          onChange={(val) => {
+            const selected = sizeOperators.find((op) => op.value.type === val);
             onChange({
               ...condition,
               operator: selected?.value ?? { type: "greaterThan" },
             });
           }}
-        >
-          {sizeOperators.map((op) => (
-            <option key={op.value.type} value={op.value.type}>
-              {op.label}
-            </option>
-          ))}
-        </select>
+          options={sizeOperators.map(op => ({ label: op.label, value: op.value.type }))}
+        />
         {operator.type === "between" ? (
           <>
             <input
@@ -347,7 +337,7 @@ function renderConditionFields(
                 })
               }
             />
-            <span className="text-[11px] text-slate-400 dark:text-neutral-500">and</span>
+            <span className="text-[11px] text-gray-500">and</span>
             <input
               className={smallFieldClass}
               type="number"
@@ -368,16 +358,17 @@ function renderConditionFields(
             onChange={(e) => onChange({ ...condition, value: Number(e.target.value) })}
           />
         )}
-        <select
-          className={fieldClass}
+        <MagiSelect
+          width="w-24"
           value={condition.unit}
-          onChange={(e) => onChange({ ...condition, unit: e.target.value as SizeUnit })}
-        >
-          <option value="bytes">Bytes</option>
-          <option value="kilobytes">KB</option>
-          <option value="megabytes">MB</option>
-          <option value="gigabytes">GB</option>
-        </select>
+          onChange={(val) => onChange({ ...condition, unit: val as SizeUnit })}
+          options={[
+             { label: "Bytes", value: "bytes" },
+             { label: "KB", value: "kilobytes" },
+             { label: "MB", value: "megabytes" },
+             { label: "GB", value: "gigabytes" }
+          ]}
+        />
       </>
     );
   }
@@ -390,23 +381,18 @@ function renderConditionFields(
     const operator = condition.operator;
     return (
       <>
-        <select
-          className={fieldClass}
+        <MagiSelect
+          width="w-32"
           value={operator.type}
-          onChange={(e) => {
-            const selected = dateOperators.find((op) => op.value.type === e.target.value);
+          onChange={(val) => {
+            const selected = dateOperators.find((op) => op.value.type === val);
             onChange({
               ...condition,
               operator: selected?.value ?? { type: "is", date: "" },
             });
           }}
-        >
-          {dateOperators.map((op) => (
-            <option key={op.value.type} value={op.value.type}>
-              {op.label}
-            </option>
-          ))}
-        </select>
+          options={dateOperators.map(op => ({ label: op.label, value: op.value.type }))}
+        />
         {operator.type === "between" ? (
           <>
             <input
@@ -445,22 +431,17 @@ function renderConditionFields(
                 })
               }
             />
-            <select
-              className={fieldClass}
+            <MagiSelect
+              width="w-24"
               value={operator.unit}
-              onChange={(e) =>
+              onChange={(val) =>
                 onChange({
                   ...condition,
-                  operator: { ...operator, unit: e.target.value as TimeUnit },
+                  operator: { ...operator, unit: val as TimeUnit },
                 })
               }
-            >
-              {timeUnits.map((unit) => (
-                <option key={unit} value={unit}>
-                  {unit}
-                </option>
-              ))}
-            </select>
+              options={timeUnits.map(unit => ({ label: unit, value: unit }))}
+            />
           </>
         ) : (
           <input
@@ -483,23 +464,18 @@ function renderConditionFields(
     const operator = condition.operator;
     return (
       <>
-        <select
-          className={fieldClass}
+        <MagiSelect
+          width="w-32"
           value={operator.type}
-          onChange={(e) => {
-            const selected = timeOperators.find((op) => op.value.type === e.target.value);
+          onChange={(val) => {
+            const selected = timeOperators.find((op) => op.value.type === val);
             onChange({
               ...condition,
               operator: selected?.value ?? { type: "is", time: defaultTime },
             });
           }}
-        >
-          {timeOperators.map((op) => (
-            <option key={op.value.type} value={op.value.type}>
-              {op.label}
-            </option>
-          ))}
-        </select>
+          options={timeOperators.map(op => ({ label: op.label, value: op.value.type }))}
+        />
         {operator.type === "between" ? (
           <>
             <input
@@ -545,18 +521,13 @@ function renderConditionFields(
   if (condition.type === "kind") {
     return (
       <>
-        <select
-          className={fieldClass}
+        <MagiSelect
+          width="w-32"
           value={condition.kind}
-          onChange={(e) => onChange({ ...condition, kind: e.target.value as FileKind })}
-        >
-          {kinds.map((kind) => (
-            <option key={kind} value={kind}>
-              {kind}
-            </option>
-          ))}
-        </select>
-        <label className="flex items-center gap-2 text-[11px] text-[#8c8780]">
+          onChange={(val) => onChange({ ...condition, kind: val as FileKind })}
+          options={kinds.map(k => ({ label: k, value: k }))}
+        />
+        <label className="flex items-center gap-2 text-[11px] text-gray-500">
           <input
             type="checkbox"
             checked={condition.negate}

@@ -1,6 +1,7 @@
 import { Plus, X } from "lucide-react";
+import { MagiSelect } from "@/components/ui/MagiSelect";
 
-import { GlassCard } from "@/components/ui/GlassCard";
+
 import type { Action, ArchiveFormat, ConflictResolution } from "@/types";
 
 interface ActionBuilderProps {
@@ -32,7 +33,7 @@ const conflictOptions: { value: ConflictResolution; label: string }[] = [
 ];
 
 const fieldClass =
-  "rounded-md border border-[#2a2b31] bg-[#141518] px-2.5 py-1.5 text-[11px] text-[#e7e1d8] shadow-none outline-none transition focus:border-[#c07a46] focus:ring-1 focus:ring-[#c07a46]/30";
+  "rounded-none bg-black border border-[var(--border-dim)] px-2 py-1 text-sm text-[var(--fg-primary)] font-bold font-mono shadow-none outline-none focus:border-[var(--fg-primary)] focus:text-[var(--fg-primary)] transition-colors";
 const longFieldClass = `${fieldClass} min-w-[220px]`;
 
 export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
@@ -53,22 +54,17 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
   return (
     <div className="space-y-3">
       {actions.map((action, index) => (
-        <GlassCard key={index} className="p-3">
+        <div key={index} className="p-3 magi-border-sm bg-black relative hover:border-[var(--fg-secondary)] transition-colors">
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              className={fieldClass}
+            <MagiSelect
+              width="w-40"
               value={action.type}
-              onChange={(e) => updateAction(index, createAction(e.target.value))}
-            >
-              {actionTypes.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => updateAction(index, createAction(val))}
+              options={actionTypes}
+            />
             {renderActionFields(action, (updated) => updateAction(index, updated))}
             <button
-              className="ml-auto rounded-md border border-transparent p-1 text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:bg-[#1f2025] hover:text-[#e7e1d8]"
+              className="ml-auto p-1 text-[var(--fg-alert)] hover:bg-[var(--fg-alert)] hover:text-black"
               onClick={() => removeAction(index)}
               type="button"
               aria-label="Remove action"
@@ -76,15 +72,15 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
               <X className="h-4 w-4" />
             </button>
           </div>
-        </GlassCard>
+        </div>
       ))}
       <button
-        className="inline-flex items-center gap-2 rounded-md border border-[#2a2b31] bg-[#15171a] px-3 py-1.5 text-[11px] font-semibold text-[#cfc9bf] transition-colors hover:border-[#3a3b42]"
+        className="flex items-center gap-2 px-3 py-1.5 bg-black border border-[var(--fg-secondary)] text-[var(--fg-secondary)] hover:bg-[var(--fg-secondary)] hover:text-black text-xs font-bold font-mono tracking-wider uppercase"
         type="button"
         onClick={() => addAction()}
       >
-        <Plus className="h-4 w-4" />
-        Add Action
+        <Plus className="h-3 w-3" />
+        Execute Action
       </button>
     </div>
   );
@@ -153,21 +149,16 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
           value={action.destination}
           onChange={(e) => onChange({ ...action, destination: e.target.value })}
         />
-        <select
-          className={fieldClass}
+        <MagiSelect
+          width="w-32"
           value={action.onConflict}
-          onChange={(e) =>
-            onChange({ ...action, onConflict: e.target.value as ConflictResolution })
+          onChange={(val) =>
+            onChange({ ...action, onConflict: val as ConflictResolution })
           }
-        >
-          {conflictOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          options={conflictOptions}
+        />
         {action.type !== "sortIntoSubfolder" ? (
-          <label className="flex items-center gap-2 text-[11px] text-[#8c8780]">
+          <label className="flex items-center gap-2 text-[11px] text-gray-600">
             <input
               type="checkbox"
               checked={action.skipDuplicates}
@@ -189,19 +180,14 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
           value={action.pattern}
           onChange={(e) => onChange({ ...action, pattern: e.target.value })}
         />
-        <select
-          className={fieldClass}
+        <MagiSelect
+          width="w-32"
           value={action.onConflict}
-          onChange={(e) =>
-            onChange({ ...action, onConflict: e.target.value as ConflictResolution })
+          onChange={(val) =>
+            onChange({ ...action, onConflict: val as ConflictResolution })
           }
-        >
-          {conflictOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          options={conflictOptions}
+        />
       </>
     );
   }
@@ -215,21 +201,22 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
           value={action.destination}
           onChange={(e) => onChange({ ...action, destination: e.target.value })}
         />
-        <select
-          className={fieldClass}
+        <MagiSelect
+          width="w-32"
           value={action.format}
-          onChange={(e) =>
+          onChange={(val) =>
             onChange({
               ...action,
-              format: e.target.value as ArchiveFormat,
+              format: val as ArchiveFormat,
             })
           }
-        >
-          <option value="zip">zip</option>
-          <option value="tar">tar</option>
-          <option value="tarGz">tar.gz</option>
-        </select>
-        <label className="flex items-center gap-2 text-[11px] text-[#8c8780]">
+          options={[
+            { label: "zip", value: "zip" },
+            { label: "tar", value: "tar" },
+            { label: "tar.gz", value: "tarGz" },
+          ]}
+        />
+        <label className="flex items-center gap-2 text-[11px] text-gray-600">
           <input
             type="checkbox"
             checked={action.deleteAfter}
@@ -252,7 +239,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
             onChange({ ...action, destination: e.target.value || undefined })
           }
         />
-        <label className="flex items-center gap-2 text-[11px] text-[#8c8780]">
+        <label className="flex items-center gap-2 text-[11px] text-gray-600">
           <input
             type="checkbox"
             checked={action.deleteAfter}
@@ -298,7 +285,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
             onChange({ ...action, durationSeconds: Number(e.target.value) })
           }
         />
-        <span className="text-[11px] text-[#8c8780]">seconds</span>
+        <span className="text-[11px] text-gray-600">seconds</span>
       </>
     );
   }

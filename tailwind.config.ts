@@ -7,8 +7,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["\"IBM Plex Sans\"", "ui-sans-serif", "system-ui"],
-        mono: ["\"IBM Plex Mono\"", "ui-monospace", "SFMono-Regular"],
+        sans: ["\"Arial Black\"", "Impact", "sans-serif"], /* Large Headers */
+        serif: ["\"Times New Roman\"", "serif"], /* Title Cards */
+        mono: ["\"Courier New\"", "monospace"], /* Data */
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -35,6 +36,17 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        
+        // Semantic Theme Colors
+        "app": "var(--bg-app)",
+        "panel": "var(--bg-panel)",
+        "header": "var(--bg-header)",
+        "fg-primary": "var(--fg-primary)",
+        "fg-header": "var(--fg-header)",
+        "fg-alert": "var(--fg-alert)",
+        "sel": "var(--selection-bg)",
+        "sel-fg": "var(--selection-fg)",
+
         chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",

@@ -19,39 +19,41 @@ export function FolderItem({
 }: FolderItemProps) {
   return (
     <div
-      className={`group flex items-center justify-between border-b border-[#1f1f24] px-3 py-2 text-[12px] transition-colors ${
+      className={`group flex items-center justify-between px-2 py-1 font-mono text-xs cursor-pointer select-none border-l-2 transition-colors ${
         selected
-          ? "bg-[#1a1b1f] text-[#efe8dd]"
-          : "text-[#b1aba1] hover:bg-[#151619] hover:text-[#d8d1c6]"
+          ? "bg-[var(--selection-bg)] text-black border-[var(--selection-bg)]"
+          : "text-[var(--fg-primary)] border-transparent hover:bg-[var(--fg-primary)] hover:text-black hover:border-[var(--fg-primary)]"
       }`}
     >
       <button
-        className="flex w-full items-center gap-2 overflow-hidden text-left"
+        className="flex w-full items-center gap-2 overflow-hidden text-left outline-none focus:outline-none"
         onClick={onSelect}
         type="button"
       >
-        <Folder className={`h-4 w-4 ${selected ? "text-[#c07a46]" : "text-[#6f6a62]"}`} />
+        <Folder className="h-4 w-4" />
         <div className="min-w-0 flex-1">
           <div
-            className={`flex items-center gap-2 truncate font-medium ${
-              folder.enabled ? "" : "line-through opacity-70"
+            className={`flex items-center gap-2 truncate font-bold tracking-wider ${
+              folder.enabled ? "" : "opacity-50"
             }`}
           >
-            {folder.name}
+            {folder.name.toUpperCase()}
             {ruleCount && ruleCount > 0 ? (
-              <span className="rounded bg-[#2a2b31] px-1 text-[9px] text-[#c3bdb3]">
-                {ruleCount}
+              <span className="opacity-80 text-[10px]">
+                [{ruleCount.toString().padStart(2, '0')}]
               </span>
             ) : null}
           </div>
-          <div className="mt-0.5 truncate font-mono text-[10px] text-[#7c776f]">
+          <div className="mt-0.5 truncate text-[9px] opacity-70">
             {folder.path}
           </div>
         </div>
       </button>
       <div className="pl-2">
         <button
-          className="h-2 w-2 rounded-full"
+          className={`h-3 w-3 border flex items-center justify-center ${
+              folder.enabled ? "border-[var(--fg-secondary)]" : "border-[var(--fg-alert)]"
+          }`}
           title={folder.enabled ? "Disable watcher" : "Enable watcher"}
           onClick={(e) => {
             e.stopPropagation();
@@ -59,11 +61,9 @@ export function FolderItem({
           }}
           type="button"
         >
-          <span
-            className={`block h-2 w-2 rounded-full ${
-              folder.enabled ? "bg-[#c07a46]" : "bg-[#2a2b31]"
-            }`}
-          />
+           <div className={`w-1.5 h-1.5 ${
+               folder.enabled ? "bg-[var(--fg-secondary)]" : "bg-transparent"
+           }`} />
         </button>
       </div>
     </div>
