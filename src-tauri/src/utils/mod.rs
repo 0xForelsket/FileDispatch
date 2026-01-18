@@ -1,2 +1,3 @@
+pub mod archive;
 pub mod file_info;
 pub mod platform;

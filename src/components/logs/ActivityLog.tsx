@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Activity, ArrowRight, Search } from "lucide-react";
+import { Activity, ArrowRight, RotateCcw, Search } from "lucide-react";
 
 import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
@@ -9,6 +9,8 @@ import { GlassCard } from "@/components/ui/GlassCard";
 
 export function ActivityLog() {
   const entries = useLogStore((state) => state.entries);
+  const undoEntries = useLogStore((state) => state.undoEntries);
+  const undoAction = useLogStore((state) => state.undoAction);
   const clearLogs = useLogStore((state) => state.clearLogs);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const rules = useRuleStore((state) => state.rules);
@@ -42,6 +44,10 @@ export function ActivityLog() {
       return matchesQuery && matchesStatus && matchesRule;
     });
   }, [scopedEntries, query, ruleFilter, statusFilter]);
+
+  const undoByLog = useMemo(() => {
+    return new Map(undoEntries.map((entry) => [entry.logId, entry]));
+  }, [undoEntries]);
 
   return (
     <section className="pb-8">
@@ -101,6 +107,7 @@ export function ActivityLog() {
           <div className="w-28">Status</div>
           <div className="flex-1">File Operation</div>
           <div className="w-24 text-right">Size</div>
+          <div className="w-20 text-right">Undo</div>
         </div>
 
         <div className="divide-y divide-black/5 font-mono text-xs dark:divide-white/5">
@@ -128,6 +135,25 @@ export function ActivityLog() {
                 </div>
                 <div className="w-24 text-right text-slate-400 transition-colors group-hover:text-slate-600 dark:text-neutral-600 dark:group-hover:text-neutral-400">
                   {formatBytes(getSizeBytes(entry))}
+                </div>
+                <div className="w-20 text-right">
+                  {undoByLog.has(entry.id) ? (
+                    <button
+                      className="inline-flex items-center gap-1 rounded-full border border-blue-200/40 bg-white/70 px-2.5 py-1 text-[10px] font-semibold text-blue-700 shadow-sm transition-all hover:bg-white hover:text-blue-900 dark:border-cyan-500/30 dark:bg-white/5 dark:text-cyan-300 dark:hover:bg-white/10"
+                      onClick={() => {
+                        const undoEntry = undoByLog.get(entry.id);
+                        if (undoEntry) {
+                          void undoAction(undoEntry.id);
+                        }
+                      }}
+                      type="button"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Undo
+                    </button>
+                  ) : (
+                    <span className="text-[10px] text-slate-300 dark:text-neutral-700">—</span>
+                  )}
                 </div>
               </div>
             ))

@@ -16,6 +16,7 @@ use crate::storage::database::Database;
 use crate::storage::log_repo::LogRepository;
 use crate::storage::match_repo::MatchRepository;
 use crate::storage::rule_repo::RuleRepository;
+use crate::storage::undo_repo::UndoRepository;
 use crate::utils::file_info::FileInfo;
 
 pub struct RuleEngine {
@@ -77,6 +78,7 @@ impl RuleEngine {
         let rule_repo = RuleRepository::new(self.db.clone());
         let match_repo = MatchRepository::new(self.db.clone());
         let log_repo = LogRepository::new(self.db.clone());
+        let undo_repo = UndoRepository::new(self.db.clone());
 
         let rules = rule_repo.list_by_folder(&event.folder_id)?;
 
@@ -102,14 +104,14 @@ impl RuleEngine {
                 self.executor
                     .execute_actions(&rule.actions, &info, &evaluation.captures);
 
-            log_outcomes(&log_repo, &rule, &info, &outcomes)?;
+            log_outcomes(&log_repo, &undo_repo, &rule, &info, &outcomes)?;
             match_repo.record_match(
                 &rule.id,
                 info.path.to_string_lossy().as_ref(),
                 Some(&info.hash),
             )?;
 
-            if rule.stop_processing {
+            if should_stop_processing(&rule, &outcomes) {
                 break;
             }
         }
@@ -362,6 +364,7 @@ pub(crate) fn evaluate_shell(command: &str, path: &std::path::Path) -> bool {
 
 fn log_outcomes(
     repo: &LogRepository,
+    undo_repo: &UndoRepository,
     rule: &Rule,
     info: &FileInfo,
     outcomes: &[ActionOutcome],
@@ -373,6 +376,11 @@ fn log_outcomes(
             ActionResultStatus::Error => LogStatus::Error,
         };
         let mut details = outcome.details.clone();
+        let should_track_undo = status == LogStatus::Success
+            && matches!(
+                outcome.action_type,
+                ActionType::Move | ActionType::Copy | ActionType::Rename
+            );
         let size_value = info.size.to_string();
         if let Some(ref mut details) = details {
             details
@@ -399,7 +407,23 @@ fn log_outcomes(
             error_message: outcome.error.clone(),
             created_at: Utc::now(),
         };
-        let _ = repo.insert(entry)?;
+        let inserted = repo.insert(entry)?;
+        if should_track_undo {
+            if let Some(detail) = &inserted.action_detail {
+                if let Some(dest) = &detail.destination_path {
+                    let undo_entry = crate::models::UndoEntry {
+                        id: String::new(),
+                        log_id: inserted.id.clone(),
+                        action_type: inserted.action_type.clone(),
+                        original_path: detail.source_path.clone(),
+                        current_path: dest.clone(),
+                        created_at: Utc::now(),
+                    };
+                    let _ = undo_repo.insert(undo_entry);
+                    let _ = undo_repo.cleanup(50);
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -410,20 +434,37 @@ fn action_type_to_string(action_type: &ActionType) -> String {
         ActionType::Copy => "copy",
         ActionType::Rename => "rename",
         ActionType::SortIntoSubfolder => "sortIntoSubfolder",
+        ActionType::Archive => "archive",
+        ActionType::Unarchive => "unarchive",
         ActionType::Delete => "delete",
         ActionType::DeletePermanently => "deletePermanently",
         ActionType::RunScript => "runScript",
         ActionType::Notify => "notify",
+        ActionType::Open => "open",
+        ActionType::Pause => "pause",
+        ActionType::Continue => "continue",
         ActionType::Ignore => "ignore",
     }
     .to_string()
 }
 
+fn should_stop_processing(rule: &Rule, outcomes: &[ActionOutcome]) -> bool {
+    if !rule.stop_processing {
+        return false;
+    }
+    let has_continue = outcomes
+        .iter()
+        .any(|outcome| outcome.action_type == ActionType::Continue);
+    rule.stop_processing && !has_continue
+}
+
 #[cfg(test)]
 mod tests {
     use super::{evaluate_group, evaluate_time_with};
+    use crate::core::executor::{ActionOutcome, ActionResultStatus};
     use crate::models::{
-        Condition, ConditionGroup, MatchType, StringCondition, StringOperator, TimeOperator,
+        ActionType, Condition, ConditionGroup, MatchType, Rule, StringCondition, StringOperator,
+        TimeOperator,
     };
     use chrono::NaiveTime;
     use crate::utils::file_info::FileInfo;
@@ -510,5 +551,57 @@ mod tests {
         };
         assert!(evaluate_time_with(now, &before));
         assert!(evaluate_time_with(now, &after));
+    }
+
+    #[test]
+    fn continue_action_overrides_stop_processing() {
+        let rule = Rule {
+            id: "rule-1".to_string(),
+            folder_id: "folder-1".to_string(),
+            name: "Test".to_string(),
+            enabled: true,
+            stop_processing: true,
+            conditions: ConditionGroup {
+                match_type: MatchType::All,
+                conditions: vec![],
+            },
+            actions: vec![],
+            position: 0,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+        let outcomes = vec![ActionOutcome {
+            action_type: ActionType::Continue,
+            status: ActionResultStatus::Success,
+            details: None,
+            error: None,
+        }];
+        assert!(!super::should_stop_processing(&rule, &outcomes));
+    }
+
+    #[test]
+    fn stop_processing_without_continue() {
+        let rule = Rule {
+            id: "rule-1".to_string(),
+            folder_id: "folder-1".to_string(),
+            name: "Test".to_string(),
+            enabled: true,
+            stop_processing: true,
+            conditions: ConditionGroup {
+                match_type: MatchType::All,
+                conditions: vec![],
+            },
+            actions: vec![],
+            position: 0,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+        let outcomes = vec![ActionOutcome {
+            action_type: ActionType::Move,
+            status: ActionResultStatus::Success,
+            details: None,
+            error: None,
+        }];
+        assert!(super::should_stop_processing(&rule, &outcomes));
     }
 }

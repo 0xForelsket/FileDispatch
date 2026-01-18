@@ -116,6 +116,18 @@ fn describe_action(
             let dest = engine.resolve(&action.destination, info, captures);
             format!("Sort → {}", dest)
         }
+        Action::Archive(action) => {
+            let dest = engine.resolve(&action.destination, info, captures);
+            format!("Archive → {}", dest)
+        }
+        Action::Unarchive(action) => {
+            let dest = action
+                .destination
+                .as_ref()
+                .map(|d| engine.resolve(d, info, captures))
+                .unwrap_or_else(|| "Current folder".to_string());
+            format!("Unarchive → {}", dest)
+        }
         Action::Delete(_) => "Delete (Trash)".to_string(),
         Action::DeletePermanently(_) => "Delete Permanently".to_string(),
         Action::RunScript(action) => format!("Run: {}", action.command),
@@ -123,6 +135,9 @@ fn describe_action(
             let message = engine.resolve(&action.message, info, captures);
             format!("Notify: {}", message)
         }
+        Action::Open(_) => "Open with default app".to_string(),
+        Action::Pause(action) => format!("Pause {}s", action.duration_seconds),
+        Action::Continue => "Continue matching rules".to_string(),
         Action::Ignore => "Ignore".to_string(),
     }
 }

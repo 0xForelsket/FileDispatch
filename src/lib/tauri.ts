@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import type { Folder, LogEntry, PreviewItem, Rule } from "@/types";
+import type { Folder, LogEntry, Preset, PreviewItem, Rule, UndoEntry } from "@/types";
 import type { AppSettings } from "@/stores/settingsStore";
 
 export const folderList = () => invoke<Folder[]>("folder_list");
@@ -29,6 +29,10 @@ export const ruleImport = (folderId: string, payload: string) =>
 export const logList = (limit?: number, offset?: number) =>
   invoke<LogEntry[]>("log_list", { limit, offset });
 export const logClear = () => invoke<void>("log_clear");
+export const undoList = (limit?: number) =>
+  invoke<UndoEntry[]>("undo_list", { limit });
+export const undoExecute = (undoId: string) =>
+  invoke<void>("undo_execute", { undoId });
 
 export const settingsGet = () => invoke<AppSettings>("settings_get");
 export const settingsUpdate = (settings: AppSettings) =>
@@ -38,3 +42,10 @@ export const previewRule = (ruleId: string) =>
   invoke<PreviewItem[]>("preview_rule", { ruleId });
 export const previewFile = (ruleId: string, filePath: string) =>
   invoke<PreviewItem>("preview_file", { ruleId, filePath });
+
+export const presetRead = (path: string) => invoke<Preset>("preset_read", { path });
+export const presetInstall = (
+  folderId: string,
+  path: string,
+  variables: Record<string, string>,
+) => invoke<Rule[]>("preset_install", { folderId, path, variables });

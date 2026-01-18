@@ -8,16 +8,18 @@ export interface ShortcutSpec {
   allowInInput?: boolean;
 }
 
+type EditableTarget = {
+  tagName?: string;
+  isContentEditable?: boolean;
+};
+
 export interface ShortcutEventLike {
   key: string;
   ctrlKey?: boolean;
   metaKey?: boolean;
   altKey?: boolean;
   shiftKey?: boolean;
-  target?: {
-    tagName?: string;
-    isContentEditable?: boolean;
-  } | null;
+  target?: EventTarget | EditableTarget | null;
 }
 
 export function matchesShortcut(event: ShortcutEventLike, shortcut: ShortcutSpec) {
@@ -59,12 +61,13 @@ export function formatShortcut(shortcut: ShortcutSpec) {
 }
 
 function isEditableTarget(target?: ShortcutEventLike["target"]) {
-  if (!target) return false;
-  const tagName = target.tagName?.toUpperCase();
+  if (!target || typeof target !== "object") return false;
+  const element = target as EditableTarget;
+  const tagName = element.tagName?.toUpperCase();
   if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
     return true;
   }
-  return Boolean(target.isContentEditable);
+  return Boolean(element.isContentEditable);
 }
 
 function isMacPlatform() {

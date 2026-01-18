@@ -5,6 +5,8 @@ pub mod log_entry;
 pub mod preview;
 pub mod rule;
 pub mod settings;
+pub mod preset;
+pub mod undo;
 
 pub use action::*;
 pub use condition::*;
@@ -13,3 +15,5 @@ pub use log_entry::*;
 pub use preview::*;
 pub use rule::*;
 pub use settings::*;
+pub use preset::*;
+pub use undo::*;

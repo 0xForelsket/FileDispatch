@@ -8,10 +8,15 @@ pub enum Action {
     Copy(CopyAction),
     Rename(RenameAction),
     SortIntoSubfolder(SortAction),
+    Archive(ArchiveAction),
+    Unarchive(UnarchiveAction),
     Delete(DeleteAction),
     DeletePermanently(DeleteAction),
     RunScript(ScriptAction),
     Notify(NotifyAction),
+    Open(OpenAction),
+    Pause(PauseAction),
+    Continue,
     Ignore,
 }
 
@@ -47,6 +52,21 @@ pub struct SortAction {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ArchiveAction {
+    pub destination: String,
+    pub format: ArchiveFormat,
+    pub delete_after: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnarchiveAction {
+    pub destination: Option<String>,
+    pub delete_after: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeleteAction {
     pub permanent: bool,
 }
@@ -65,6 +85,25 @@ pub struct NotifyAction {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct OpenAction {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PauseAction {
+    pub duration_seconds: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ArchiveFormat {
+    Zip,
+    Tar,
+    #[serde(rename = "tarGz")]
+    TarGz,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ConflictResolution {
     Rename,
     Replace,
@@ -79,16 +118,21 @@ pub struct ActionDetails {
     pub metadata: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum ActionType {
     Move,
     Copy,
     Rename,
     SortIntoSubfolder,
+    Archive,
+    Unarchive,
     Delete,
     DeletePermanently,
     RunScript,
     Notify,
+    Open,
+    Pause,
+    Continue,
     Ignore,
 }

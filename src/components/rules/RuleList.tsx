@@ -7,6 +7,7 @@ import type { Rule } from "@/types";
 import { RuleItem } from "@/components/rules/RuleItem";
 import { RuleEditor } from "@/components/rules/RuleEditor";
 import { formatShortcut, matchesShortcut } from "@/lib/shortcuts";
+import { PresetImportDialog } from "@/components/presets/PresetImportDialog";
 
 export function RuleList() {
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
@@ -60,17 +61,20 @@ export function RuleList() {
           <Terminal className="h-4 w-4 text-blue-600 dark:text-cyan-500" />
           Logic Gates
         </h3>
-        <button
-          className="group flex items-center gap-2 rounded-xl border border-blue-200/50 bg-white/60 py-2 px-4 text-xs font-semibold text-blue-700 shadow-sm backdrop-blur-md transition-all hover:scale-[1.03] hover:bg-white hover:shadow-md dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-300 dark:hover:bg-cyan-500/20"
-          onClick={handleCreate}
-          type="button"
-        >
-          <Plus className="h-3.5 w-3.5 transition-transform group-hover:rotate-90" />
-          New Logic Gate
-          <kbd className="rounded-md border border-white/60 bg-white/80 px-1.5 py-0.5 text-[10px] font-mono text-blue-700 dark:border-white/10 dark:bg-white/5 dark:text-cyan-200">
-            {newRuleShortcut}
-          </kbd>
-        </button>
+        <div className="flex items-center gap-2">
+          <PresetImportDialog folderId={selectedFolderId} />
+          <button
+            className="group flex items-center gap-2 rounded-xl border border-blue-200/50 bg-white/60 py-2 px-4 text-xs font-semibold text-blue-700 shadow-sm backdrop-blur-md transition-all hover:scale-[1.03] hover:bg-white hover:shadow-md dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-300 dark:hover:bg-cyan-500/20"
+            onClick={handleCreate}
+            type="button"
+          >
+            <Plus className="h-3.5 w-3.5 transition-transform group-hover:rotate-90" />
+            New Logic Gate
+            <kbd className="rounded-md border border-white/60 bg-white/80 px-1.5 py-0.5 text-[10px] font-mono text-blue-700 dark:border-white/10 dark:bg-white/5 dark:text-cyan-200">
+              {newRuleShortcut}
+            </kbd>
+          </button>
+        </div>
       </div>
       <div className="grid gap-4">
         {rules.length === 0 ? (

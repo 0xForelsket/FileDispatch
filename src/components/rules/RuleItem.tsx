@@ -213,6 +213,16 @@ function summarizeAction(action?: Rule["actions"][number]) {
       return "run script";
     case "notify":
       return "notify";
+    case "archive":
+      return `archive → ${action.destination || "…"}`;
+    case "unarchive":
+      return "unarchive";
+    case "open":
+      return "open";
+    case "pause":
+      return `pause ${action.durationSeconds}s`;
+    case "continue":
+      return "continue matching rules";
     case "ignore":
       return "ignore";
     default:

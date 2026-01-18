@@ -7,11 +7,13 @@ mod utils;
 use commands::folders::{folder_add, folder_list, folder_remove, folder_toggle};
 use commands::logs::{log_clear, log_list};
 use commands::preview::{preview_file, preview_rule};
+use commands::presets::{preset_install, preset_read};
 use commands::rules::{
     rule_create, rule_delete, rule_duplicate, rule_export, rule_get, rule_import, rule_list,
     rule_reorder, rule_toggle, rule_update,
 };
 use commands::settings::{settings_get, settings_update};
+use commands::undo::{undo_execute, undo_list};
 use core::engine::RuleEngine;
 use core::state::AppState;
 use core::watcher::WatcherService;
@@ -158,8 +160,12 @@ pub fn run() {
             log_clear,
             preview_rule,
             preview_file,
+            preset_read,
+            preset_install,
             settings_get,
             settings_update,
+            undo_list,
+            undo_execute,
         ])
         .run(tauri::generate_context!())
         .expect("error while running File Dispatch");

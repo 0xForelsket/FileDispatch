@@ -2,14 +2,18 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 use tauri::AppHandle;
 use tauri_plugin_notification::NotificationExt;
+use tauri_plugin_opener::open_path;
 
 use crate::core::patterns::PatternEngine;
 use crate::models::{
-    Action, ActionDetails, ActionType, ConflictResolution, DeleteAction, Settings,
+    Action, ActionDetails, ActionType, ArchiveAction, ConflictResolution, DeleteAction, OpenAction,
+    PauseAction, Settings, UnarchiveAction,
 };
+use crate::utils::archive::{create_archive, ensure_archive_path, extract_archive};
 use crate::utils::file_info::FileInfo;
 use crate::utils::platform::expand_tilde;
 
@@ -94,6 +98,10 @@ impl ActionExecutor {
                     info,
                     captures,
                 ),
+                Action::Archive(action) => {
+                    self.execute_archive(action, &current_path, info, captures)
+                }
+                Action::Unarchive(action) => self.execute_unarchive(action, &current_path, info, captures),
                 Action::Delete(action) => {
                     self.execute_delete(ActionType::Delete, action, &current_path)
                 }
@@ -107,6 +115,14 @@ impl ActionExecutor {
                 ),
                 Action::RunScript(action) => self.execute_script(&action.command, &current_path),
                 Action::Notify(action) => self.execute_notify(&action.message, info, captures),
+                Action::Open(action) => self.execute_open(action, &current_path),
+                Action::Pause(action) => self.execute_pause(action),
+                Action::Continue => ActionOutcome {
+                    action_type: ActionType::Continue,
+                    status: ActionResultStatus::Success,
+                    details: None,
+                    error: None,
+                },
                 Action::Ignore => ActionOutcome {
                     action_type: ActionType::Ignore,
                     status: ActionResultStatus::Skipped,
@@ -273,6 +289,91 @@ impl ActionExecutor {
             Ok(_) => success_outcome(action_type, source_path, None),
             Err(err) => error_outcome(action_type, err.to_string()),
         }
+    }
+
+    fn execute_archive(
+        &self,
+        action: &ArchiveAction,
+        source_path: &Path,
+        info: &FileInfo,
+        captures: &HashMap<String, String>,
+    ) -> ActionOutcome {
+        let resolved = self.pattern_engine.resolve(&action.destination, info, captures);
+        let dest_path = ensure_archive_path(&expand_tilde(&resolved), source_path, &action.format);
+
+        let result = create_archive(source_path, &dest_path, &action.format)
+            .map_err(|err| error_outcome(ActionType::Archive, err.to_string()));
+
+        let dest_path = match result {
+            Ok(path) => path,
+            Err(outcome) => return outcome,
+        };
+
+        if action.delete_after {
+            let delete_result = if source_path.is_dir() {
+                fs::remove_dir_all(source_path)
+            } else {
+                fs::remove_file(source_path)
+            };
+            if let Err(err) = delete_result {
+                return error_outcome(ActionType::Archive, err.to_string());
+            }
+        }
+
+        success_outcome(ActionType::Archive, source_path, Some(dest_path))
+    }
+
+    fn execute_unarchive(
+        &self,
+        action: &UnarchiveAction,
+        source_path: &Path,
+        info: &FileInfo,
+        captures: &HashMap<String, String>,
+    ) -> ActionOutcome {
+        let dest = action.destination.as_deref().unwrap_or("");
+        let resolved = if dest.is_empty() {
+            String::new()
+        } else {
+            self.pattern_engine.resolve(dest, info, captures)
+        };
+        let dest_path = if resolved.is_empty() {
+            source_path
+                .parent()
+                .map(|p| p.to_path_buf())
+                .unwrap_or_else(|| PathBuf::from("."))
+        } else {
+            expand_tilde(&resolved)
+        };
+
+        if let Err(err) = extract_archive(source_path, &dest_path) {
+            return error_outcome(ActionType::Unarchive, err.to_string());
+        }
+
+        if action.delete_after {
+            if let Err(err) = fs::remove_file(source_path) {
+                return error_outcome(ActionType::Unarchive, err.to_string());
+            }
+        }
+
+        success_outcome(ActionType::Unarchive, source_path, Some(dest_path))
+    }
+
+    fn execute_open(&self, _action: &OpenAction, source_path: &Path) -> ActionOutcome {
+        match open_path(source_path, None::<&str>) {
+            Ok(_) => success_outcome(ActionType::Open, source_path, None),
+            Err(err) => error_outcome(ActionType::Open, err.to_string()),
+        }
+    }
+
+    fn execute_pause(&self, action: &PauseAction) -> ActionOutcome {
+        std::thread::sleep(Duration::from_secs(action.duration_seconds));
+        let mut outcome = success_outcome(ActionType::Pause, Path::new("pause"), None);
+        if let Some(ref mut details) = outcome.details {
+            details
+                .metadata
+                .insert("pause_seconds".to_string(), action.duration_seconds.to_string());
+        }
+        outcome
     }
 
     fn execute_script(&self, command: &str, source_path: &Path) -> ActionOutcome {
