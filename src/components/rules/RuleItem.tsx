@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Edit3, MoreVertical, Trash2, Zap } from "lucide-react";
 
 import type { Condition, Rule } from "@/types";
-import { GlassCard } from "@/components/ui/GlassCard";
 import { formatShortcut } from "@/lib/shortcuts";
 
 interface RuleItemProps {
   rule: Rule;
+  selected: boolean;
   onToggle: (enabled: boolean) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -19,6 +19,7 @@ interface RuleItemProps {
 
 export function RuleItem({
   rule,
+  selected,
   onToggle,
   onEdit,
   onDelete,
@@ -42,126 +43,83 @@ export function RuleItem({
   }, [menuOpen]);
 
   return (
-    <GlassCard
-      hoverEffect
-      className={`relative flex min-h-[150px] items-start gap-7 p-6 ${
-        !rule.enabled ? "opacity-70 grayscale" : ""
-      }`}
+    <div
+      className={`group flex items-center gap-3 border-b border-[#1f1f24] px-3 py-2 text-[12px] ${
+        selected ? "bg-[#191a1e]" : "hover:bg-[#141519]"
+      } ${!rule.enabled ? "opacity-60" : ""}`}
     >
-      <div
-        className={`absolute left-0 top-0 h-full w-1 ${
-          rule.enabled ? "bg-blue-500 dark:bg-cyan-500" : "bg-slate-300 dark:bg-neutral-800"
+      <button
+        onClick={() => onToggle(!rule.enabled)}
+        className={`relative h-4 w-7 rounded-full transition-colors ${
+          rule.enabled ? "bg-[#c07a46]" : "bg-[#2a2b31]"
         }`}
-      />
-      <div
-        className={`mt-1 rounded-xl border p-3 shadow-inner transition-colors duration-300 ${
-          rule.enabled
-            ? "border-blue-100/50 bg-blue-50/50 text-blue-600 dark:border-cyan-500/20 dark:bg-cyan-900/20 dark:text-cyan-400"
-            : "border-slate-200/50 bg-slate-100/50 text-slate-400 dark:border-white/5 dark:bg-white/5 dark:text-neutral-600"
-        }`}
+        type="button"
+        title={rule.enabled ? "Disable rule" : "Enable rule"}
       >
-        <Zap className="h-5 w-5" />
-      </div>
+        <span
+          className={`absolute top-0.5 h-3 w-3 rounded-full bg-[#0c0d0f] transition-all ${
+            rule.enabled ? "left-3.5" : "left-0.5"
+          }`}
+        />
+      </button>
 
-      <div className="min-w-0 flex-1 space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h4
-              className={`text-base font-bold ${
-                rule.enabled
-                  ? "text-slate-800 dark:text-neutral-100"
-                  : "text-slate-500 dark:text-neutral-500"
-              }`}
-            >
-              {rule.name}
-            </h4>
-            <div className="mt-1 text-xs text-slate-500 dark:text-neutral-500">
-              {rule.conditions.conditions.length} conditions • {rule.actions.length} actions
-            </div>
+      <button className="flex min-w-0 flex-1 items-start gap-2 text-left" onClick={onEdit} type="button">
+        <Zap className="mt-0.5 h-3.5 w-3.5 text-[#c07a46]" />
+        <div className="min-w-0">
+          <div className="truncate font-medium text-[#e7e1d8]">{rule.name}</div>
+          <div className="truncate font-mono text-[10px] text-[#8f8a82]">
+            {triggerSummary} → {actionSummary}
           </div>
-          <div className="flex items-center gap-3 border-l border-black/5 pl-4 dark:border-white/5">
-            <button
-              onClick={() => onToggle(!rule.enabled)}
-              className={`relative h-6 w-11 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-cyan-500 dark:focus:ring-offset-neutral-900 ${
-                rule.enabled
-                  ? "bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)] dark:bg-cyan-600 dark:shadow-[0_0_15px_rgba(8,145,178,0.4)]"
-                  : "bg-slate-200 dark:bg-white/10"
-              }`}
-              type="button"
-            >
-              <span
-                className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${
-                  rule.enabled ? "left-6" : "left-1"
-                }`}
-              />
-            </button>
-            <button
-              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-black/5 hover:text-slate-800 dark:text-neutral-500 dark:hover:bg-white/10 dark:hover:text-white"
-              onClick={onEdit}
-              type="button"
-            >
-              <Edit3 className="h-4 w-4" />
-            </button>
-            <div className="relative" ref={menuRef}>
+        </div>
+      </button>
+
+      <div className="flex items-center gap-1 text-[#7c776f]">
+        <button
+          className="rounded-md p-1 transition-colors hover:bg-[#1f2025] hover:text-[#e7e1d8]"
+          onClick={onEdit}
+          type="button"
+        >
+          <Edit3 className="h-3.5 w-3.5" />
+        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            className="rounded-md p-1 transition-colors hover:bg-[#1f2025] hover:text-[#e7e1d8]"
+            onClick={() => setMenuOpen((open) => !open)}
+            type="button"
+          >
+            <MoreVertical className="h-3.5 w-3.5" />
+          </button>
+          {menuOpen ? (
+            <div className="absolute right-0 z-20 mt-2 w-36 rounded-md border border-[#2a2b31] bg-[#141518] p-1 text-[11px] shadow-lg">
               <button
-                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-black/5 hover:text-slate-800 dark:text-neutral-500 dark:hover:bg-white/10 dark:hover:text-white"
-                onClick={() => setMenuOpen((open) => !open)}
+                className="flex w-full items-center gap-2 rounded px-2 py-1 text-[#cfc9bf] hover:bg-[#1f2025]"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDuplicate();
+                }}
                 type="button"
               >
-                <MoreVertical className="h-4 w-4" />
+                Duplicate
               </button>
-              {menuOpen ? (
-                <div className="absolute right-0 z-20 mt-2 w-36 rounded-xl border border-slate-200/60 bg-white/90 p-1 text-xs shadow-lg backdrop-blur dark:border-white/10 dark:bg-black/60">
-                  <button
-                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs hover:bg-slate-100 dark:hover:bg-white/10"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onDuplicate();
-                    }}
-                    type="button"
-                  >
-                    Duplicate
-                  </button>
-                  <button
-                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onDelete();
-                    }}
-                    type="button"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Delete
-                    <kbd className="ml-auto rounded border border-white/50 bg-white/80 px-1 py-0.5 text-[10px] font-mono text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400">
-                      {deleteShortcut}
-                    </kbd>
-                  </button>
-                </div>
-              ) : null}
+              <button
+                className="flex w-full items-center gap-2 rounded px-2 py-1 text-[#d28b7c] hover:bg-[#2a1916]"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDelete();
+                }}
+                type="button"
+              >
+                <Trash2 className="h-3 w-3" />
+                Delete
+                <kbd className="ml-auto rounded border border-[#2a2b31] px-1 text-[9px] text-[#8c8780]">
+                  {deleteShortcut}
+                </kbd>
+              </button>
             </div>
-          </div>
-        </div>
-
-        <div className="space-y-3 font-mono text-[12px]">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-600">
-              WHEN
-            </span>
-            <div className="flex flex-1 items-center gap-2 truncate rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-slate-600 shadow-sm dark:border-white/10 dark:bg-black/40 dark:text-neutral-300">
-              {triggerSummary}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400 dark:text-cyan-700">
-              THEN
-            </span>
-            <div className="flex flex-1 items-center gap-2 truncate rounded-lg border border-blue-100/50 bg-blue-50/50 px-3 py-2 text-blue-700 shadow-sm dark:border-cyan-500/20 dark:bg-cyan-900/10 dark:text-cyan-300">
-              {actionSummary}
-            </div>
-          </div>
+          ) : null}
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 

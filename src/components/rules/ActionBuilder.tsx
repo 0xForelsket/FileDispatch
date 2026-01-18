@@ -32,7 +32,8 @@ const conflictOptions: { value: ConflictResolution; label: string }[] = [
 ];
 
 const fieldClass =
-  "rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20";
+  "rounded-md border border-[#2a2b31] bg-[#141518] px-2.5 py-1.5 text-[11px] text-[#e7e1d8] shadow-none outline-none transition focus:border-[#c07a46] focus:ring-1 focus:ring-[#c07a46]/30";
+const longFieldClass = `${fieldClass} min-w-[220px]`;
 
 export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
   const updateAction = (index: number, updated: Action) => {
@@ -50,9 +51,9 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {actions.map((action, index) => (
-        <GlassCard key={index} className="p-4">
+        <GlassCard key={index} className="p-3">
           <div className="flex flex-wrap items-center gap-2">
             <select
               className={fieldClass}
@@ -67,7 +68,7 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
             </select>
             {renderActionFields(action, (updated) => updateAction(index, updated))}
             <button
-              className="ml-auto rounded-full border border-transparent p-1 text-slate-400 transition-colors hover:border-white/40 hover:bg-white/60 hover:text-slate-700 dark:text-neutral-500 dark:hover:border-white/10 dark:hover:bg-white/10 dark:hover:text-neutral-200"
+              className="ml-auto rounded-md border border-transparent p-1 text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:bg-[#1f2025] hover:text-[#e7e1d8]"
               onClick={() => removeAction(index)}
               type="button"
               aria-label="Remove action"
@@ -78,7 +79,7 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
         </GlassCard>
       ))}
       <button
-        className="inline-flex items-center gap-2 rounded-xl border border-dashed border-white/40 bg-white/40 px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm transition-all hover:bg-white/70 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
+        className="inline-flex items-center gap-2 rounded-md border border-[#2a2b31] bg-[#15171a] px-3 py-1.5 text-[11px] font-semibold text-[#cfc9bf] transition-colors hover:border-[#3a3b42]"
         type="button"
         onClick={() => addAction()}
       >
@@ -147,7 +148,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
     return (
       <>
         <input
-          className="min-w-[240px] rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+          className={longFieldClass}
           placeholder="Destination path"
           value={action.destination}
           onChange={(e) => onChange({ ...action, destination: e.target.value })}
@@ -166,7 +167,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
           ))}
         </select>
         {action.type !== "sortIntoSubfolder" ? (
-          <label className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-neutral-400">
+          <label className="flex items-center gap-2 text-[11px] text-[#8c8780]">
             <input
               type="checkbox"
               checked={action.skipDuplicates}
@@ -183,7 +184,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
     return (
       <>
         <input
-          className="min-w-[240px] rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+          className={longFieldClass}
           placeholder="New name pattern"
           value={action.pattern}
           onChange={(e) => onChange({ ...action, pattern: e.target.value })}
@@ -209,7 +210,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
     return (
       <>
         <input
-          className="min-w-[240px] rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+          className={longFieldClass}
           placeholder="Destination (folder or file path)"
           value={action.destination}
           onChange={(e) => onChange({ ...action, destination: e.target.value })}
@@ -228,7 +229,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
           <option value="tar">tar</option>
           <option value="tarGz">tar.gz</option>
         </select>
-        <label className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-neutral-400">
+        <label className="flex items-center gap-2 text-[11px] text-[#8c8780]">
           <input
             type="checkbox"
             checked={action.deleteAfter}
@@ -244,14 +245,14 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
     return (
       <>
         <input
-          className="min-w-[240px] rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+          className={longFieldClass}
           placeholder="Destination (optional)"
           value={action.destination ?? ""}
           onChange={(e) =>
             onChange({ ...action, destination: e.target.value || undefined })
           }
         />
-        <label className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-neutral-400">
+        <label className="flex items-center gap-2 text-[11px] text-[#8c8780]">
           <input
             type="checkbox"
             checked={action.deleteAfter}
@@ -266,7 +267,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
   if (action.type === "runScript") {
     return (
       <input
-        className="min-w-[260px] rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+        className={longFieldClass}
         placeholder="Command"
         value={action.command}
         onChange={(e) => onChange({ ...action, command: e.target.value })}
@@ -277,7 +278,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
   if (action.type === "notify") {
     return (
       <input
-        className="min-w-[260px] rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+        className={longFieldClass}
         placeholder="Notification message"
         value={action.message}
         onChange={(e) => onChange({ ...action, message: e.target.value })}
@@ -289,7 +290,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
     return (
       <>
         <input
-          className="w-24 rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+          className={`${fieldClass} w-20`}
           type="number"
           min={1}
           value={action.durationSeconds}
@@ -297,7 +298,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
             onChange({ ...action, durationSeconds: Number(e.target.value) })
           }
         />
-        <span className="text-[11px] text-slate-500 dark:text-neutral-400">seconds</span>
+        <span className="text-[11px] text-[#8c8780]">seconds</span>
       </>
     );
   }

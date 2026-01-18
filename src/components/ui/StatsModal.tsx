@@ -84,50 +84,45 @@ export function StatsModal({
     open && typeof document !== "undefined"
       ? createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-            <div
-              className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm dark:bg-black/40"
-              onClick={() => setOpen(false)}
-            />
-            <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-white/20 bg-white/80 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#0f0f0f]/90">
-              <div className="flex items-center justify-between border-b border-slate-200/50 p-6 dark:border-white/5">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+            <div className="relative w-full max-w-5xl overflow-hidden rounded-md border border-[#2a2b31] bg-[#101113] shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#1f1f24] p-5">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-inner dark:bg-cyan-500/10 dark:text-cyan-400">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#1a1512] text-[#c07a46]">
                     <BarChart3 className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                      Performance Stats
-                    </h2>
-                    <p className="text-sm text-slate-500 dark:text-neutral-500">
+                    <h2 className="text-lg font-semibold text-[#e7e1d8]">Performance Stats</h2>
+                    <p className="text-[11px] text-[#7f7a73]">
                       Tracking {activeRules} active {activeRules === 1 ? "rule" : "rules"} and {totalLabel} events.
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setOpen(false)}
-                  className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-neutral-500 dark:hover:bg-white/10 dark:hover:text-white"
+                  className="rounded-md p-1 text-[#8c8780] transition-colors hover:text-[#e7e1d8]"
                   type="button"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="custom-scrollbar max-h-[70vh] overflow-y-auto p-6">
+              <div className="custom-scrollbar max-h-[70vh] overflow-y-auto p-5">
                 <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <GlassCard className="flex h-36 flex-col justify-between p-5" hoverEffect>
+                  <GlassCard className="flex h-36 flex-col justify-between p-4" hoverEffect>
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-500">
+                        <div className="text-[10px] font-semibold uppercase tracking-widest text-[#7f7a73]">
                           Throughput
                         </div>
-                        <div className="mt-2 text-2xl font-bold text-slate-800 dark:text-white">
-                          {totalLabel} <span className="text-sm font-normal text-slate-500">files</span>
+                        <div className="mt-2 text-2xl font-semibold text-[#e7e1d8]">
+                          {totalLabel} <span className="text-sm font-normal text-[#7f7a73]">files</span>
                         </div>
-                        <div className="mt-1 text-[11px] text-slate-500 dark:text-neutral-500">
+                        <div className="mt-1 text-[11px] text-[#7f7a73]">
                           {throughput.recent} in the last {WINDOW_HOURS}h window
                         </div>
                       </div>
-                      <div className="rounded-lg bg-blue-50 p-2 text-blue-600 dark:bg-cyan-500/10 dark:text-cyan-400">
+                      <div className="rounded-md bg-[#1a1512] p-2 text-[#c07a46]">
                         <BarChart3 className="h-5 w-5" />
                       </div>
                     </div>
@@ -135,55 +130,55 @@ export function StatsModal({
                       {throughput.heights.map((height, index) => (
                         <div
                           key={`bar-${index}`}
-                          className="flex-1 rounded-sm bg-blue-200/50 transition-colors hover:bg-blue-400 dark:bg-cyan-500/20 dark:hover:bg-cyan-400"
+                          className="flex-1 rounded-sm bg-[#2a2b31] transition-colors hover:bg-[#c07a46]"
                           style={{ height: `${height}%` }}
                         />
                       ))}
                     </div>
                   </GlassCard>
 
-                  <GlassCard className="flex h-36 flex-col justify-between p-5" hoverEffect>
+                  <GlassCard className="flex h-36 flex-col justify-between p-4" hoverEffect>
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-500">
+                        <div className="text-[10px] font-semibold uppercase tracking-widest text-[#7f7a73]">
                           Efficiency
                         </div>
-                        <div className="mt-2 text-2xl font-bold text-slate-800 dark:text-white">
+                        <div className="mt-2 text-2xl font-semibold text-[#e7e1d8]">
                           {efficiencyValue.toFixed(0)}%
                         </div>
                       </div>
-                      <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                      <div className="rounded-md bg-[#121a14] p-2 text-[#7ed19c]">
                         <Cpu className="h-5 w-5" />
                       </div>
                     </div>
                     <div className="mt-auto">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#2a2b31]">
                         <div
-                          className="h-full rounded-full bg-emerald-500 dark:bg-emerald-400"
+                          className="h-full rounded-full bg-[#7ed19c]"
                           style={{ width: `${efficiencyValue}%` }}
                         />
                       </div>
-                      <div className="mt-2 text-[10px] text-slate-400 dark:text-neutral-500">
+                      <div className="mt-2 text-[10px] text-[#7f7a73]">
                         {statusCounts.success} success · {statusCounts.error} error · {statusCounts.skipped} skipped
                       </div>
                     </div>
                   </GlassCard>
 
-                  <GlassCard className="flex h-36 flex-col justify-between p-5" hoverEffect>
+                  <GlassCard className="flex h-36 flex-col justify-between p-4" hoverEffect>
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-500">
+                        <div className="text-[10px] font-semibold uppercase tracking-widest text-[#7f7a73]">
                           Storage Saved
                         </div>
-                        <div className="mt-2 text-2xl font-bold text-slate-800 dark:text-white">
+                        <div className="mt-2 text-2xl font-semibold text-[#e7e1d8]">
                           {formatBytes(savedBytes)}
                         </div>
                       </div>
-                      <div className="rounded-lg bg-purple-50 p-2 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
+                      <div className="rounded-md bg-[#1a1512] p-2 text-[#c07a46]">
                         <FileDigit className="h-5 w-5" />
                       </div>
                     </div>
-                    <div className="mt-auto flex flex-col text-[11px] text-slate-500 dark:text-neutral-500">
+                    <div className="mt-auto flex flex-col text-[11px] text-[#7f7a73]">
                       <span>{statusCounts.deleted} deletions recorded</span>
                       <span>{avgSaved ? `${formatBytes(avgSaved)} avg per delete` : "No deletions yet"}</span>
                     </div>
@@ -200,10 +195,10 @@ export function StatsModal({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="group flex h-10 items-center gap-2 rounded-xl border border-white/40 bg-white/40 px-3 text-xs font-semibold text-slate-600 shadow-sm transition-all hover:scale-105 hover:bg-white/70 hover:text-slate-900 hover:shadow-lg dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white"
+        className="group flex h-8 items-center gap-2 rounded-md border border-transparent px-2 text-[11px] font-semibold text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:text-[#d6d0c6]"
         type="button"
       >
-        <BarChart3 className="h-4 w-4 text-blue-600 transition-colors group-hover:text-blue-700 dark:text-cyan-400 dark:group-hover:text-cyan-300" />
+        <BarChart3 className="h-4 w-4 text-[#c07a46] transition-colors group-hover:text-[#d38a52]" />
         Stats
       </button>
       {modal}

@@ -14,33 +14,29 @@ export function FolderList() {
   const liveCount = folders.filter((folder) => folder.enabled).length;
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="flex items-center justify-between px-3">
-        <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-500">
-          Targets
-        </h2>
-        <div className="flex items-center gap-1.5 rounded bg-slate-200/50 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 dark:bg-white/5 dark:text-neutral-400">
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c07a46]">
+        Targets
+        <span className="flex items-center gap-1 rounded-full border border-[#2a2b31] bg-[#141518] px-2 py-0.5 text-[9px] font-mono text-[#9a948b]">
           <Activity className="h-2.5 w-2.5" />
           {liveCount} LIVE
-        </div>
+        </span>
       </div>
-      <div className="custom-scrollbar flex-1 space-y-1.5 overflow-y-auto px-2">
+      <div className="custom-scrollbar flex-1 overflow-y-auto">
         {folders.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-200/60 p-4 text-center text-sm text-slate-500 dark:border-white/10 dark:text-neutral-500">
-            <Folder className="h-6 w-6 text-slate-400 dark:text-neutral-500" />
-            <div>
-              <div className="font-medium text-slate-900 dark:text-white">
-                No folders being watched
-              </div>
-              <div className="text-xs text-slate-500 dark:text-neutral-500">
-                Add a folder to start organizing your files automatically.
-              </div>
+          <div className="px-4 py-6 text-center text-xs text-[#8c8780]">
+            <Folder className="mx-auto mb-2 h-5 w-5 text-[#5b5751]" />
+            <div className="font-medium text-[#d3ccc1]">No folders yet</div>
+            <div className="mt-1 text-[11px] text-[#7b766e]">
+              Add a folder to start organizing files automatically.
             </div>
-            <AddFolderDialog
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition-all hover:bg-white/80 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
-              label="+ Add Folder"
-              icon={<Plus className="h-3.5 w-3.5 text-blue-600 dark:text-cyan-400" />}
-            />
+            <div className="mt-3 flex justify-center">
+              <AddFolderDialog
+                className="inline-flex items-center gap-2 rounded-md border border-[#2a2b31] bg-[#15171a] px-3 py-1.5 text-[11px] font-semibold text-[#cfc9bf] transition-colors hover:border-[#3a3b42]"
+                label="Add Folder"
+                icon={<Plus className="h-3.5 w-3.5 text-[#c07a46]" />}
+              />
+            </div>
           </div>
         ) : (
           folders.map((folder) => (

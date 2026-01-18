@@ -101,7 +101,9 @@ const matchOptions: { value: MatchType; label: string }[] = [
 ];
 
 const fieldClass =
-  "rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20";
+  "rounded-md border border-[#2a2b31] bg-[#141518] px-2.5 py-1.5 text-[11px] text-[#e7e1d8] shadow-none outline-none transition focus:border-[#c07a46] focus:ring-1 focus:ring-[#c07a46]/30";
+const smallFieldClass = `${fieldClass} w-20 px-2 py-1`;
+const longFieldClass = `${fieldClass} min-w-[220px]`;
 
 export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilderProps) {
   const updateGroup = (updates: Partial<ConditionGroup>) =>
@@ -137,20 +139,20 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-500">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7f7a73]">
           Match
         </span>
-        <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/60 p-1 shadow-sm dark:border-white/10 dark:bg-white/5">
+        <div className="flex items-center gap-1 rounded-md border border-[#2a2b31] bg-[#141518] p-1">
           {matchOptions.map((option) => (
             <button
               key={option.value}
               type="button"
               onClick={() => updateGroup({ matchType: option.value })}
-              className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-all ${
+              className={`rounded px-3 py-1 text-[11px] font-semibold transition-all ${
                 group.matchType === option.value
-                  ? "bg-blue-500/10 text-blue-600 dark:bg-cyan-500/10 dark:text-cyan-300"
-                  : "text-slate-500 hover:text-slate-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+                  ? "bg-[#c07a46] text-[#0d0e10]"
+                  : "text-[#9a948b] hover:text-[#e7e1d8]"
               }`}
             >
               {option.label}
@@ -162,16 +164,13 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
       {group.conditions.map((condition, index) => {
         if (condition.type === "nested") {
           return (
-            <GlassCard
-              key={index}
-              className={`space-y-3 p-4 ${depth > 0 ? "bg-white/30 dark:bg-white/5" : ""}`}
-            >
+            <GlassCard key={index} className="space-y-3 p-3">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-500">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7f7a73]">
                   Nested Group
                 </span>
                 <button
-                  className="rounded-full border border-transparent p-1 text-slate-400 transition-colors hover:border-white/40 hover:bg-white/60 hover:text-slate-700 dark:text-neutral-500 dark:hover:border-white/10 dark:hover:bg-white/10 dark:hover:text-neutral-200"
+                  className="rounded-md border border-transparent p-1 text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:bg-[#1f2025] hover:text-[#e7e1d8]"
                   onClick={() => removeCondition(index)}
                   type="button"
                   aria-label="Remove group"
@@ -198,7 +197,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
         }
 
         return (
-          <GlassCard key={index} className="p-4">
+          <GlassCard key={index} className="p-3">
             <div className="flex flex-wrap items-center gap-2">
               <select
                 className={fieldClass}
@@ -213,7 +212,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
               </select>
               {renderConditionFields(condition, (updated) => updateCondition(index, updated))}
               <button
-                className="ml-auto rounded-full border border-transparent p-1 text-slate-400 transition-colors hover:border-white/40 hover:bg-white/60 hover:text-slate-700 dark:text-neutral-500 dark:hover:border-white/10 dark:hover:bg-white/10 dark:hover:text-neutral-200"
+                className="ml-auto rounded-md border border-transparent p-1 text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:bg-[#1f2025] hover:text-[#e7e1d8]"
                 onClick={() => removeCondition(index)}
                 type="button"
                 aria-label="Remove condition"
@@ -226,7 +225,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
       })}
       <div className="flex flex-wrap items-center gap-3">
         <button
-          className="inline-flex items-center gap-2 rounded-xl border border-dashed border-white/40 bg-white/40 px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm transition-all hover:bg-white/70 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
+          className="inline-flex items-center gap-2 rounded-md border border-[#2a2b31] bg-[#15171a] px-3 py-1.5 text-[11px] font-semibold text-[#cfc9bf] transition-colors hover:border-[#3a3b42]"
           type="button"
           onClick={() => addCondition()}
         >
@@ -234,7 +233,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
           Add Condition
         </button>
         <button
-          className="inline-flex items-center gap-2 rounded-xl border border-dashed border-white/40 bg-white/40 px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm transition-all hover:bg-white/70 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
+          className="inline-flex items-center gap-2 rounded-md border border-[#2a2b31] bg-[#15171a] px-3 py-1.5 text-[11px] font-semibold text-[#cfc9bf] transition-colors hover:border-[#3a3b42]"
           type="button"
           onClick={addGroup}
         >
@@ -302,7 +301,7 @@ function renderConditionFields(
           value={condition.value}
           onChange={(e) => onChange({ ...condition, value: e.target.value })}
         />
-        <label className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-neutral-400">
+        <label className="flex items-center gap-2 text-[11px] text-[#8c8780]">
           <input
             type="checkbox"
             checked={condition.caseSensitive}
@@ -338,7 +337,7 @@ function renderConditionFields(
         {operator.type === "between" ? (
           <>
             <input
-              className="w-20 rounded-xl border border-white/50 bg-white/70 px-2 py-1 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+              className={smallFieldClass}
               type="number"
               value={operator.min}
               onChange={(e) =>
@@ -350,7 +349,7 @@ function renderConditionFields(
             />
             <span className="text-[11px] text-slate-400 dark:text-neutral-500">and</span>
             <input
-              className="w-20 rounded-xl border border-white/50 bg-white/70 px-2 py-1 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+              className={smallFieldClass}
               type="number"
               value={operator.max}
               onChange={(e) =>
@@ -363,7 +362,7 @@ function renderConditionFields(
           </>
         ) : (
           <input
-            className="w-20 rounded-xl border border-white/50 bg-white/70 px-2 py-1 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+            className={smallFieldClass}
             type="number"
             value={condition.value ?? 0}
             onChange={(e) => onChange({ ...condition, value: Number(e.target.value) })}
@@ -436,7 +435,7 @@ function renderConditionFields(
         ) : operator.type === "inTheLast" || operator.type === "notInTheLast" ? (
           <>
             <input
-              className="w-20 rounded-xl border border-white/50 bg-white/70 px-2 py-1 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+              className={smallFieldClass}
               type="number"
               value={operator.amount}
               onChange={(e) =>
@@ -557,7 +556,7 @@ function renderConditionFields(
             </option>
           ))}
         </select>
-        <label className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-neutral-400">
+        <label className="flex items-center gap-2 text-[11px] text-[#8c8780]">
           <input
             type="checkbox"
             checked={condition.negate}
@@ -572,7 +571,7 @@ function renderConditionFields(
   if (condition.type === "shellScript") {
     return (
       <input
-        className="min-w-[260px] rounded-xl border border-white/50 bg-white/70 px-3 py-1.5 text-xs text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
+        className={longFieldClass}
         placeholder="bash command"
         value={condition.command}
         onChange={(e) => onChange({ ...condition, command: e.target.value })}

@@ -25,7 +25,6 @@ import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
 import { useRuleStore } from "@/stores/ruleStore";
 import type { LogEntry, LogStatus } from "@/types";
-import { GlassCard } from "@/components/ui/GlassCard";
 
 export function ActivityLog() {
   const entries = useLogStore((state) => state.entries);
@@ -70,112 +69,105 @@ export function ActivityLog() {
   }, [undoEntries]);
 
   return (
-    <section className="pb-8">
-      <div className="mb-6 flex items-center justify-between px-1">
-        <h3 className="flex items-center gap-2 text-sm font-semibold tracking-[0.2em] text-slate-800 drop-shadow-sm dark:text-neutral-200">
-          <Activity className="h-4 w-4 text-blue-600 dark:text-cyan-400" />
+    <section className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-[#1f1f24] px-3 py-2">
+        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c07a46]">
+          <Activity className="h-3.5 w-3.5" />
           Event Stream
-        </h3>
-        <div className="flex gap-2">
+        </div>
+        <div className="flex items-center gap-2">
           <div className="group relative">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400 transition-colors group-focus-within:text-blue-500 dark:text-neutral-500 dark:group-focus-within:text-cyan-400" />
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#6f6a62] group-focus-within:text-[#c07a46]" />
             <input
-              className="w-48 rounded-xl border border-white/40 bg-white/40 py-1.5 pl-9 pr-4 text-xs font-mono text-slate-700 shadow-sm backdrop-blur-sm transition-all placeholder:text-slate-400 focus:border-blue-400 focus:bg-white/60 focus:outline-none dark:border-white/10 dark:bg-black/20 dark:text-neutral-300 dark:placeholder:text-neutral-600 dark:focus:border-cyan-500/50 dark:focus:bg-black/40"
-              placeholder="Filter events..."
+              className="w-44 rounded-md border border-[#2a2b31] bg-[#141518] py-1 pl-8 pr-2 text-[11px] font-mono text-[#cfc9bf] outline-none transition focus:border-[#c07a46]"
+              placeholder="Filter events"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
           <div className="relative">
             <select
-              className="appearance-none rounded-full border border-slate-200/70 bg-white/70 px-3 py-2 pr-9 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400/30 dark:border-white/10 dark:bg-black/20 dark:text-neutral-300 dark:hover:bg-black/40 dark:focus:ring-cyan-500/40"
+              className="appearance-none rounded-md border border-[#2a2b31] bg-[#141518] px-2 py-1 pr-6 text-[11px] font-semibold text-[#cfc9bf] outline-none transition focus:border-[#c07a46]"
               value={ruleFilter}
               onChange={(e) => setRuleFilter(e.target.value)}
             >
-            <option value="all">Rule: All</option>
-            {ruleOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
+              <option value="all">Rule: All</option>
+              {ruleOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
             </select>
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-neutral-500">
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#6f6a62]">
               ▾
             </span>
           </div>
           <div className="relative">
             <select
-              className="appearance-none rounded-full border border-slate-200/70 bg-white/70 px-3 py-2 pr-9 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400/30 dark:border-white/10 dark:bg-black/20 dark:text-neutral-300 dark:hover:bg-black/40 dark:focus:ring-cyan-500/40"
+              className="appearance-none rounded-md border border-[#2a2b31] bg-[#141518] px-2 py-1 pr-6 text-[11px] font-semibold text-[#cfc9bf] outline-none transition focus:border-[#c07a46]"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as LogStatus | "all")}
             >
-            <option value="all">Status: All</option>
-            <option value="success">Success</option>
-            <option value="error">Error</option>
-            <option value="skipped">Skipped</option>
+              <option value="all">Status: All</option>
+              <option value="success">Success</option>
+              <option value="error">Error</option>
+              <option value="skipped">Skipped</option>
             </select>
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-neutral-500">
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#6f6a62]">
               ▾
             </span>
           </div>
         </div>
       </div>
 
-      <GlassCard className="overflow-hidden">
-        <div className="flex items-center border-b border-black/5 bg-white/40 px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/5 dark:text-neutral-500">
-          <div className="w-32">Timestamp</div>
-          <div className="w-28">Status</div>
-          <div className="flex-1">File Operation</div>
-          <div className="w-24 text-right">Size</div>
-          <div className="w-20 text-right">Undo</div>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex items-center border-b border-[#1f1f24] px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#7f7a73]">
+          <div className="w-24">Time</div>
+          <div className="w-24">Status</div>
+          <div className="flex-1">Action</div>
+          <div className="w-20 text-right">Size</div>
+          <div className="w-16 text-right">Undo</div>
         </div>
-
-        <div className="divide-y divide-black/5 font-mono text-xs dark:divide-white/5">
+        <div className="custom-scrollbar flex-1 overflow-y-auto">
           {filteredEntries.length === 0 ? (
-            <div className="px-6 py-6 text-center text-xs text-slate-500 dark:text-neutral-500">
+            <div className="px-4 py-6 text-center text-xs text-[#7f7a73]">
               No events yet.
             </div>
           ) : (
-            filteredEntries.map((entry, index) => {
+            filteredEntries.map((entry) => {
               const visual = getActionVisual(entry.actionType);
               const Icon = visual.icon;
               return (
                 <div
                   key={entry.id}
-                  className="group flex items-center px-6 py-3.5 transition-colors hover:bg-blue-50/30 dark:hover:bg-cyan-900/10"
-                  style={{ animationDelay: `${index * 50}ms` }}
+                  className="group flex items-center border-b border-[#16171b] px-3 py-2 text-[11px] text-[#cfc9bf] hover:bg-[#15171a]"
                 >
-                  <div className="flex w-32 items-center gap-2 text-slate-500 dark:text-neutral-500">
-                    <span className="h-1.5 w-1.5 rounded-full bg-slate-300 transition-colors group-hover:bg-blue-400 dark:bg-neutral-700 dark:group-hover:bg-cyan-400" />
-                    {formatTime(entry.createdAt)}
-                  </div>
-                  <div className="w-28">
+                  <div className="w-24 text-[#8c8780]">{formatTime(entry.createdAt)}</div>
+                  <div className="w-24">
                     <StatusPill status={entry.status} label={entry.actionType} />
                   </div>
                   <div className="flex-1 pr-4">
                     <div className="flex items-start gap-2">
                       <span
-                        className={`mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-lg ${visual.className}`}
+                        className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded ${visual.className}`}
                       >
-                        <Icon className="h-3.5 w-3.5" />
+                        <Icon className="h-3 w-3" />
                       </span>
                       <div className="min-w-0">
-                        <div className="truncate text-slate-700 transition-colors group-hover:text-slate-900 dark:text-neutral-300 dark:group-hover:text-white">
-                          {formatOperation(entry)}
-                        </div>
-                        <div className="mt-0.5 text-[10px] text-slate-400 dark:text-neutral-600">
+                        <div className="truncate text-[#e7e1d8]">{formatOperation(entry)}</div>
+                        <div className="mt-0.5 text-[10px] text-[#7f7a73]">
                           {formatRuleLabel(entry)}
                         </div>
                       </div>
                     </div>
                   </div>
-                  <div className="w-24 text-right text-slate-400 transition-colors group-hover:text-slate-600 dark:text-neutral-600 dark:group-hover:text-neutral-400">
+                  <div className="w-20 text-right text-[#8c8780]">
                     {formatBytes(getSizeBytes(entry))}
                   </div>
-                  <div className="w-20 text-right">
+                  <div className="w-16 text-right">
                     {undoByLog.has(entry.id) ? (
                       <button
-                        className="inline-flex items-center gap-1 rounded-full border border-blue-200/40 bg-white/70 px-2.5 py-1 text-[10px] font-semibold text-blue-700 shadow-sm transition-all hover:bg-white hover:text-blue-900 dark:border-cyan-500/30 dark:bg-white/5 dark:text-cyan-300 dark:hover:bg-white/10"
+                        className="inline-flex items-center gap-1 rounded border border-[#2a2b31] px-1.5 py-0.5 text-[10px] text-[#cfc9bf] hover:border-[#3a3b42]"
                         onClick={() => {
                           const undoEntry = undoByLog.get(entry.id);
                           if (undoEntry) {
@@ -188,7 +180,7 @@ export function ActivityLog() {
                         Undo
                       </button>
                     ) : (
-                      <span className="text-[10px] text-slate-300 dark:text-neutral-700">—</span>
+                      <span className="text-[10px] text-[#3a3b42]">—</span>
                     )}
                   </div>
                 </div>
@@ -196,22 +188,22 @@ export function ActivityLog() {
             })
           )}
         </div>
+      </div>
 
-        <div className="flex justify-between border-t border-black/5 bg-white/30 px-6 py-2.5 text-[10px] text-slate-400 backdrop-blur-sm dark:border-white/5 dark:bg-white/5 dark:text-neutral-600">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
-            STREAM ACTIVE
-          </div>
-          <button
-            className="group flex items-center gap-1 font-semibold uppercase tracking-wider transition-colors hover:text-blue-600 dark:hover:text-cyan-400"
-            onClick={() => clearLogs()}
-            type="button"
-          >
-            Clear History
-            <ArrowRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5" />
-          </button>
+      <div className="flex items-center justify-between border-t border-[#1f1f24] px-3 py-2 text-[10px] text-[#7f7a73]">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-[#c07a46]" />
+          STREAM ACTIVE
         </div>
-      </GlassCard>
+        <button
+          className="group flex items-center gap-1 uppercase tracking-wider text-[#8c8780] transition-colors hover:text-[#cfc9bf]"
+          onClick={() => clearLogs()}
+          type="button"
+        >
+          Clear History
+          <ArrowRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5" />
+        </button>
+      </div>
     </section>
   );
 }
@@ -244,40 +236,84 @@ function formatRuleLabel(entry: LogEntry) {
   return "Manual action";
 }
 
+function getSizeBytes(entry: LogEntry) {
+  const value =
+    entry.actionDetail?.metadata?.size_bytes ??
+    entry.actionDetail?.metadata?.sizeBytes ??
+    entry.actionDetail?.metadata?.["size-bytes"];
+  if (!value) return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatBytes(bytes: number) {
+  if (!bytes) return "—";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = bytes;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function StatusPill({ status, label }: { status: LogStatus; label: string }) {
+  if (status === "success") {
+    return (
+      <span className="inline-flex items-center rounded border border-[#1f2a22] bg-[#0f1713] px-1.5 py-0.5 text-[10px] font-semibold text-[#7ed19c]">
+        {label.toUpperCase()}
+      </span>
+    );
+  }
+  if (status === "error") {
+    return (
+      <span className="inline-flex items-center rounded border border-[#332021] bg-[#1a1112] px-1.5 py-0.5 text-[10px] font-semibold text-[#d28b7c]">
+        {label.toUpperCase()}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded border border-[#2a2b31] bg-[#141518] px-1.5 py-0.5 text-[10px] font-semibold text-[#9c958c]">
+      {label.toUpperCase()}
+    </span>
+  );
+}
+
 function getActionVisual(actionType: string): { icon: LucideIcon; className: string } {
   switch (actionType) {
     case "move":
-      return { icon: ArrowRightLeft, className: "bg-blue-50 text-blue-600 dark:bg-cyan-500/10 dark:text-cyan-400" };
+      return { icon: ArrowRightLeft, className: "bg-[#1a1a12] text-[#c07a46]" };
     case "copy":
-      return { icon: Copy, className: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300" };
+      return { icon: Copy, className: "bg-[#19161f] text-[#b9a7d4]" };
     case "rename":
-      return { icon: Edit3, className: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-300" };
+      return { icon: Edit3, className: "bg-[#15171a] text-[#a7a19a]" };
     case "sortIntoSubfolder":
-      return { icon: FolderTree, className: "bg-blue-50 text-blue-600 dark:bg-cyan-500/10 dark:text-cyan-400" };
+      return { icon: FolderTree, className: "bg-[#1a1a12] text-[#c07a46]" };
     case "archive":
-      return { icon: Archive, className: "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400" };
+      return { icon: Archive, className: "bg-[#1a1512] text-[#c07a46]" };
     case "unarchive":
-      return { icon: ArchiveRestore, className: "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400" };
+      return { icon: ArchiveRestore, className: "bg-[#1a1512] text-[#c07a46]" };
     case "delete":
-      return { icon: Trash2, className: "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" };
+      return { icon: Trash2, className: "bg-[#1a1212] text-[#d28b7c]" };
     case "deletePermanently":
-      return { icon: Skull, className: "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" };
+      return { icon: Skull, className: "bg-[#1a1212] text-[#d28b7c]" };
     case "runScript":
-      return { icon: Terminal, className: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" };
+      return { icon: Terminal, className: "bg-[#1a1712] text-[#d7b47c]" };
     case "notify":
-      return { icon: Bell, className: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" };
+      return { icon: Bell, className: "bg-[#121a14] text-[#7ed19c]" };
     case "open":
-      return { icon: ExternalLink, className: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-300" };
+      return { icon: ExternalLink, className: "bg-[#15171a] text-[#a7a19a]" };
     case "pause":
-      return { icon: Pause, className: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-300" };
+      return { icon: Pause, className: "bg-[#15171a] text-[#a7a19a]" };
     case "continue":
-      return { icon: FastForward, className: "bg-blue-50 text-blue-600 dark:bg-cyan-500/10 dark:text-cyan-400" };
+      return { icon: FastForward, className: "bg-[#1a1a12] text-[#c07a46]" };
     case "undo":
-      return { icon: RotateCcw, className: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" };
+      return { icon: RotateCcw, className: "bg-[#121a14] text-[#7ed19c]" };
     case "ignore":
-      return { icon: Ban, className: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-300" };
+      return { icon: Ban, className: "bg-[#15171a] text-[#a7a19a]" };
     default:
-      return { icon: Activity, className: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-300" };
+      return { icon: Activity, className: "bg-[#15171a] text-[#a7a19a]" };
   }
 }
 
@@ -316,48 +352,4 @@ function humanizeAction(value: string) {
     default:
       return value;
   }
-}
-
-function getSizeBytes(entry: LogEntry) {
-  const value =
-    entry.actionDetail?.metadata?.size_bytes ??
-    entry.actionDetail?.metadata?.sizeBytes ??
-    entry.actionDetail?.metadata?.["size-bytes"];
-  if (!value) return 0;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatBytes(bytes: number) {
-  if (!bytes) return "—";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = bytes;
-  let unitIndex = 0;
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex += 1;
-  }
-  return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
-}
-
-function StatusPill({ status, label }: { status: LogStatus; label: string }) {
-  if (status === "success") {
-    return (
-      <span className="inline-flex items-center rounded border border-emerald-200/50 bg-emerald-100/50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">
-        {label.toUpperCase()}
-      </span>
-    );
-  }
-  if (status === "error") {
-    return (
-      <span className="inline-flex items-center rounded border border-rose-200/50 bg-rose-100/50 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">
-        {label.toUpperCase()}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center rounded border border-amber-200/50 bg-amber-100/50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
-      {label.toUpperCase()}
-    </span>
-  );
 }

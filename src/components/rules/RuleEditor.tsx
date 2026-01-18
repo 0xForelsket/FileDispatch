@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import { Eye, X } from "lucide-react";
+import { Eye } from "lucide-react";
 
 import type { Condition, ConditionGroup, Rule } from "@/types";
 import { useRuleStore } from "@/stores/ruleStore";
@@ -9,11 +8,10 @@ import { ConditionBuilder } from "@/components/rules/ConditionBuilder";
 import { PreviewPanel } from "@/components/preview/PreviewPanel";
 import { previewRule } from "@/lib/tauri";
 import type { PreviewItem } from "@/types";
-import { GlassCard } from "@/components/ui/GlassCard";
 import { formatShortcut, matchesShortcut } from "@/lib/shortcuts";
 
 interface RuleEditorProps {
-  open: boolean;
+  mode: "empty" | "new" | "edit";
   onClose: () => void;
   folderId: string;
   rule: Rule | null;
@@ -40,7 +38,7 @@ function createEmptyRule(folderId: string): Rule {
   };
 }
 
-export function RuleEditor({ open, onClose, folderId, rule }: RuleEditorProps) {
+export function RuleEditor({ mode, onClose, folderId, rule }: RuleEditorProps) {
   const createRule = useRuleStore((state) => state.createRule);
   const updateRule = useRuleStore((state) => state.updateRule);
   const deleteRule = useRuleStore((state) => state.deleteRule);
@@ -51,6 +49,19 @@ export function RuleEditor({ open, onClose, folderId, rule }: RuleEditorProps) {
   const [previewResults, setPreviewResults] = useState<PreviewItem[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const saveShortcut = useMemo(() => formatShortcut({ key: "S", ctrlOrMeta: true }), []);
+
+  const isOpen = mode !== "empty" && Boolean(folderId);
+  const isNew = mode === "new";
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (rule) {
+      setDraft(rule);
+    } else {
+      setDraft(createEmptyRule(folderId));
+    }
+    setSaveError(null);
+  }, [isOpen, rule, folderId]);
 
   const handleSave = useCallback(async () => {
     const validationError = validateRule(draft);
@@ -64,6 +75,8 @@ export function RuleEditor({ open, onClose, folderId, rule }: RuleEditorProps) {
       await updateRule(draft);
     } else {
       await createRule({ ...draft, folderId });
+      onClose();
+      return;
     }
 
     const { error } = useRuleStore.getState();
@@ -71,8 +84,6 @@ export function RuleEditor({ open, onClose, folderId, rule }: RuleEditorProps) {
       setSaveError(error);
       return;
     }
-
-    onClose();
   }, [draft, updateRule, createRule, folderId, onClose]);
 
   const handlePreview = async () => {
@@ -88,13 +99,7 @@ export function RuleEditor({ open, onClose, folderId, rule }: RuleEditorProps) {
   };
 
   useEffect(() => {
-    if (open) {
-      setSaveError(null);
-    }
-  }, [open, rule]);
-
-  useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     const handler = (event: KeyboardEvent) => {
       if (matchesShortcut(event, { key: "s", ctrlOrMeta: true, allowInInput: true })) {
         event.preventDefault();
@@ -111,140 +116,122 @@ export function RuleEditor({ open, onClose, folderId, rule }: RuleEditorProps) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, draft, folderId, deleteRule, onClose, handleSave]);
+  }, [isOpen, draft, folderId, deleteRule, onClose, handleSave]);
 
-  if (!open) return null;
+  if (!isOpen) {
+    return (
+      <div className="flex h-full flex-1 items-center justify-center text-sm text-[#7f7a73]">
+        Select a rule to view or edit.
+      </div>
+    );
+  }
 
-  const modal =
-    typeof document !== "undefined"
-      ? createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-            <div
-              className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm dark:bg-black/40"
-              onClick={onClose}
+  const inputClass =
+    "mt-2 w-full rounded-md border border-[#2a2b31] bg-[#141518] px-3 py-2 text-sm text-[#e7e1d8] shadow-none outline-none transition focus:border-[#c07a46] focus:ring-1 focus:ring-[#c07a46]/30";
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-[#1f1f24] px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold text-[#e7e1d8]">
+            {isNew ? "New Rule" : "Edit Rule"}
+          </h2>
+          <p className="text-[11px] text-[#7f7a73]">
+            Define conditions and actions for this folder.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            className="rounded-md border border-[#2a2b31] px-2 py-1 text-[11px] text-[#cfc9bf] transition-colors hover:border-[#3a3b42]"
+            onClick={handlePreview}
+            type="button"
+            disabled={!draft.id}
+          >
+            <Eye className="mr-1 inline h-3 w-3" />
+            Preview
+          </button>
+          <button
+            className="rounded-md border border-transparent px-2 py-1 text-[11px] text-[#8c8780] transition-colors hover:text-[#e7e1d8]"
+            onClick={onClose}
+            type="button"
+          >
+            Close
+          </button>
+          <button
+            className="rounded-md border border-[#c07a46] bg-[#c07a46] px-3 py-1 text-[11px] font-semibold text-[#0d0e10] transition-colors hover:bg-[#d38a52]"
+            onClick={handleSave}
+            type="button"
+          >
+            Save
+            <kbd className="ml-2 rounded border border-[#d9a074] px-1 text-[9px] text-[#24160e]">
+              {saveShortcut}
+            </kbd>
+          </button>
+        </div>
+      </div>
+
+      <div className="custom-scrollbar flex-1 overflow-y-auto px-4 py-4">
+        <div className="space-y-5">
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7f7a73]">
+              Rule Name
+            </label>
+            <input
+              className={inputClass}
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             />
-            <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl border border-white/20 bg-white/80 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#0f0f0f]/90">
-              <div className="flex items-center justify-between border-b border-slate-200/50 p-6 dark:border-white/5">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                    {draft.id ? "Edit Rule" : "New Rule"}
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-neutral-500">
-                    Define when this rule should run and what it should do.
-                  </p>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-neutral-500 dark:hover:bg-white/10 dark:hover:text-white"
-                  type="button"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+          </div>
 
-              <div className="custom-scrollbar max-h-[70vh] overflow-y-auto p-6">
-                <div className="space-y-6">
-                  <GlassCard className="space-y-4 p-5">
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-500">
-                        Rule Name
-                      </label>
-                      <input
-                        className="mt-2 w-full rounded-xl border border-white/50 bg-white/70 px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:focus:border-cyan-500/60 dark:focus:ring-cyan-500/20"
-                        value={draft.name}
-                        onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 text-sm">
-                      <TogglePill
-                        label="Enabled"
-                        checked={draft.enabled}
-                        onChange={(checked) => setDraft({ ...draft, enabled: checked })}
-                      />
-                      <TogglePill
-                        label="Stop after match"
-                        checked={draft.stopProcessing}
-                        onChange={(checked) =>
-                          setDraft({ ...draft, stopProcessing: checked })
-                        }
-                      />
-                    </div>
-                  </GlassCard>
-
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-neutral-500">
-                      Conditions
-                    </h3>
-                    <ConditionBuilder
-                      group={draft.conditions}
-                      onChange={(conditions) => setDraft({ ...draft, conditions })}
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-neutral-500">
-                      Actions
-                    </h3>
-                    <ActionBuilder
-                      actions={draft.actions}
-                      onChange={(actions) => setDraft({ ...draft, actions })}
-                    />
-                    <p className="text-[11px] text-slate-500 dark:text-neutral-500">
-                      Variables: {"{name} {ext} {fullname} {created} {modified} {added} {now}"}{" "}
-                      {"{year} {month} {day} {size} {parent} {counter} {random}"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/50 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-black/20">
-                <button
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/60 px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm transition-all hover:bg-white hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
-                  onClick={handlePreview}
-                  type="button"
-                  disabled={!draft.id}
-                  title={draft.id ? "Preview rule" : "Save rule first to preview"}
-                >
-                  <Eye className="h-4 w-4" />
-                  Preview
-                </button>
-                <div className="flex flex-wrap items-center gap-3">
-                  {saveError ? (
-                    <span className="text-xs text-rose-500">{saveError}</span>
-                  ) : null}
-                  <button
-                    className="rounded-xl border border-transparent px-4 py-2 text-xs font-semibold text-slate-500 transition-colors hover:text-slate-900 dark:text-neutral-400 dark:hover:text-white"
-                    onClick={onClose}
-                    type="button"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-700 dark:bg-cyan-600 dark:shadow-cyan-500/20 dark:hover:bg-cyan-500"
-                    onClick={handleSave}
-                    type="button"
-                  >
-                    Save Rule
-                    <kbd className="rounded-md border border-white/30 bg-white/10 px-1.5 py-0.5 text-[10px] font-mono text-white/80">
-                      {saveShortcut}
-                    </kbd>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <PreviewPanel
-              open={previewOpen}
-              onClose={() => setPreviewOpen(false)}
-              results={previewResults}
-              loading={previewLoading}
-              ruleName={draft.name}
+          <div className="flex flex-wrap items-center gap-3 text-[11px]">
+            <TogglePill
+              label="Enabled"
+              checked={draft.enabled}
+              onChange={(checked) => setDraft({ ...draft, enabled: checked })}
             />
-          </div>,
-          document.body,
-        )
-      : null;
+            <TogglePill
+              label="Stop after match"
+              checked={draft.stopProcessing}
+              onChange={(checked) => setDraft({ ...draft, stopProcessing: checked })}
+            />
+          </div>
 
-  return modal;
+          <div className="space-y-2">
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7f7a73]">
+              Conditions
+            </h3>
+            <ConditionBuilder
+              group={draft.conditions}
+              onChange={(conditions) => setDraft({ ...draft, conditions })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7f7a73]">
+              Actions
+            </h3>
+            <ActionBuilder
+              actions={draft.actions}
+              onChange={(actions) => setDraft({ ...draft, actions })}
+            />
+            <p className="text-[10px] text-[#7f7a73]">
+              Variables: {"{name} {ext} {fullname} {created} {modified} {added} {now}"} {"{year} {month} {day} {size} {parent} {counter} {random}"}
+            </p>
+          </div>
+
+          {saveError ? <div className="text-[11px] text-[#d28b7c]">{saveError}</div> : null}
+        </div>
+      </div>
+
+      <PreviewPanel
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        results={previewResults}
+        loading={previewLoading}
+        ruleName={draft.name}
+      />
+    </div>
+  );
 }
 
 function validateRule(rule: Rule): string | null {
@@ -260,44 +247,26 @@ function validateConditionGroup(group: ConditionGroup): string | null {
 }
 
 function validateCondition(condition: Condition): string | null {
-  if (condition.type === "nested") {
-    return validateConditionGroup({
-      matchType: condition.matchType,
-      conditions: condition.conditions,
-    });
+  switch (condition.type) {
+    case "name":
+    case "extension":
+    case "fullName":
+      if (!condition.value.trim()) return "Provide a value for the condition.";
+      return null;
+    case "size":
+      if (!condition.value) return "Provide a size threshold.";
+      return null;
+    case "shellScript":
+      if (!condition.command.trim()) return "Provide a shell script command.";
+      return null;
+    case "nested":
+      return validateConditionGroup({
+        matchType: condition.matchType,
+        conditions: condition.conditions,
+      });
+    default:
+      return null;
   }
-
-  if (
-    condition.type === "dateCreated" ||
-    condition.type === "dateModified" ||
-    condition.type === "dateAdded"
-  ) {
-    const operator = condition.operator;
-    if (operator.type === "between") {
-      if (!operator.start || !operator.end) {
-        return "Date conditions require a start and end date.";
-      }
-    } else if (operator.type === "is" || operator.type === "isBefore" || operator.type === "isAfter") {
-      if (!operator.date) {
-        return "Date conditions require a date.";
-      }
-    }
-  }
-
-  if (condition.type === "currentTime") {
-    const operator = condition.operator;
-    if (operator.type === "between") {
-      if (!operator.start || !operator.end) {
-        return "Time conditions require a start and end time.";
-      }
-    } else if (operator.type === "is" || operator.type === "isBefore" || operator.type === "isAfter") {
-      if (!operator.time) {
-        return "Time conditions require a time value.";
-      }
-    }
-  }
-
-  return null;
 }
 
 interface TogglePillProps {
@@ -310,20 +279,13 @@ function TogglePill({ label, checked, onChange }: TogglePillProps) {
   return (
     <button
       type="button"
-      role="switch"
-      aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`flex items-center gap-3 rounded-full border px-4 py-1.5 text-xs font-semibold transition-all ${
+      className={`rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors ${
         checked
-          ? "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300"
-          : "border-white/40 bg-white/60 text-slate-500 hover:bg-white/80 hover:text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400 dark:hover:bg-white/10"
+          ? "border-[#c07a46] bg-[#c07a46] text-[#0d0e10]"
+          : "border-[#2a2b31] bg-[#141518] text-[#9c958c]"
       }`}
     >
-      <span
-        className={`h-2 w-2 rounded-full ${
-          checked ? "bg-blue-500 dark:bg-cyan-400" : "bg-slate-300 dark:bg-neutral-700"
-        }`}
-      />
       {label}
     </button>
   );

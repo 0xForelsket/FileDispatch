@@ -13,7 +13,11 @@ const tabs = [
   { id: "security", label: "Security", icon: Shield },
 ];
 
-export function SettingsDialog() {
+interface SettingsDialogProps {
+  compact?: boolean;
+}
+
+export function SettingsDialog({ compact = false }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
   const shortcutLabel = useMemo(() => formatShortcut({ key: ",", ctrlOrMeta: true }), []);
@@ -127,17 +131,28 @@ export function SettingsDialog() {
 
   return (
     <>
-      <button
-        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-600 transition-all hover:bg-white/60 hover:text-slate-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white"
-        onClick={() => setOpen(true)}
-        type="button"
-      >
-        <Settings className="h-4 w-4" />
-        Settings
-        <kbd className="ml-auto rounded-md border border-white/60 bg-white/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400">
-          {shortcutLabel}
-        </kbd>
-      </button>
+      {compact ? (
+        <button
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:text-[#cfc9bf]"
+          onClick={() => setOpen(true)}
+          type="button"
+          title={`Settings (${shortcutLabel})`}
+        >
+          <Settings className="h-4 w-4" />
+        </button>
+      ) : (
+        <button
+          className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-600 transition-all hover:bg-white/60 hover:text-slate-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white"
+          onClick={() => setOpen(true)}
+          type="button"
+        >
+          <Settings className="h-4 w-4" />
+          Settings
+          <kbd className="ml-auto rounded-md border border-white/60 bg-white/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400">
+            {shortcutLabel}
+          </kbd>
+        </button>
+      )}
       {modal}
     </>
   );

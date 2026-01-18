@@ -1,18 +1,11 @@
-import { useEffect, useMemo } from "react";
-import {
-  Folder,
-  MoreVertical,
-  Moon,
-  Plus,
-  Sun,
-  Trash2,
-  Zap,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { Folder, MoreHorizontal } from "lucide-react";
 
 import { ActivityLog } from "@/components/logs/ActivityLog";
 import { AddFolderDialog } from "@/components/folders/AddFolderDialog";
 import { FolderList } from "@/components/folders/FolderList";
 import { RuleList } from "@/components/rules/RuleList";
+import { RuleEditor } from "@/components/rules/RuleEditor";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { StatsModal } from "@/components/ui/StatsModal";
 import { useFolders } from "@/hooks/useFolders";
@@ -21,41 +14,27 @@ import { useRules } from "@/hooks/useRules";
 import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
 import { useRuleStore } from "@/stores/ruleStore";
-import { useSettingsStore } from "@/stores/settingsStore";
+import type { Rule } from "@/types";
+
+const copper = "text-[#c07a46]";
 
 function App() {
   useFolders();
   useRules();
   useLogs();
-  const theme = useSettingsStore((state) => state.settings.theme);
-  const setSettings = useSettingsStore((state) => state.setSettings);
-  const saveSettings = useSettingsStore((state) => state.saveSettings);
+
   const folders = useFolderStore((state) => state.folders);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
-  const removeFolder = useFolderStore((state) => state.removeFolder);
   const rules = useRuleStore((state) => state.rules);
   const logs = useLogStore((state) => state.entries);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === "system") {
-      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      root.classList.toggle("dark", isDark);
-    } else {
-      root.classList.toggle("dark", theme === "dark");
-    }
-  }, [theme]);
+  const [editorMode, setEditorMode] = useState<"empty" | "new" | "edit">("empty");
+  const [editingRule, setEditingRule] = useState<Rule | null>(null);
 
-  const mounted = true;
-
-  const isDark = useMemo(() => {
-    if (theme === "dark") return true;
-    if (theme === "light") return false;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  }, [theme]);
+  const effectiveMode = selectedFolderId ? editorMode : "empty";
+  const effectiveRule = selectedFolderId ? editingRule : null;
 
   const activeFolder = folders.find((folder) => folder.id === selectedFolderId);
-  const gridColor = isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)";
 
   const activeLogs = useMemo(() => {
     if (!selectedFolderId) return logs;
@@ -76,154 +55,90 @@ function App() {
     return { total, efficiency, savedBytes };
   }, [activeLogs]);
 
-  const toggleTheme = () => {
-    const next = isDark ? "light" : "dark";
-    setSettings({ theme: next });
-    void saveSettings();
+  const handleNewRule = () => {
+    if (!selectedFolderId) return;
+    setEditingRule(null);
+    setEditorMode("new");
+  };
+
+  const handleSelectRule = (rule: Rule) => {
+    setEditingRule(rule);
+    setEditorMode("edit");
+  };
+
+  const handleCloseEditor = () => {
+    setEditingRule(null);
+    setEditorMode("empty");
   };
 
   return (
-    <div className={`${isDark ? "dark" : ""} relative h-screen w-full overflow-hidden`}>
-      <div className="absolute inset-0 z-0 bg-[#f8fafc] transition-colors duration-700 dark:bg-[#0a0a0a]">
-        <div className="animate-pulse-slow absolute left-[-10%] top-[-20%] h-[50vw] w-[50vw] rounded-full bg-blue-500/10 opacity-70 blur-[120px] dark:bg-cyan-500/10" />
-        <div className="animate-pulse-slower absolute bottom-[-10%] right-[-10%] h-[40vw] w-[40vw] rounded-full bg-indigo-500/10 opacity-60 blur-[100px] dark:bg-violet-500/10" />
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.2] mix-blend-overlay dark:opacity-[0.1]"
-          style={{
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.5'/%3E%3C/svg%3E\")",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(to right, ${gridColor} 1px, transparent 1px)`,
-            backgroundSize: "80px 80px",
-          }}
-        />
-      </div>
-
-      <div
-        className={`relative z-10 flex h-screen font-sans text-slate-600 transition-opacity duration-700 dark:text-neutral-300 ${
-          mounted ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <aside className="flex w-[260px] flex-col border-r border-white/20 bg-white/30 backdrop-blur-2xl transition-all duration-500 dark:border-white/5 dark:bg-black/20">
-          <div className="p-6 pb-2">
-            <div className="group mb-8 flex cursor-pointer items-center gap-3.5">
-              <div className="relative">
-                <div className="absolute inset-0 rounded-full bg-blue-500 opacity-20 blur-md transition-opacity group-hover:opacity-40 dark:bg-cyan-500" />
-                <div className="relative rounded-xl border border-white/60 bg-gradient-to-br from-white to-slate-100 p-2.5 shadow-lg ring-1 ring-black/5 dark:border-white/10 dark:from-neutral-800 dark:to-neutral-900">
-                  <Zap className="h-5 w-5 text-blue-600 dark:text-cyan-400" />
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-                  DISPATCH
-                </h1>
-                <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-cyan-500">
-                  Command Center
-                </span>
-              </div>
-            </div>
-
-            <AddFolderDialog
-              className="group relative flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-gradient-to-b from-white to-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:shadow-lg dark:border-white/10 dark:from-white/10 dark:to-white/5 dark:text-neutral-200"
-              label="New Watcher"
-              icon={<Plus className="h-4 w-4 text-blue-600 transition-transform group-hover:rotate-90 dark:text-cyan-400" />}
+    <div className="dark h-screen w-screen bg-[#0c0d0f] text-[#e7e1d8]">
+      <div className="flex h-full flex-col font-sans">
+        <header className="flex h-11 items-center justify-between border-b border-[#1f1f24] px-4">
+          <div className="flex items-center gap-3 text-sm font-semibold tracking-wide">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#c07a46] shadow-[0_0_10px_rgba(192,122,70,0.45)]" />
+            File Dispatch
+            {activeFolder ? (
+              <span className="ml-4 flex items-center gap-2 rounded-full border border-[#2a2b31] bg-[#121316] px-2.5 py-0.5 text-[11px] font-medium text-[#a8a39b]">
+                <Folder className="h-3 w-3" />
+                {activeFolder.name}
+              </span>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <StatsModal
+              total={stats.total}
+              efficiency={stats.efficiency}
+              savedBytes={stats.savedBytes}
+              activeRules={rules.filter((rule) => rule.enabled).length}
+              logs={activeLogs}
             />
-          </div>
-
-          <div className="flex-1 overflow-hidden">
-            <FolderList />
-          </div>
-
-          <div className="mt-auto flex items-center gap-2 border-t border-white/20 p-4 dark:border-white/5">
-            <SettingsDialog />
+            <SettingsDialog compact />
             <button
-              onClick={toggleTheme}
-              className="rounded-xl border border-transparent p-2.5 text-slate-600 transition-all hover:border-white/40 hover:bg-white/60 hover:text-slate-900 dark:text-neutral-400 dark:hover:border-white/10 dark:hover:bg-white/10 dark:hover:text-white"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:text-[#cfc9bf]"
               type="button"
             >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              <MoreHorizontal className="h-4 w-4" />
             </button>
           </div>
-        </aside>
+        </header>
 
-        <main className="relative flex h-full flex-1 flex-col overflow-hidden">
-          <header className="flex items-start justify-between px-8 py-6">
-            <div>
-              <div className="mb-2 flex items-center gap-4">
-                <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-                  {activeFolder?.name ?? "Select a folder"}
-                </h2>
-                {activeFolder ? (
-                  <div
-                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                      activeFolder.enabled
-                        ? "border-green-500/20 bg-green-500/10 text-green-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300"
-                        : "border-slate-500/20 bg-slate-500/10 text-slate-600 dark:border-neutral-500/20 dark:bg-neutral-500/10 dark:text-neutral-400"
-                    }`}
-                  >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        activeFolder.enabled
-                          ? "bg-green-500 dark:bg-cyan-400 animate-pulse"
-                          : "bg-slate-400"
-                      }`}
-                    />
-                    {activeFolder.enabled ? "Live Monitoring" : "Offline"}
-                  </div>
-                ) : null}
-              </div>
-              {activeFolder ? (
-                <div className="flex items-center gap-2 font-mono text-xs text-slate-500 dark:text-neutral-400">
-                  <span className="flex items-center gap-1 font-semibold text-blue-600 dark:text-cyan-500">
-                    <Folder className="h-3 w-3" />
-                    source:
-                  </span>
-                  <span className="rounded border border-white/40 bg-white/50 px-2 py-1 text-slate-600 backdrop-blur-sm transition-colors hover:bg-white/80 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10">
-                    {activeFolder.path}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <StatsModal
-                total={stats.total}
-                efficiency={stats.efficiency}
-                savedBytes={stats.savedBytes}
-                activeRules={rules.filter((rule) => rule.enabled).length}
-                logs={activeLogs}
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <aside className="flex w-[240px] flex-col border-r border-[#1f1f24] bg-[#0f1012]">
+            <div className="flex items-center justify-between border-b border-[#1f1f24] px-3 py-3">
+              <span className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${copper}`}>
+                Folders
+              </span>
+              <AddFolderDialog
+                className="inline-flex items-center gap-1 rounded-md border border-[#2a2b31] bg-[#15171a] px-2 py-1 text-[11px] font-semibold text-[#cfc9bf] transition-colors hover:border-[#3a3b42]"
+                label="Add"
+                showIcon={false}
               />
-              <button
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/40 bg-white/40 text-slate-400 transition-all hover:scale-105 hover:bg-red-50 hover:text-red-600 hover:shadow-lg dark:border-white/10 dark:bg-white/5 dark:text-neutral-400 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                onClick={() => {
-                  if (activeFolder?.id) {
-                    void removeFolder(activeFolder.id);
-                  }
-                }}
-                type="button"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-              <button
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/40 bg-white/40 text-slate-400 transition-all hover:scale-105 hover:bg-white/60 hover:text-slate-900 hover:shadow-lg dark:border-white/10 dark:bg-white/5 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white"
-                type="button"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
             </div>
-          </header>
+            <FolderList />
+          </aside>
 
-          <div className="custom-scrollbar flex-1 overflow-y-auto p-8 pb-20">
-            <div className="mx-auto max-w-7xl space-y-10">
-              <RuleList />
-              <ActivityLog />
-            </div>
-          </div>
-        </main>
+          <section className="flex w-[300px] flex-col border-r border-[#1f1f24] bg-[#111214]">
+            <RuleList
+              selectedRuleId={effectiveRule?.id ?? ""}
+              onNewRule={handleNewRule}
+              onSelectRule={handleSelectRule}
+            />
+          </section>
+
+          <section className="flex min-w-0 flex-1 flex-col bg-[#0e0f11]">
+            <RuleEditor
+              mode={effectiveMode}
+              onClose={handleCloseEditor}
+              folderId={selectedFolderId ?? ""}
+              rule={effectiveRule}
+            />
+          </section>
+        </div>
+
+        <div className="h-56 border-t border-[#1f1f24] bg-[#0f1012]">
+          <ActivityLog />
+        </div>
       </div>
     </div>
   );
