@@ -48,11 +48,19 @@ const sizeOperators: { value: ComparisonOperator; label: string }[] = [
   { value: { type: "between", min: 0, max: 0 }, label: "between" },
 ];
 
+const today = (() => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+})();
+
 const dateOperators: { value: DateOperator; label: string }[] = [
-  { value: { type: "is", date: "" }, label: "is" },
-  { value: { type: "isBefore", date: "" }, label: "is before" },
-  { value: { type: "isAfter", date: "" }, label: "is after" },
-  { value: { type: "between", start: "", end: "" }, label: "between" },
+  { value: { type: "is", date: today }, label: "is" },
+  { value: { type: "isBefore", date: today }, label: "is before" },
+  { value: { type: "isAfter", date: today }, label: "is after" },
+  { value: { type: "between", start: today, end: today }, label: "between" },
   { value: { type: "inTheLast", amount: 1, unit: "days" }, label: "in the last" },
   { value: { type: "notInTheLast", amount: 1, unit: "days" }, label: "not in the last" },
 ];

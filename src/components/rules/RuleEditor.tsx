@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import type { ConditionGroup, Rule } from "@/types";
+import type { Condition, ConditionGroup, Rule } from "@/types";
 import { useRuleStore } from "@/stores/ruleStore";
 import { ActionBuilder } from "@/components/rules/ActionBuilder";
 import { ConditionBuilder } from "@/components/rules/ConditionBuilder";
@@ -44,15 +44,36 @@ export function RuleEditor({ open, onClose, folderId, rule }: RuleEditorProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewResults, setPreviewResults] = useState<PreviewItem[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setSaveError(null);
+    }
+  }, [open, rule]);
 
   if (!open) return null;
 
   const handleSave = async () => {
+    const validationError = validateRule(draft);
+    if (validationError) {
+      setSaveError(validationError);
+      return;
+    }
+
+    setSaveError(null);
     if (draft.id) {
       await updateRule(draft);
     } else {
       await createRule({ ...draft, folderId });
     }
+
+    const { error } = useRuleStore.getState();
+    if (error) {
+      setSaveError(error);
+      return;
+    }
+
     onClose();
   };
 
@@ -138,6 +159,9 @@ export function RuleEditor({ open, onClose, folderId, rule }: RuleEditorProps) {
             Preview
           </button>
           <div className="flex items-center gap-2">
+          {saveError ? (
+            <span className="text-xs text-destructive">{saveError}</span>
+          ) : null}
           <button
             className="rounded-md border border-border px-3 py-1.5 text-sm"
             onClick={onClose}
@@ -164,4 +188,44 @@ export function RuleEditor({ open, onClose, folderId, rule }: RuleEditorProps) {
       />
     </div>
   );
+}
+
+function validateRule(rule: Rule): string | null {
+  return validateConditionGroup(rule.conditions);
+}
+
+function validateConditionGroup(group: ConditionGroup): string | null {
+  for (const condition of group.conditions) {
+    const error = validateCondition(condition);
+    if (error) return error;
+  }
+  return null;
+}
+
+function validateCondition(condition: Condition): string | null {
+  if (condition.type === "nested") {
+    return validateConditionGroup({
+      matchType: condition.matchType,
+      conditions: condition.conditions,
+    });
+  }
+
+  if (
+    condition.type === "dateCreated" ||
+    condition.type === "dateModified" ||
+    condition.type === "dateAdded"
+  ) {
+    const operator = condition.operator;
+    if (operator.type === "between") {
+      if (!operator.start || !operator.end) {
+        return "Date conditions require a start and end date.";
+      }
+    } else if (operator.type === "is" || operator.type === "isBefore" || operator.type === "isAfter") {
+      if (!operator.date) {
+        return "Date conditions require a date.";
+      }
+    }
+  }
+
+  return null;
 }
