@@ -5,4 +5,5 @@ export interface Folder {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+  ruleCount?: number;
 }

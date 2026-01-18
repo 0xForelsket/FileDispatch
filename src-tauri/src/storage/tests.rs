@@ -14,9 +14,10 @@ fn folder_repo_crud() {
     let created = repo.create("/tmp", "Temp").unwrap();
     assert_eq!(created.name, "Temp");
 
-    let list = repo.list().unwrap();
-    assert_eq!(list.len(), 1);
-    assert_eq!(list[0].path, "/tmp");
+        let list = repo.list().unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].path, "/tmp");
+        assert_eq!(list[0].rule_count, 0);
 
     repo.set_enabled(&created.id, false).unwrap();
     let updated = repo.get(&created.id).unwrap().unwrap();

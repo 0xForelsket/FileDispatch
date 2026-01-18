@@ -48,7 +48,7 @@ export function FolderList() {
               key={folder.id}
               folder={folder}
               selected={folder.id === selectedFolderId}
-              ruleCount={folder.id === selectedFolderId ? rules.length : undefined}
+              ruleCount={folder.ruleCount ?? (folder.id === selectedFolderId ? rules.length : 0)}
               onSelect={() => selectFolder(folder.id)}
               onToggle={(enabled) => toggleFolder(folder.id, enabled)}
             />

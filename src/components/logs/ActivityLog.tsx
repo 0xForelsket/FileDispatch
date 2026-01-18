@@ -1,27 +1,37 @@
 import { useMemo, useState } from "react";
 import { Activity, ArrowRight, Search } from "lucide-react";
 
+import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
+import { useRuleStore } from "@/stores/ruleStore";
 import type { LogEntry, LogStatus } from "@/types";
 import { GlassCard } from "@/components/ui/GlassCard";
 
 export function ActivityLog() {
   const entries = useLogStore((state) => state.entries);
   const clearLogs = useLogStore((state) => state.clearLogs);
+  const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
+  const rules = useRuleStore((state) => state.rules);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<LogStatus | "all">("all");
   const [ruleFilter, setRuleFilter] = useState<string>("all");
 
+  const scopedEntries = useMemo(() => {
+    if (!selectedFolderId) return entries;
+    const ruleIds = new Set(rules.map((rule) => rule.id));
+    return entries.filter((entry) => entry.ruleId && ruleIds.has(entry.ruleId));
+  }, [entries, rules, selectedFolderId]);
+
   const ruleOptions = useMemo(() => {
     const names = new Set<string>();
-    entries.forEach((entry) => {
+    scopedEntries.forEach((entry) => {
       if (entry.ruleName) names.add(entry.ruleName);
     });
     return Array.from(names).sort();
-  }, [entries]);
+  }, [scopedEntries]);
 
   const filteredEntries = useMemo(() => {
-    return entries.filter((entry) => {
+    return scopedEntries.filter((entry) => {
       const matchesQuery =
         query.trim().length === 0 ||
         entry.filePath.toLowerCase().includes(query.toLowerCase()) ||
@@ -31,7 +41,7 @@ export function ActivityLog() {
       const matchesRule = ruleFilter === "all" || entry.ruleName === ruleFilter;
       return matchesQuery && matchesStatus && matchesRule;
     });
-  }, [entries, query, ruleFilter, statusFilter]);
+  }, [scopedEntries, query, ruleFilter, statusFilter]);
 
   return (
     <section className="pb-8">
@@ -107,7 +117,7 @@ export function ActivityLog() {
                   {formatDetail(entry)}
                 </div>
                 <div className="w-24 text-right text-slate-400 transition-colors group-hover:text-slate-600 dark:text-neutral-600 dark:group-hover:text-neutral-400">
-                  —
+                  {formatBytes(getSizeBytes(entry))}
                 </div>
               </div>
             ))
@@ -145,6 +155,28 @@ function formatDetail(entry: LogEntry) {
     return `${fileName} → ${entry.ruleName}`;
   }
   return `${fileName} → ${entry.actionType}`;
+}
+
+function getSizeBytes(entry: LogEntry) {
+  const value =
+    entry.actionDetail?.metadata?.size_bytes ??
+    entry.actionDetail?.metadata?.sizeBytes ??
+    entry.actionDetail?.metadata?.["size-bytes"];
+  if (!value) return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatBytes(bytes: number) {
+  if (!bytes) return "—";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = bytes;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
 function StatusPill({ status, label }: { status: LogStatus; label: string }) {

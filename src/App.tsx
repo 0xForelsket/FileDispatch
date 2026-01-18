@@ -60,13 +60,24 @@ function App() {
   const activeFolder = folders.find((folder) => folder.id === selectedFolderId);
   const gridColor = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
 
+  const activeLogs = useMemo(() => {
+    if (!selectedFolderId) return logs;
+    const activeRuleIds = new Set(rules.map((rule) => rule.id));
+    return logs.filter((entry) => entry.ruleId && activeRuleIds.has(entry.ruleId));
+  }, [logs, rules, selectedFolderId]);
+
   const stats = useMemo(() => {
-    const total = logs.length;
-    const success = logs.filter((entry) => entry.status === "success").length;
+    const total = activeLogs.length;
+    const success = activeLogs.filter((entry) => entry.status === "success").length;
     const efficiency = total > 0 ? Math.round((success / total) * 100) : 100;
-    const storageSaved = total > 0 ? `${(total * 0.03).toFixed(1)} GB` : "0 GB";
-    return { total, efficiency, storageSaved };
-  }, [logs]);
+    const savedBytes = activeLogs.reduce((sum, entry) => {
+      if (entry.actionType === "delete" || entry.actionType === "deletePermanently") {
+        return sum + getSizeBytes(entry);
+      }
+      return sum;
+    }, 0);
+    return { total, efficiency, savedBytes };
+  }, [activeLogs]);
 
   const toggleTheme = () => {
     const next = isDark ? "light" : "dark";
@@ -267,7 +278,7 @@ function App() {
                         Storage Saved
                       </div>
                       <div className="text-2xl font-bold text-slate-800 dark:text-white">
-                        {stats.storageSaved}
+                        {formatBytes(stats.savedBytes)}
                       </div>
                     </div>
                     <div className="rounded-lg bg-purple-50 p-2 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
@@ -294,3 +305,25 @@ function App() {
 }
 
 export default App;
+
+function getSizeBytes(entry: { actionDetail?: { metadata?: Record<string, string> } }) {
+  const value =
+    entry.actionDetail?.metadata?.size_bytes ??
+    entry.actionDetail?.metadata?.sizeBytes ??
+    entry.actionDetail?.metadata?.["size-bytes"];
+  if (!value) return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatBytes(bytes: number) {
+  if (!bytes) return "0 GB";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = bytes;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}

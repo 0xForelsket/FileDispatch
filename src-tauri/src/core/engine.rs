@@ -9,8 +9,8 @@ use regex::RegexBuilder;
 use crate::core::executor::{ActionExecutor, ActionOutcome, ActionResultStatus};
 use crate::core::watcher::FileEvent;
 use crate::models::{
-    ActionType, Condition, ConditionGroup, DateOperator, FileKind, LogEntry, LogStatus, MatchType,
-    Rule, SizeUnit, StringOperator, TimeUnit,
+    ActionDetails, ActionType, Condition, ConditionGroup, DateOperator, FileKind, LogEntry,
+    LogStatus, MatchType, Rule, SizeUnit, StringOperator, TimeUnit,
 };
 use crate::storage::database::Database;
 use crate::storage::log_repo::LogRepository;
@@ -348,13 +348,29 @@ fn log_outcomes(
             ActionResultStatus::Skipped => LogStatus::Skipped,
             ActionResultStatus::Error => LogStatus::Error,
         };
+        let mut details = outcome.details.clone();
+        let size_value = info.size.to_string();
+        if let Some(ref mut details) = details {
+            details
+                .metadata
+                .entry("size_bytes".to_string())
+                .or_insert(size_value);
+        } else {
+            let mut metadata = std::collections::HashMap::new();
+            metadata.insert("size_bytes".to_string(), size_value);
+            details = Some(ActionDetails {
+                source_path: info.path.to_string_lossy().to_string(),
+                destination_path: None,
+                metadata,
+            });
+        }
         let entry = LogEntry {
             id: String::new(),
             rule_id: Some(rule.id.clone()),
             rule_name: Some(rule.name.clone()),
             file_path: info.path.to_string_lossy().to_string(),
             action_type: action_type_to_string(&outcome.action_type),
-            action_detail: outcome.details.clone(),
+            action_detail: details,
             status,
             error_message: outcome.error.clone(),
             created_at: Utc::now(),

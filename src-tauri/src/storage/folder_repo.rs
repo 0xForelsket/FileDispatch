@@ -18,7 +18,11 @@ impl FolderRepository {
     pub fn list(&self) -> Result<Vec<Folder>> {
         self.db.with_conn(|conn| {
             let mut stmt = conn.prepare(
-                "SELECT id, path, name, enabled, created_at, updated_at FROM folders ORDER BY name ASC",
+                "SELECT f.id, f.path, f.name, f.enabled, f.created_at, f.updated_at, COUNT(r.id) as rule_count
+                 FROM folders f
+                 LEFT JOIN rules r ON r.folder_id = f.id
+                 GROUP BY f.id
+                 ORDER BY f.name ASC",
             )?;
             let rows = stmt.query_map([], |row| map_folder(row))?;
             let mut folders = Vec::new();
@@ -32,7 +36,11 @@ impl FolderRepository {
     pub fn get(&self, id: &str) -> Result<Option<Folder>> {
         self.db.with_conn(|conn| {
             let mut stmt = conn.prepare(
-                "SELECT id, path, name, enabled, created_at, updated_at FROM folders WHERE id = ?1",
+                "SELECT f.id, f.path, f.name, f.enabled, f.created_at, f.updated_at, COUNT(r.id) as rule_count
+                 FROM folders f
+                 LEFT JOIN rules r ON r.folder_id = f.id
+                 WHERE f.id = ?1
+                 GROUP BY f.id",
             )?;
             let mut rows = stmt.query_map([id], |row| map_folder(row))?;
             Ok(rows.next().transpose()?)
@@ -48,6 +56,7 @@ impl FolderRepository {
             enabled: true,
             created_at: now,
             updated_at: now,
+            rule_count: 0,
         };
 
         self.db.with_conn(|conn| {
@@ -100,6 +109,7 @@ fn map_folder(row: &Row<'_>) -> rusqlite::Result<Folder> {
         enabled: i64_to_bool(row.get(3)?),
         created_at,
         updated_at,
+        rule_count: row.get(6)?,
     })
 }
 

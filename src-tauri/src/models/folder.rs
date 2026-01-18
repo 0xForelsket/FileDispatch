@@ -12,4 +12,6 @@ pub struct Folder {
     pub enabled: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(default)]
+    pub rule_count: i64,
 }
