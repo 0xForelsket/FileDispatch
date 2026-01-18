@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Edit3, MoreVertical, Trash2, Zap } from "lucide-react";
+import { Edit3, MoreVertical, Trash2, Zap } from "lucide-react";
 
 import type { Condition, Rule } from "@/types";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -42,7 +42,9 @@ export function RuleItem({
   return (
     <GlassCard
       hoverEffect
-      className={`relative flex items-center gap-5 p-4 ${!rule.enabled ? "opacity-70 grayscale" : ""}`}
+      className={`relative flex items-start gap-6 p-5 ${
+        !rule.enabled ? "opacity-70 grayscale" : ""
+      }`}
     >
       <div
         className={`absolute left-0 top-0 h-full w-1 ${
@@ -50,7 +52,7 @@ export function RuleItem({
         }`}
       />
       <div
-        className={`ml-2 rounded-xl border p-3 shadow-inner transition-colors duration-300 ${
+        className={`mt-1 rounded-xl border p-3 shadow-inner transition-colors duration-300 ${
           rule.enabled
             ? "border-blue-100/50 bg-blue-50/50 text-blue-600 dark:border-cyan-500/20 dark:bg-cyan-900/20 dark:text-cyan-400"
             : "border-slate-200/50 bg-slate-100/50 text-slate-400 dark:border-white/5 dark:bg-white/5 dark:text-neutral-600"
@@ -59,34 +61,23 @@ export function RuleItem({
         <Zap className="h-5 w-5" />
       </div>
 
-      <div className="min-w-0 flex-1 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-center">
-        <div className="lg:col-span-4">
-          <h4
-            className={`truncate text-sm font-bold ${
-              rule.enabled ? "text-slate-800 dark:text-neutral-100" : "text-slate-500 dark:text-neutral-500"
-            }`}
-          >
-            {rule.name}
-          </h4>
-        </div>
-        <div className="lg:col-span-8 flex items-center gap-2 font-mono text-[11px]">
-          <div className="flex max-w-[160px] items-center gap-2 truncate rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-slate-600 shadow-sm dark:border-white/10 dark:bg-black/40 dark:text-neutral-300">
-            <span className="text-[9px] font-bold uppercase text-slate-400 dark:text-neutral-600">
-              IF
-            </span>
-            {triggerSummary}
+      <div className="min-w-0 flex-1 space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h4
+              className={`text-base font-bold ${
+                rule.enabled
+                  ? "text-slate-800 dark:text-neutral-100"
+                  : "text-slate-500 dark:text-neutral-500"
+              }`}
+            >
+              {rule.name}
+            </h4>
+            <div className="mt-1 text-xs text-slate-500 dark:text-neutral-500">
+              {rule.conditions.conditions.length} conditions • {rule.actions.length} actions
+            </div>
           </div>
-          <ArrowRight className="h-3 w-3 flex-shrink-0 text-slate-300 dark:text-neutral-600" />
-          <div className="flex flex-1 items-center gap-2 truncate rounded-lg border border-blue-100/50 bg-blue-50/50 px-3 py-1.5 text-blue-700 shadow-sm dark:border-cyan-500/20 dark:bg-cyan-900/10 dark:text-cyan-300">
-            <span className="text-[9px] font-bold uppercase text-blue-400 dark:text-cyan-700">
-              THEN
-            </span>
-            {actionSummary}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-4 border-l border-black/5 pl-5 dark:border-white/5">
+          <div className="flex items-center gap-3 border-l border-black/5 pl-4 dark:border-white/5">
         <button
           onClick={() => onToggle(!rule.enabled)}
           className={`relative h-6 w-11 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-cyan-500 dark:focus:ring-offset-neutral-900 ${
@@ -142,6 +133,27 @@ export function RuleItem({
               </button>
             </div>
           ) : null}
+        </div>
+          </div>
+        </div>
+
+        <div className="space-y-2 font-mono text-[11px]">
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-bold uppercase text-slate-400 dark:text-neutral-600">
+              WHEN
+            </span>
+            <div className="flex flex-1 items-center gap-2 truncate rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-slate-600 shadow-sm dark:border-white/10 dark:bg-black/40 dark:text-neutral-300">
+              {triggerSummary}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-bold uppercase text-blue-400 dark:text-cyan-700">
+              THEN
+            </span>
+            <div className="flex flex-1 items-center gap-2 truncate rounded-lg border border-blue-100/50 bg-blue-50/50 px-3 py-2 text-blue-700 shadow-sm dark:border-cyan-500/20 dark:bg-cyan-900/10 dark:text-cyan-300">
+              {actionSummary}
+            </div>
+          </div>
         </div>
       </div>
     </GlassCard>
