@@ -42,8 +42,8 @@ impl Database {
 
     fn migrate(&self) -> Result<()> {
         let mut conn = self.pool.get()?;
-        conn.execute("PRAGMA foreign_keys = ON;", [])?;
-        conn.execute("PRAGMA journal_mode = WAL;", [])?;
+        conn.pragma_update(None, "foreign_keys", true)?;
+        conn.pragma_update(None, "journal_mode", "WAL")?;
 
         let migrations = Migrations::new(vec![M::up(include_str!("migrations/001_initial.sql"))]);
         migrations.to_latest(&mut conn)?;

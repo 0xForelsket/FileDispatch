@@ -132,3 +132,69 @@ fn format_random(format: &str) -> String {
         random
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::PatternEngine;
+    use crate::models::FileKind;
+    use crate::utils::file_info::FileInfo;
+    use chrono::{TimeZone, Utc};
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    fn sample_info() -> FileInfo {
+        FileInfo {
+            path: PathBuf::from("/tmp/example.txt"),
+            name: "example".to_string(),
+            extension: "txt".to_string(),
+            full_name: "example.txt".to_string(),
+            size: 2048,
+            created: Utc.with_ymd_and_hms(2024, 1, 2, 3, 4, 5).unwrap(),
+            modified: Utc.with_ymd_and_hms(2024, 1, 3, 4, 5, 6).unwrap(),
+            added: Utc.with_ymd_and_hms(2024, 1, 4, 5, 6, 7).unwrap(),
+            kind: FileKind::File,
+            parent: Some("tmp".to_string()),
+            is_dir: false,
+            hash: "hash".to_string(),
+        }
+    }
+
+    #[test]
+    fn resolves_basic_tokens() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{name}.{ext}-{parent}", &info, &captures);
+        assert_eq!(result, "example.txt-tmp");
+    }
+
+    #[test]
+    fn resolves_counter_and_size_formats() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let first = engine.resolve("{counter:3}-{size:bytes}", &info, &captures);
+        let second = engine.resolve("{counter:3}-{size}", &info, &captures);
+
+        assert_eq!(first, "001-2048");
+        assert_eq!(second, "002-2.0 KB");
+    }
+
+    #[test]
+    fn resolves_captures_and_random_length() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let mut captures = HashMap::new();
+        captures.insert("0".to_string(), "alpha".to_string());
+        captures.insert("1".to_string(), "beta".to_string());
+
+        let result = engine.resolve("{0}-{1}-{random:8}", &info, &captures);
+        let parts: Vec<&str> = result.split('-').collect();
+        assert_eq!(parts.len(), 3);
+        assert_eq!(parts[0], "alpha");
+        assert_eq!(parts[1], "beta");
+        assert_eq!(parts[2].len(), 8);
+    }
+}

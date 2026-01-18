@@ -140,3 +140,27 @@ fn detect_kind(path: &Path, is_dir: bool, extension: &str) -> Result<FileKind> {
 
     Ok(FileKind::Other)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::FileInfo;
+    use crate::models::FileKind;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn file_info_from_png() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("sample.png");
+        let png_header = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
+        fs::write(&file_path, png_header).unwrap();
+
+        let info = FileInfo::from_path(&file_path).unwrap();
+        assert_eq!(info.name, "sample");
+        assert_eq!(info.extension, "png");
+        assert_eq!(info.full_name, "sample.png");
+        assert_eq!(info.kind, FileKind::Image);
+        assert!(!info.is_dir);
+        assert!(info.size >= 8);
+    }
+}
