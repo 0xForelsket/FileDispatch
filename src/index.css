@@ -54,12 +54,35 @@
     --bg-app: #101010;
     --bg-panel: #000000;
     --bg-header: #000000;
-    --fg-primary: #FF9D00;
+    --fg-primary: #FF9D00;   /* NGE Orange */
+    --fg-secondary: #2ECC71; /* Terminal Green */
+    --fg-alert: #FF0000;     /* Angel Red */
     --fg-header: #FF9D00;
     
     --border-main: #FF9D00;
+    --border-dim: #995500;
+    
     --selection-bg: #FF9D00;
     --selection-fg: #000000;
+    --radius: 0rem; 
+  }
+
+  [data-theme="standard"] {
+    /* Minimalist / Normal Theme */
+    --bg-app: #f4f4f5;      /* Zinc-100 */
+    --bg-panel: #ffffff;    /* White */
+    --bg-header: #ffffff;
+    --fg-primary: #18181b;  /* Zinc-900 */
+    --fg-secondary: #059669; /* Emerald-600 */
+    --fg-alert: #dc2626;    /* Red-600 */
+    --fg-header: #18181b;
+    
+    --border-main: #e4e4e7; /* Zinc-200 */
+    --border-dim: #a1a1aa;  /* Zinc-400 */
+    
+    --selection-bg: #18181b;
+    --selection-fg: #ffffff;
+    --radius: 0.5rem;       /* Rounded corners */
   }
 
   [data-theme="dark"] {
@@ -107,21 +130,22 @@
 }
 
 @layer utilities {
-  /* MAGI System Scrollbar */
+  /* Custom Scrollbar */
   .custom-scrollbar::-webkit-scrollbar {
     width: 12px;
     height: 12px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: #000000;
-    border-left: 2px solid #FF9D00;
+    background: var(--bg-app);
+    border-left: 2px solid var(--border-dim);
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #FF9D00;
-    border: 1px solid #000000;
+    background: var(--fg-primary);
+    border: 1px solid var(--bg-app);
+    border-radius: var(--radius);
   }
   .custom-scrollbar::-webkit-scrollbar-button {
-    background: #FF9D00;
+    background: var(--fg-primary);
     display: block;
     height: 12px;
     width: 12px;
@@ -130,11 +154,16 @@
   /* MAGI Utilities */
   .magi-border {
     border: 2px solid var(--border-main);
-    box-shadow: 0 0 5px var(--border-main); /* Slight glow */
+    border-radius: var(--radius);
+  }
+  
+  [data-theme="classic"] .magi-border {
+      box-shadow: 0 0 5px var(--border-main); /* Slight glow only in classic */
   }
   
   .magi-border-sm {
-    border: 1px solid var(--border-main);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius);
   }
 
   /* Hexagon Pattern Background */
@@ -171,19 +200,19 @@
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    background-color: #000000;
+    background-color: var(--bg-panel);
     border: 1px solid var(--border-dim);
-    border-radius: 0;
+    border-radius: var(--radius);
     padding-left: 0.5rem;
     padding-right: 2rem;
     padding-top: 0.25rem;
     padding-bottom: 0.25rem;
-    color-scheme: dark; /* Forces browser to use dark theme for native dropdown */
-    font-family: "Courier New", monospace;
-    font-size: 0.875rem; /* Increased from 0.75rem */
+    color-scheme: dark; 
+    font-family: inherit; /* Use theme font */
+    font-size: 0.875rem; 
     font-weight: 700;
     color: var(--fg-primary);
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23FF9D00' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 0.25rem center;
     background-repeat: no-repeat;
     background-size: 1.25em 1.25em;
@@ -194,7 +223,7 @@
   }
   
   .magi-select option {
-    background-color: #000000;
+    background-color: var(--bg-panel);
     color: var(--fg-primary);
   }
 
@@ -206,5 +235,13 @@
     transform-origin: left;
     display: inline-block;
     letter-spacing: -0.05em;
+  }
+  
+  /* Reset for Standard Theme */
+  [data-theme="standard"] .eva-title {
+      font-family: inherit;
+      transform: none;
+      letter-spacing: normal;
+      font-weight: 700;
   }
 }

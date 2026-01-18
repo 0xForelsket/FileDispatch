@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 import { settingsGet, settingsUpdate } from "@/lib/tauri";
 
-export type ThemeMode = "light" | "dark" | "system";
+export type ThemeMode = "light" | "dark" | "system" | "classic" | "standard";
 
 export interface AppSettings {
   startAtLogin: boolean;

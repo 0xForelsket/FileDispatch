@@ -79,8 +79,8 @@ export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
               void saveSettings();
             }}
             options={[
-              { label: "System", value: "system" },
-              { label: "Light", value: "light" },
+              { label: "MAGI (Classic)", value: "classic" },
+              { label: "Standard (Minimal)", value: "standard" },
               { label: "Dark", value: "dark" },
             ]}
           />

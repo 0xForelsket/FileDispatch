@@ -21,8 +21,8 @@ export function FolderItem({
     <div
       className={`group flex items-center justify-between px-2 py-1 font-mono text-xs cursor-pointer select-none border-l-2 transition-colors ${
         selected
-          ? "bg-[var(--selection-bg)] text-black border-[var(--selection-bg)]"
-          : "text-[var(--fg-primary)] border-transparent hover:bg-[var(--fg-primary)] hover:text-black hover:border-[var(--fg-primary)]"
+          ? "bg-[var(--selection-bg)] text-[var(--selection-fg)] border-[var(--selection-bg)]"
+          : "text-[var(--fg-primary)] border-transparent hover:bg-[var(--fg-primary)] hover:text-[var(--bg-panel)] hover:border-[var(--fg-primary)]"
       }`}
     >
       <button

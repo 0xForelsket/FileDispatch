@@ -72,7 +72,7 @@ export function ActivityLog() {
           <div className="group relative">
             <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#6f6a62] group-focus-within:text-[#c07a46]" />
             <input
-              className="w-48 rounded-none border border-[var(--border-dim)] bg-black py-1 pl-8 pr-2 text-xs font-mono font-bold text-[var(--fg-primary)] outline-none transition focus:border-[var(--fg-primary)] focus:bg-[var(--fg-primary)] focus:text-black placeholder:text-[var(--border-dim)]"
+              className="w-48 rounded-none border border-[var(--border-dim)] bg-[var(--bg-panel)] py-1 pl-8 pr-2 text-xs font-mono font-bold text-[var(--fg-primary)] outline-none transition focus:border-[var(--fg-primary)] focus:bg-[var(--fg-primary)] focus:text-[var(--bg-panel)] placeholder:text-[var(--border-dim)]"
               placeholder="SEARCH LOGS..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -152,7 +152,7 @@ export function ActivityLog() {
                   <div className="w-20 text-right">
                     {undoByLog.has(entry.id) ? (
                       <button
-                        className="inline-flex items-center gap-1 border border-current px-2 py-0.5 text-[10px] font-bold uppercase hover:bg-black hover:text-[var(--fg-primary)] transition-colors group-hover:border-black"
+                        className="inline-flex items-center gap-1 border border-current px-2 py-0.5 text-[10px] font-bold uppercase hover:bg-[var(--bg-panel)] hover:text-[var(--fg-primary)] transition-colors group-hover:border-[var(--bg-panel)]"
                         onClick={() => {
                           const undoEntry = undoByLog.get(entry.id);
                           if (undoEntry) {
@@ -175,13 +175,13 @@ export function ActivityLog() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t-2 border-[var(--border-main)] px-4 py-2 text-xs font-mono text-[var(--fg-primary)] bg-black">
+      <div className="flex items-center justify-between border-t-2 border-[var(--border-main)] px-4 py-2 text-xs font-mono text-[var(--fg-primary)] bg-[var(--bg-panel)]">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-none bg-[var(--fg-secondary)] animate-pulse" />
           <span className="uppercase font-bold tracking-widest">STREAM ACTIVE</span>
         </div>
         <button
-          className="group flex items-center gap-2 uppercase font-bold tracking-wider hover:bg-[var(--fg-primary)] hover:text-black px-2 py-0.5 transition-colors"
+          className="group flex items-center gap-2 uppercase font-bold tracking-wider hover:bg-[var(--fg-primary)] hover:text-[var(--bg-panel)] px-2 py-0.5 transition-colors"
           onClick={() => clearLogs()}
           type="button"
         >
@@ -246,7 +246,7 @@ function formatBytes(bytes: number) {
 function StatusPill({ status, label }: { status: LogStatus; label: string }) {
   if (status === "success") {
     return (
-      <span className="inline-flex items-center border border-[var(--fg-secondary)] bg-[var(--fg-secondary)] px-1.5 py-0.5 text-[10px] font-bold text-black uppercase tracking-wider group-hover:bg-black group-hover:text-[var(--fg-secondary)] transition-colors">
+      <span className="inline-flex items-center border border-[var(--fg-secondary)] bg-[var(--fg-secondary)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--bg-panel)] uppercase tracking-wider group-hover:bg-[var(--bg-panel)] group-hover:text-[var(--fg-secondary)] transition-colors">
         {label.toUpperCase()}
       </span>
     );

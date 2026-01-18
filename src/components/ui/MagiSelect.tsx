@@ -50,7 +50,8 @@ export function MagiSelect({
         onClick={() => setIsOpen(!isOpen)}
         className={`flex w-full items-center justify-between border ${
           isOpen ? "border-[var(--fg-primary)]" : "border-[var(--border-dim)]"
-        } bg-black px-2 py-1 text-left text-xs font-mono font-bold text-[var(--fg-primary)] hover:border-[var(--fg-primary)] focus:outline-none`}
+        } bg-[var(--bg-panel)] px-2 py-1 text-left text-xs font-bold text-[var(--fg-primary)] hover:border-[var(--fg-primary)] focus:outline-none transition-colors rounded-[var(--radius)]`}
+        style={{ fontFamily: "inherit" }}
       >
         <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
         {isOpen ? (
@@ -62,7 +63,7 @@ export function MagiSelect({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-[-1px] max-h-60 w-full overflow-auto border border-[var(--fg-primary)] bg-black shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-60 w-full overflow-auto border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-xl rounded-[var(--radius)]">
           {options.map((option) => (
             <button
               key={option.value}
@@ -71,11 +72,12 @@ export function MagiSelect({
                 onChange(option.value);
                 setIsOpen(false);
               }}
-              className={`block w-full px-2 py-1.5 text-left text-xs font-mono font-bold uppercase transition-colors ${
+              className={`block w-full px-2 py-1.5 text-left text-xs font-bold transition-colors uppercase ${
                 option.value === value
-                  ? "bg-[var(--fg-primary)] text-black"
+                  ? "bg-[var(--fg-primary)] text-[var(--bg-panel)]"
                   : "text-[var(--fg-primary)] hover:bg-[var(--border-dim)] hover:text-white"
               }`}
+              style={{ fontFamily: "inherit" }}
             >
               {option.label}
             </button>

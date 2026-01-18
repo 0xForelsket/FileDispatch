@@ -45,8 +45,8 @@ export function RuleItem({
       onClick={onEdit}
       className={`group flex items-center gap-2 px-2 py-1 font-mono text-xs cursor-pointer select-none border-l-2 ${
         selected
-          ? "bg-[var(--selection-bg)] text-black border-[var(--selection-bg)]"
-          : "text-[var(--fg-primary)] border-transparent hover:bg-[var(--fg-primary)] hover:text-black hover:border-[var(--fg-primary)]"
+          ? "bg-[var(--selection-bg)] text-[var(--selection-fg)] border-[var(--selection-bg)]"
+          : "text-[var(--fg-primary)] border-transparent hover:bg-[var(--fg-primary)] hover:text-[var(--bg-panel)] hover:border-[var(--fg-primary)]"
       } ${!rule.enabled ? "opacity-50 grayscale" : ""}`}
     >
       {/* Checkbox (Hex Style) */}
@@ -59,7 +59,7 @@ export function RuleItem({
             rule.enabled ? "bg-current" : ""
         }`}
       >
-          {rule.enabled && <div className="w-1.5 h-1.5 bg-black" />}
+          {rule.enabled && <div className="w-1.5 h-1.5 bg-[var(--bg-panel)]" />}
       </div>
 
       <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
@@ -73,7 +73,7 @@ export function RuleItem({
          <div className="flex items-center gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="text-black hover:text-white hover:bg-black rounded-sm px-1"
+              className="text-[var(--selection-fg)] hover:text-[var(--bg-panel)] hover:bg-[var(--fg-alert)] rounded-sm px-1"
             >
                 <Trash2 className="h-3 w-3" />
             </button>

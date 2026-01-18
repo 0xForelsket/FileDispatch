@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 
 import { ActivityLog } from "@/components/logs/ActivityLog";
@@ -14,7 +14,7 @@ import { useRules } from "@/hooks/useRules";
 import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
 import { useRuleStore } from "@/stores/ruleStore";
-import { useThemeStore } from "@/stores/themeStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import type { Rule } from "@/types";
 
 function App() {
@@ -26,7 +26,18 @@ function App() {
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const rules = useRuleStore((state) => state.rules);
   const logs = useLogStore((state) => state.entries);
-  const { theme, toggleTheme } = useThemeStore();
+  const settings = useSettingsStore((state) => state.settings);
+
+  // Apply Theme
+  useEffect(() => {
+    const theme = settings.theme;
+    if (theme === "system") {
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.setAttribute("data-theme", isDark ? "classic" : "standard");
+    } else {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+  }, [settings.theme]);
 
   const [editorMode, setEditorMode] = useState<"empty" | "new" | "edit">("empty");
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
@@ -73,13 +84,13 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-screen bg-app text-fg-primary font-mono overflow-hidden flex flex-col hex-bg" data-theme={theme}>
+    <div className="h-screen w-screen bg-[var(--bg-app)] text-[var(--fg-primary)] font-mono overflow-hidden flex flex-col hex-bg">
       {/* MAGI Header (NERV Style) */}
-      <header className="h-12 bg-black border-b-4 border-[var(--border-main)] flex items-center justify-between px-4 shrink-0 shadow-[0_0_15px_var(--border-main)] relative z-10">
+      <header className="h-12 bg-[var(--bg-header)] border-b-4 border-[var(--border-main)] flex items-center justify-between px-4 shrink-0 shadow-[0_0_15px_var(--border-main)] relative z-10">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
              {/* Simple Logo Placeholder */}
-             <div className="h-8 w-8 bg-black border-2 border-[var(--fg-alert)] flex items-center justify-center relative">
+             <div className="h-8 w-8 bg-[var(--bg-panel)] border-2 border-[var(--fg-alert)] flex items-center justify-center relative">
                  <div className="absolute inset-0 border border-[var(--fg-alert)] rotate-45 scale-75"/>
                  <span className="text-[var(--fg-alert)] font-bold text-xs z-10">NV</span>
              </div>
@@ -91,7 +102,7 @@ function App() {
           {activeFolder ? (
             <div className="hidden md:flex items-center gap-2 pl-4 border-l-2 border-[var(--border-dim)] h-8">
               <span className="text-[10px] uppercase font-bold text-[var(--fg-secondary)] tracking-widest">ACTIVE NODE:</span>
-              <span className="text-sm font-bold text-white font-sans bg-[var(--fg-primary)] text-black px-1">{activeFolder.name.toUpperCase()}</span>
+              <span className="text-sm font-bold text-[var(--bg-panel)] font-sans bg-[var(--fg-primary)] px-1">{activeFolder.name.toUpperCase()}</span>
             </div>
           ) : null}
         </div>
@@ -112,19 +123,13 @@ function App() {
               activeRules={rules.filter((rule) => rule.enabled).length}
               logs={activeLogs}
             />
-            <button 
-               onClick={toggleTheme}
-               className="px-2 py-1 bg-black border border-[var(--border-dim)] text-[10px] font-mono text-[var(--fg-primary)] hover:bg-[var(--fg-primary)] hover:text-black transition-colors uppercase tracking-wider"
-            >
-              SYSTEM: {theme.toUpperCase()}
-            </button>
             <SettingsDialog compact />
           </div>
         </div>
       </header>
 
       {/* Main Content Area - Grid Layout */}
-      <div className="flex-1 flex p-4 gap-4 min-h-0 bg-black/80 backdrop-blur-sm">
+      <div className="flex-1 flex p-4 gap-4 min-h-0 bg-[var(--bg-app)]/80 backdrop-blur-sm">
         
         {/* Pane 1: Folders */}
         <aside className="w-[260px] flex flex-col magi-border bg-black relative">
@@ -143,9 +148,9 @@ function App() {
         </aside>
 
         {/* Pane 2: Rules */}
-        <section className="w-[340px] flex flex-col magi-border bg-black relative">
+        <section className="w-[340px] flex flex-col magi-border bg-[var(--bg-panel)] relative">
            <AbsoluteCornerDecorations color="var(--fg-secondary)" />
-          <div className="bg-[var(--fg-primary)] text-black px-2 py-1 text-sm font-bold font-serif flex justify-between items-center select-none shrink-0 tracking-widest uppercase mb-1">
+          <div className="bg-[var(--fg-primary)] text-[var(--bg-panel)] px-2 py-1 text-sm font-bold font-serif flex justify-between items-center select-none shrink-0 tracking-widest uppercase mb-1">
             <span>PROTOCOLS</span>
             <button
                onClick={handleNewRule}
@@ -165,9 +170,9 @@ function App() {
         </section>
 
         {/* Pane 3: Editor */}
-        <section className="flex-1 flex flex-col magi-border bg-black min-w-0 relative">
+        <section className="flex-1 flex flex-col magi-border bg-[var(--bg-panel)] min-w-0 relative">
            <AbsoluteCornerDecorations color="var(--fg-alert)" />
-           <div className="bg-[var(--fg-primary)] text-black px-2 py-1 text-sm font-bold font-serif select-none shrink-0 tracking-widest uppercase mb-1">
+           <div className="bg-[var(--fg-primary)] text-[var(--bg-panel)] px-2 py-1 text-sm font-bold font-serif select-none shrink-0 tracking-widest uppercase mb-1">
              EXECUTIVE TERMINAL
            </div>
            <div className="flex-1 p-0 overflow-hidden relative">
@@ -189,13 +194,13 @@ function App() {
       <div 
         className={`transition-all duration-300 ease-in-out p-4 pt-0 ${
           isLogExpanded 
-            ? "absolute bottom-0 left-0 right-0 h-[calc(100vh-3rem)] z-40 bg-black/95 backdrop-blur-sm" 
+            ? "absolute bottom-0 left-0 right-0 h-[calc(100vh-3rem)] z-40 bg-[var(--bg-app)]/95 backdrop-blur-sm" 
             : "h-64 shrink-0 relative"
         }`}
       >
-        <div className="h-full w-full bg-black text-[var(--fg-secondary)] font-mono text-xs p-2 magi-border-sm overflow-y-auto custom-scrollbar relative shadow-lg">
+        <div className="h-full w-full bg-[var(--bg-panel)] text-[var(--fg-secondary)] font-mono text-xs p-2 magi-border-sm overflow-y-auto custom-scrollbar relative shadow-lg">
            <div className="absolute top-0 right-0 flex items-center z-10">
-              <div className="bg-[var(--fg-secondary)] text-black text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider">
+              <div className="bg-[var(--fg-secondary)] text-[var(--bg-panel)] text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider">
                   SYSTEM LOG
               </div>
               <button 
