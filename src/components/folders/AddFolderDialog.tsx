@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FolderPlus } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { useFolderStore } from "@/stores/folderStore";
 
@@ -8,12 +9,14 @@ interface AddFolderDialogProps {
   className?: string;
   label?: string;
   showIcon?: boolean;
+  icon?: ReactNode;
 }
 
 export function AddFolderDialog({
   className,
   label = "Add Folder",
   showIcon = true,
+  icon,
 }: AddFolderDialogProps) {
   const addFolder = useFolderStore((state) => state.addFolder);
   const [isOpen, setIsOpen] = useState(false);
@@ -47,7 +50,7 @@ export function AddFolderDialog({
         onClick={() => setIsOpen(true)}
         type="button"
       >
-        {showIcon ? <FolderPlus className="h-4 w-4" /> : null}
+        {showIcon ? icon ?? <FolderPlus className="h-4 w-4" /> : null}
         {label}
       </button>
       {isOpen ? (

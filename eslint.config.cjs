@@ -6,7 +6,7 @@ const reactRefresh = require("eslint-plugin-react-refresh");
 
 module.exports = [
   {
-    ignores: ["dist/**", "src-tauri/target/**"],
+    ignores: ["dist/**", "src-tauri/target/**", "docs/ui.js"],
   },
   {
     files: ["**/*.{ts,tsx}"] ,
