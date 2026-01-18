@@ -39,7 +39,7 @@ pub struct StringCondition {
     pub case_sensitive: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum StringOperator {
     Is,
@@ -116,7 +116,7 @@ pub struct KindCondition {
     pub negate: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum FileKind {
     File,

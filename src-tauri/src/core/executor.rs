@@ -169,7 +169,7 @@ impl ActionExecutor {
         }
 
         let result = fs::rename(source_path, &dest_path).or_else(|err| {
-            if err.kind() == std::io::ErrorKind::CrossDeviceLink {
+            if is_cross_device_error(&err) {
                 fs_extra::file::move_file(
                     source_path,
                     &dest_path,
@@ -235,10 +235,10 @@ impl ActionExecutor {
         captures: &HashMap<String, String>,
     ) -> ActionOutcome {
         let resolved = self.pattern_engine.resolve(pattern, info, captures);
-        let mut dest_path = source_path
-            .parent()
-            .map(|p| p.join(resolved))
-            .unwrap_or_else(|| PathBuf::from(resolved));
+        let mut dest_path = match source_path.parent() {
+            Some(parent) => parent.join(&resolved),
+            None => PathBuf::from(resolved.as_str()),
+        };
 
         if let Err(outcome) =
             prepare_destination(ActionType::Rename, &mut dest_path, conflict, false)
@@ -331,6 +331,17 @@ impl ActionExecutor {
             details: None,
             error: None,
         }
+    }
+}
+
+fn is_cross_device_error(err: &std::io::Error) -> bool {
+    #[cfg(unix)]
+    {
+        err.raw_os_error() == Some(libc::EXDEV)
+    }
+    #[cfg(not(unix))]
+    {
+        false
     }
 }
 

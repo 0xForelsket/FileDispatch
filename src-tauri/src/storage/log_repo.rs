@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Row};
+use rusqlite::{params, types::Type, Row};
 use uuid::Uuid;
 
 use crate::models::{LogEntry, LogStatus};
@@ -76,9 +76,12 @@ impl LogRepository {
     }
 }
 
-fn map_log(row: &Row<'_>) -> Result<LogEntry> {
+fn map_log(row: &Row<'_>) -> rusqlite::Result<LogEntry> {
     let detail_json: Option<String> = row.get(5)?;
     let created_at: String = row.get(8)?;
+    let created_at = DateTime::parse_from_rfc3339(&created_at)
+        .map_err(|e| rusqlite::Error::FromSqlConversionFailure(8, Type::Text, Box::new(e)))?
+        .with_timezone(&Utc);
     Ok(LogEntry {
         id: row.get(0)?,
         rule_id: row.get(1)?,
@@ -86,12 +89,16 @@ fn map_log(row: &Row<'_>) -> Result<LogEntry> {
         file_path: row.get(3)?,
         action_type: row.get(4)?,
         action_detail: match detail_json {
-            Some(json) => Some(serde_json::from_str(&json)?),
+            Some(json) => Some(
+                serde_json::from_str(&json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(5, Type::Text, Box::new(e))
+                })?,
+            ),
             None => None,
         },
         status: log_status_from_str(row.get::<_, String>(6)?.as_str()),
         error_message: row.get(7)?,
-        created_at: DateTime::parse_from_rfc3339(&created_at)?.with_timezone(&Utc),
+        created_at,
     })
 }
 

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Row};
+use rusqlite::{params, types::Type, Row};
 use uuid::Uuid;
 
 use crate::models::Folder;
@@ -84,16 +84,22 @@ impl FolderRepository {
     }
 }
 
-fn map_folder(row: &Row<'_>) -> Result<Folder> {
+fn map_folder(row: &Row<'_>) -> rusqlite::Result<Folder> {
     let created_at: String = row.get(4)?;
     let updated_at: String = row.get(5)?;
+    let created_at = DateTime::parse_from_rfc3339(&created_at)
+        .map_err(|e| rusqlite::Error::FromSqlConversionFailure(4, Type::Text, Box::new(e)))?
+        .with_timezone(&Utc);
+    let updated_at = DateTime::parse_from_rfc3339(&updated_at)
+        .map_err(|e| rusqlite::Error::FromSqlConversionFailure(5, Type::Text, Box::new(e)))?
+        .with_timezone(&Utc);
     Ok(Folder {
         id: row.get(0)?,
         path: row.get(1)?,
         name: row.get(2)?,
         enabled: i64_to_bool(row.get(3)?),
-        created_at: DateTime::parse_from_rfc3339(&created_at)?.with_timezone(&Utc),
-        updated_at: DateTime::parse_from_rfc3339(&updated_at)?.with_timezone(&Utc),
+        created_at,
+        updated_at,
     })
 }
 

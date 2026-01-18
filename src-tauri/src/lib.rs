@@ -69,7 +69,9 @@ pub fn run() {
             }
         })
         .setup(move |app| {
-            let store = StoreBuilder::new(app, "settings.json").build();
+            let store = StoreBuilder::new(app, "settings.json")
+                .build()
+                .map_err(|e| tauri::Error::Anyhow(e.into()))?;
             let settings = store
                 .get("settings")
                 .and_then(|value| serde_json::from_value::<Settings>(value.clone()).ok())

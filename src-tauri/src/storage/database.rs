@@ -35,18 +35,18 @@ impl Database {
         Ok(self.pool.get()?)
     }
 
-    pub fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
-        let conn = self.pool.get()?;
-        f(&conn)
+    pub fn with_conn<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T>) -> Result<T> {
+        let mut conn = self.pool.get()?;
+        f(&mut conn)
     }
 
     fn migrate(&self) -> Result<()> {
-        let conn = self.pool.get()?;
+        let mut conn = self.pool.get()?;
         conn.execute("PRAGMA foreign_keys = ON;", [])?;
         conn.execute("PRAGMA journal_mode = WAL;", [])?;
 
         let migrations = Migrations::new(vec![M::up(include_str!("migrations/001_initial.sql"))]);
-        migrations.to_latest(&conn)?;
+        migrations.to_latest(&mut conn)?;
         Ok(())
     }
 }

@@ -1,7 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use filetime::FileTime;
 
@@ -49,14 +50,18 @@ impl FileInfo {
             .ok()
             .map(DateTime::<Utc>::from)
             .unwrap_or_else(|| {
-                DateTime::<Utc>::from(FileTime::from_last_modification_time(&metadata))
+                DateTime::<Utc>::from(filetime_to_system_time(FileTime::from_last_modification_time(
+                    &metadata,
+                )))
             });
         let modified = metadata
             .modified()
             .ok()
             .map(DateTime::<Utc>::from)
             .unwrap_or_else(|| {
-                DateTime::<Utc>::from(FileTime::from_last_modification_time(&metadata))
+                DateTime::<Utc>::from(filetime_to_system_time(FileTime::from_last_modification_time(
+                    &metadata,
+                )))
             });
 
         let added = created;
@@ -84,6 +89,16 @@ impl FileInfo {
             is_dir,
             hash,
         })
+    }
+}
+
+fn filetime_to_system_time(filetime: FileTime) -> SystemTime {
+    let seconds = filetime.seconds();
+    let nanos = filetime.nanoseconds();
+    if seconds >= 0 {
+        UNIX_EPOCH + Duration::new(seconds as u64, nanos)
+    } else {
+        UNIX_EPOCH - Duration::new((-seconds) as u64, nanos)
     }
 }
 

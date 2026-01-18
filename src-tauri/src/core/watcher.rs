@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use glob::Pattern;
+use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 #[derive(Debug, Clone)]
@@ -89,9 +90,9 @@ fn handle_event(
 ) {
     let kind = match event.kind {
         EventKind::Create(_) => FileEventKind::Created,
+        EventKind::Modify(ModifyKind::Name(_)) => FileEventKind::Renamed,
         EventKind::Modify(_) => FileEventKind::Modified,
         EventKind::Remove(_) => FileEventKind::Deleted,
-        EventKind::Rename(_) => FileEventKind::Renamed,
         _ => FileEventKind::Modified,
     };
 

@@ -1,5 +1,5 @@
 use tauri::{AppHandle, State};
-use tauri_plugin_store::{StoreBuilder, StoreExt};
+use tauri_plugin_store::StoreBuilder;
 
 use crate::core::state::AppState;
 use crate::models::Settings;
@@ -8,7 +8,9 @@ const SETTINGS_STORE: &str = "settings.json";
 
 #[tauri::command]
 pub fn settings_get(app: AppHandle) -> Result<Settings, String> {
-    let store = StoreBuilder::new(&app, SETTINGS_STORE).build();
+    let store = StoreBuilder::new(&app, SETTINGS_STORE)
+        .build()
+        .map_err(|e| e.to_string())?;
     if let Some(value) = store.get("settings") {
         serde_json::from_value(value.clone()).map_err(|e| e.to_string())
     } else {
@@ -22,10 +24,12 @@ pub fn settings_update(
     state: State<'_, AppState>,
     settings: Settings,
 ) -> Result<(), String> {
-    let store = StoreBuilder::new(&app, SETTINGS_STORE).build();
-    store.insert(
+    let store = StoreBuilder::new(&app, SETTINGS_STORE)
+        .build()
+        .map_err(|e| e.to_string())?;
+    store.set(
         "settings".to_string(),
-        serde_json::to_value(settings).map_err(|e| e.to_string())?,
+        serde_json::to_value(&settings).map_err(|e| e.to_string())?,
     );
     if let Ok(mut watcher) = state.watcher.lock() {
         watcher.set_ignore_patterns(settings.ignore_patterns.clone());

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Row};
+use rusqlite::{params, types::Type, Row};
 use uuid::Uuid;
 
 use crate::models::{Rule, RuleId};
@@ -128,11 +128,17 @@ impl RuleRepository {
     }
 }
 
-fn map_rule(row: &Row<'_>) -> Result<Rule> {
+fn map_rule(row: &Row<'_>) -> rusqlite::Result<Rule> {
     let conditions_json: String = row.get(5)?;
     let actions_json: String = row.get(6)?;
     let created_at: String = row.get(8)?;
     let updated_at: String = row.get(9)?;
+    let created_at = DateTime::parse_from_rfc3339(&created_at)
+        .map_err(|e| rusqlite::Error::FromSqlConversionFailure(8, Type::Text, Box::new(e)))?
+        .with_timezone(&Utc);
+    let updated_at = DateTime::parse_from_rfc3339(&updated_at)
+        .map_err(|e| rusqlite::Error::FromSqlConversionFailure(9, Type::Text, Box::new(e)))?
+        .with_timezone(&Utc);
 
     Ok(Rule {
         id: row.get(0)?,
@@ -140,11 +146,15 @@ fn map_rule(row: &Row<'_>) -> Result<Rule> {
         name: row.get(2)?,
         enabled: i64_to_bool(row.get(3)?),
         stop_processing: i64_to_bool(row.get(4)?),
-        conditions: serde_json::from_str(&conditions_json)?,
-        actions: serde_json::from_str(&actions_json)?,
+        conditions: serde_json::from_str(&conditions_json).map_err(|e| {
+            rusqlite::Error::FromSqlConversionFailure(5, Type::Text, Box::new(e))
+        })?,
+        actions: serde_json::from_str(&actions_json).map_err(|e| {
+            rusqlite::Error::FromSqlConversionFailure(6, Type::Text, Box::new(e))
+        })?,
         position: row.get(7)?,
-        created_at: DateTime::parse_from_rfc3339(&created_at)?.with_timezone(&Utc),
-        updated_at: DateTime::parse_from_rfc3339(&updated_at)?.with_timezone(&Utc),
+        created_at,
+        updated_at,
     })
 }
 

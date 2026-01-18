@@ -13,7 +13,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-shell = "2"
@@ -30,6 +30,7 @@ filetime = "0.2"
 fs_extra = "1"
 glob = "0.3"
 infer = "0.16"
+libc = "0.2"
 notify = "6"
 r2d2 = "0.8"
 r2d2_sqlite = "0.24"
