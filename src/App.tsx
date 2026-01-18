@@ -108,7 +108,7 @@ function App() {
           mounted ? "opacity-100" : "opacity-0"
         }`}
       >
-        <aside className="flex w-[280px] flex-col border-r border-white/20 bg-white/30 backdrop-blur-2xl transition-all duration-500 dark:border-white/5 dark:bg-black/20">
+        <aside className="flex w-[260px] flex-col border-r border-white/20 bg-white/30 backdrop-blur-2xl transition-all duration-500 dark:border-white/5 dark:bg-black/20">
           <div className="p-6 pb-2">
             <div className="group mb-8 flex cursor-pointer items-center gap-3.5">
               <div className="relative">

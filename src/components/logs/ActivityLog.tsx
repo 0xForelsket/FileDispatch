@@ -1,5 +1,25 @@
 import { useMemo, useState } from "react";
-import { Activity, ArrowRight, RotateCcw, Search } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  Activity,
+  Archive,
+  ArchiveRestore,
+  ArrowRight,
+  ArrowRightLeft,
+  Ban,
+  Bell,
+  Copy,
+  Edit3,
+  ExternalLink,
+  FastForward,
+  FolderTree,
+  Pause,
+  RotateCcw,
+  Search,
+  Skull,
+  Terminal,
+  Trash2,
+} from "lucide-react";
 
 import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
@@ -116,51 +136,64 @@ export function ActivityLog() {
               No events yet.
             </div>
           ) : (
-            filteredEntries.map((entry, index) => (
-              <div
-                key={entry.id}
-                className="group flex items-center px-6 py-3.5 transition-colors hover:bg-blue-50/30 dark:hover:bg-cyan-900/10"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className="flex w-32 items-center gap-2 text-slate-500 dark:text-neutral-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-300 transition-colors group-hover:bg-blue-400 dark:bg-neutral-700 dark:group-hover:bg-cyan-400" />
-                  {formatTime(entry.createdAt)}
-                </div>
-                <div className="w-28">
-                  <StatusPill status={entry.status} label={entry.actionType} />
-                </div>
-                <div className="flex-1 pr-4">
-                  <div className="truncate text-slate-700 transition-colors group-hover:text-slate-900 dark:text-neutral-300 dark:group-hover:text-white">
-                    {formatOperation(entry)}
+            filteredEntries.map((entry, index) => {
+              const visual = getActionVisual(entry.actionType);
+              const Icon = visual.icon;
+              return (
+                <div
+                  key={entry.id}
+                  className="group flex items-center px-6 py-3.5 transition-colors hover:bg-blue-50/30 dark:hover:bg-cyan-900/10"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="flex w-32 items-center gap-2 text-slate-500 dark:text-neutral-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-300 transition-colors group-hover:bg-blue-400 dark:bg-neutral-700 dark:group-hover:bg-cyan-400" />
+                    {formatTime(entry.createdAt)}
                   </div>
-                  <div className="mt-0.5 text-[10px] text-slate-400 dark:text-neutral-600">
-                    {formatRuleLabel(entry)}
+                  <div className="w-28">
+                    <StatusPill status={entry.status} label={entry.actionType} />
+                  </div>
+                  <div className="flex-1 pr-4">
+                    <div className="flex items-start gap-2">
+                      <span
+                        className={`mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-lg ${visual.className}`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate text-slate-700 transition-colors group-hover:text-slate-900 dark:text-neutral-300 dark:group-hover:text-white">
+                          {formatOperation(entry)}
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-slate-400 dark:text-neutral-600">
+                          {formatRuleLabel(entry)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-24 text-right text-slate-400 transition-colors group-hover:text-slate-600 dark:text-neutral-600 dark:group-hover:text-neutral-400">
+                    {formatBytes(getSizeBytes(entry))}
+                  </div>
+                  <div className="w-20 text-right">
+                    {undoByLog.has(entry.id) ? (
+                      <button
+                        className="inline-flex items-center gap-1 rounded-full border border-blue-200/40 bg-white/70 px-2.5 py-1 text-[10px] font-semibold text-blue-700 shadow-sm transition-all hover:bg-white hover:text-blue-900 dark:border-cyan-500/30 dark:bg-white/5 dark:text-cyan-300 dark:hover:bg-white/10"
+                        onClick={() => {
+                          const undoEntry = undoByLog.get(entry.id);
+                          if (undoEntry) {
+                            void undoAction(undoEntry.id);
+                          }
+                        }}
+                        type="button"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Undo
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-300 dark:text-neutral-700">—</span>
+                    )}
                   </div>
                 </div>
-                <div className="w-24 text-right text-slate-400 transition-colors group-hover:text-slate-600 dark:text-neutral-600 dark:group-hover:text-neutral-400">
-                  {formatBytes(getSizeBytes(entry))}
-                </div>
-                <div className="w-20 text-right">
-                  {undoByLog.has(entry.id) ? (
-                    <button
-                      className="inline-flex items-center gap-1 rounded-full border border-blue-200/40 bg-white/70 px-2.5 py-1 text-[10px] font-semibold text-blue-700 shadow-sm transition-all hover:bg-white hover:text-blue-900 dark:border-cyan-500/30 dark:bg-white/5 dark:text-cyan-300 dark:hover:bg-white/10"
-                      onClick={() => {
-                        const undoEntry = undoByLog.get(entry.id);
-                        if (undoEntry) {
-                          void undoAction(undoEntry.id);
-                        }
-                      }}
-                      type="button"
-                    >
-                      <RotateCcw className="h-3 w-3" />
-                      Undo
-                    </button>
-                  ) : (
-                    <span className="text-[10px] text-slate-300 dark:text-neutral-700">—</span>
-                  )}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -209,6 +242,43 @@ function formatRuleLabel(entry: LogEntry) {
     return "Undo action";
   }
   return "Manual action";
+}
+
+function getActionVisual(actionType: string): { icon: LucideIcon; className: string } {
+  switch (actionType) {
+    case "move":
+      return { icon: ArrowRightLeft, className: "bg-blue-50 text-blue-600 dark:bg-cyan-500/10 dark:text-cyan-400" };
+    case "copy":
+      return { icon: Copy, className: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300" };
+    case "rename":
+      return { icon: Edit3, className: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-300" };
+    case "sortIntoSubfolder":
+      return { icon: FolderTree, className: "bg-blue-50 text-blue-600 dark:bg-cyan-500/10 dark:text-cyan-400" };
+    case "archive":
+      return { icon: Archive, className: "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400" };
+    case "unarchive":
+      return { icon: ArchiveRestore, className: "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400" };
+    case "delete":
+      return { icon: Trash2, className: "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" };
+    case "deletePermanently":
+      return { icon: Skull, className: "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" };
+    case "runScript":
+      return { icon: Terminal, className: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" };
+    case "notify":
+      return { icon: Bell, className: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" };
+    case "open":
+      return { icon: ExternalLink, className: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-300" };
+    case "pause":
+      return { icon: Pause, className: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-300" };
+    case "continue":
+      return { icon: FastForward, className: "bg-blue-50 text-blue-600 dark:bg-cyan-500/10 dark:text-cyan-400" };
+    case "undo":
+      return { icon: RotateCcw, className: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" };
+    case "ignore":
+      return { icon: Ban, className: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-300" };
+    default:
+      return { icon: Activity, className: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-300" };
+  }
 }
 
 function humanizeAction(value: string) {
