@@ -1,8 +1,5 @@
 import { useEffect, useMemo } from "react";
 import {
-  BarChart3,
-  Cpu,
-  FileDigit,
   Folder,
   MoreVertical,
   Moon,
@@ -17,7 +14,7 @@ import { AddFolderDialog } from "@/components/folders/AddFolderDialog";
 import { FolderList } from "@/components/folders/FolderList";
 import { RuleList } from "@/components/rules/RuleList";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { StatsModal } from "@/components/ui/StatsModal";
 import { useFolders } from "@/hooks/useFolders";
 import { useLogs } from "@/hooks/useLogs";
 import { useRules } from "@/hooks/useRules";
@@ -193,6 +190,13 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2">
+              <StatsModal
+                total={stats.total}
+                efficiency={stats.efficiency}
+                savedBytes={stats.savedBytes}
+                activeRules={rules.filter((rule) => rule.enabled).length}
+                logs={activeLogs}
+              />
               <button
                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/40 bg-white/40 text-slate-400 transition-all hover:scale-105 hover:bg-red-50 hover:text-red-600 hover:shadow-lg dark:border-white/10 dark:bg-white/5 dark:text-neutral-400 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                 onClick={() => {
@@ -215,85 +219,6 @@ function App() {
 
           <div className="custom-scrollbar flex-1 overflow-y-auto p-8 pb-20">
             <div className="mx-auto max-w-6xl space-y-12">
-              <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <GlassCard className="flex h-32 flex-col justify-between p-5" hoverEffect>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-500">
-                        Throughput
-                      </div>
-                      <div className="text-2xl font-bold text-slate-800 dark:text-white">
-                        {stats.total}{" "}
-                        <span className="text-sm font-normal text-slate-500 dark:text-neutral-500">
-                          files
-                        </span>
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-blue-50 p-2 text-blue-600 dark:bg-cyan-500/10 dark:text-cyan-400">
-                      <BarChart3 className="h-5 w-5" />
-                    </div>
-                  </div>
-                  <div className="mt-2 flex h-8 items-end gap-1">
-                    {[40, 70, 45, 90, 60, 75, 50, 80, 95, 60].map((height, index) => (
-                      <div
-                        key={index}
-                        className="flex-1 rounded-sm bg-blue-200/50 transition-colors hover:bg-blue-400 dark:bg-cyan-500/20 dark:hover:bg-cyan-400"
-                        style={{ height: `${height}%` }}
-                      />
-                    ))}
-                  </div>
-                </GlassCard>
-
-                <GlassCard className="flex h-32 flex-col justify-between p-5" hoverEffect>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-500">
-                        Efficiency
-                      </div>
-                      <div className="text-2xl font-bold text-slate-800 dark:text-white">
-                        {stats.efficiency}%
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-                      <Cpu className="h-5 w-5" />
-                    </div>
-                  </div>
-                  <div className="mt-auto">
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-emerald-500 dark:bg-emerald-400"
-                        style={{ width: `${stats.efficiency}%` }}
-                      />
-                    </div>
-                    <div className="mt-2 text-right text-[10px] text-slate-400 dark:text-neutral-500">
-                      {rules.filter((rule) => rule.enabled).length} active rules
-                    </div>
-                  </div>
-                </GlassCard>
-
-                <GlassCard className="flex h-32 flex-col justify-between p-5" hoverEffect>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-500">
-                        Storage Saved
-                      </div>
-                      <div className="text-2xl font-bold text-slate-800 dark:text-white">
-                        {formatBytes(stats.savedBytes)}
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-purple-50 p-2 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
-                      <FileDigit className="h-5 w-5" />
-                    </div>
-                  </div>
-                  <div className="mt-auto flex items-center gap-2 text-xs text-slate-500 dark:text-neutral-400">
-                    <span className="flex items-center gap-0.5 font-semibold text-green-500">
-                      +12%
-                    </span>
-                    <span>vs last week</span>
-                  </div>
-                </GlassCard>
-              </section>
-
               <RuleList />
               <ActivityLog />
             </div>
@@ -314,16 +239,4 @@ function getSizeBytes(entry: { actionDetail?: { metadata?: Record<string, string
   if (!value) return 0;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatBytes(bytes: number) {
-  if (!bytes) return "0 GB";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = bytes;
-  let unitIndex = 0;
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex += 1;
-  }
-  return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
