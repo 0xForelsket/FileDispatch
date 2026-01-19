@@ -186,13 +186,8 @@ impl ActionExecutor {
 
         let result = fs::rename(source_path, &dest_path).or_else(|err| {
             if is_cross_device_error(&err) {
-                fs_extra::file::move_file(
-                    source_path,
-                    &dest_path,
-                    &fs_extra::file::CopyOptions::new(),
-                )
-                .map(|_| ())
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+                move_fallback(source_path, &dest_path)
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
             } else {
                 Err(err)
             }
@@ -262,7 +257,19 @@ impl ActionExecutor {
             return outcome;
         }
 
-        match fs::rename(source_path, &dest_path) {
+        let result = fs::rename(source_path, &dest_path).or_else(|err| {
+            if is_windows_case_only_rename(source_path, &dest_path) {
+                temp_rename(source_path, &dest_path)
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+            } else if is_cross_device_error(&err) {
+                move_fallback(source_path, &dest_path)
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+            } else {
+                Err(err)
+            }
+        });
+
+        match result {
             Ok(_) => success_outcome(ActionType::Rename, source_path, Some(dest_path)),
             Err(err) => error_outcome(ActionType::Rename, err.to_string()),
         }
@@ -440,10 +447,51 @@ fn is_cross_device_error(err: &std::io::Error) -> bool {
     {
         err.raw_os_error() == Some(libc::EXDEV)
     }
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    {
+        const ERROR_NOT_SAME_DEVICE: i32 = 17;
+        err.raw_os_error() == Some(ERROR_NOT_SAME_DEVICE)
+    }
+    #[cfg(not(any(unix, windows)))]
     {
         false
     }
+}
+
+fn move_fallback(source: &Path, dest: &Path) -> Result<(), std::io::Error> {
+    fs_extra::file::move_file(source, dest, &fs_extra::file::CopyOptions::new())
+        .map(|_| ())
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+}
+
+fn is_windows_case_only_rename(source: &Path, dest: &Path) -> bool {
+    if !cfg!(windows) {
+        return false;
+    }
+    if source == dest {
+        return false;
+    }
+    let src = source.to_string_lossy();
+    let dst = dest.to_string_lossy();
+    src.eq_ignore_ascii_case(&dst)
+}
+
+fn temp_rename(source: &Path, dest: &Path) -> Result<(), std::io::Error> {
+    let parent = source.parent().unwrap_or_else(|| Path::new("."));
+    let stem = source.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
+    let ext = source.extension().and_then(|s| s.to_str()).unwrap_or("");
+    let temp_name = if ext.is_empty() {
+        format!("{}.rename_tmp", stem)
+    } else {
+        format!("{}.rename_tmp.{}", stem, ext)
+    };
+    let temp_path = parent.join(temp_name);
+    if temp_path.exists() {
+        fs::remove_file(&temp_path)?;
+    }
+    fs::rename(source, &temp_path)?;
+    fs::rename(&temp_path, dest)?;
+    Ok(())
 }
 
 fn prepare_destination(

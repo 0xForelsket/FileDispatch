@@ -140,17 +140,16 @@ mod tests {
     use crate::utils::file_info::FileInfo;
     use chrono::{TimeZone, Utc};
     use std::collections::HashMap;
-    use std::path::PathBuf;
-
     fn sample_info() -> FileInfo {
         let temp_path = std::env::temp_dir().join("example.txt");
-        let parent = temp_path
+        let parent_name = temp_path
             .parent()
             .and_then(|p| p.file_name())
             .and_then(|s| s.to_str())
-            .unwrap_or("temp");
+            .unwrap_or("temp")
+            .to_string();
         FileInfo {
-            path: temp_path,
+            path: temp_path.clone(),
             name: "example".to_string(),
             extension: "txt".to_string(),
             full_name: "example.txt".to_string(),
@@ -159,7 +158,7 @@ mod tests {
             modified: Utc.with_ymd_and_hms(2024, 1, 3, 4, 5, 6).unwrap(),
             added: Utc.with_ymd_and_hms(2024, 1, 4, 5, 6, 7).unwrap(),
             kind: FileKind::File,
-            parent: Some(parent.to_string()),
+            parent: Some(parent_name),
             is_dir: false,
             hash: "hash".to_string(),
         }
