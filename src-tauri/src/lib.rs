@@ -21,6 +21,7 @@ use models::Settings;
 use storage::database::Database;
 use storage::folder_repo::FolderRepository;
 use storage::log_repo::LogRepository;
+use utils::platform::normalize_user_path;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::Manager;
@@ -99,7 +100,8 @@ pub fn run() {
                 let mut watcher = state.watcher.lock().unwrap();
                 watcher.set_ignore_patterns(settings.ignore_patterns.clone());
                 for folder in folders.into_iter().filter(|f| f.enabled) {
-                    let _ = watcher.watch_folder(folder.path.into(), folder.id);
+                    let normalized = normalize_user_path(&folder.path);
+                    let _ = watcher.watch_folder(normalized, folder.id);
                 }
             }
 
