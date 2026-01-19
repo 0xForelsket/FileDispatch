@@ -19,3 +19,11 @@ jobs:
         run: bun run lint
       - name: Typecheck
         run: bun run typecheck
+
+  rust-tests-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml

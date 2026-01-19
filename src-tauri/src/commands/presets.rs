@@ -159,6 +159,8 @@ mod tests {
 
     #[test]
     fn resolves_variables_with_defaults() {
+        let temp_dir = std::env::temp_dir();
+        let temp_str = temp_dir.to_string_lossy().to_string();
         let preset = Preset {
             id: "test".to_string(),
             name: "Test".to_string(),
@@ -169,12 +171,12 @@ mod tests {
                 id: "dest".to_string(),
                 name: "Destination".to_string(),
                 var_type: "path".to_string(),
-                default: Some("/tmp".to_string()),
+                default: Some(temp_str.clone()),
             }],
             rules: vec![],
         };
         let resolved = resolve_variables(&preset, &HashMap::new()).unwrap();
-        assert_eq!(resolved.get("dest").unwrap(), "/tmp");
+        assert_eq!(resolved.get("dest").unwrap(), &temp_str);
     }
 
     #[test]
@@ -198,19 +200,26 @@ mod tests {
             })],
         };
 
+        let temp_dir = std::env::temp_dir();
+        let folder_path = temp_dir.join("folder");
+        let folder_str = folder_path.to_string_lossy().to_string();
         let mut vars = HashMap::new();
-        vars.insert("folder".to_string(), "/home/user".to_string());
+        vars.insert("folder".to_string(), folder_str.clone());
         vars.insert("keyword".to_string(), "invoice".to_string());
 
         apply_variables_to_rule(&mut rule, &vars);
-        assert_eq!(rule.name, "Move to /home/user");
+        assert_eq!(rule.name, format!("Move to {}", folder_str));
         if let Condition::Name(cond) = &rule.conditions.conditions[0] {
             assert_eq!(cond.value, "invoice");
         } else {
             panic!("expected name condition");
         }
         if let Action::Move(action) = &rule.actions[0] {
-            assert_eq!(action.destination, "/home/user/dest");
+            let expected = std::path::PathBuf::from(&folder_str)
+                .join("dest")
+                .to_string_lossy()
+                .to_string();
+            assert_eq!(action.destination, expected);
         } else {
             panic!("expected move action");
         }

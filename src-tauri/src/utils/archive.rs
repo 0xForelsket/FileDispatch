@@ -202,15 +202,15 @@ mod tests {
     #[test]
     fn detects_formats() {
         assert_eq!(
-            detect_archive_format(std::path::Path::new("/tmp/sample.zip")),
+            detect_archive_format(std::path::Path::new("sample.zip")),
             Some(ArchiveFormat::Zip)
         );
         assert_eq!(
-            detect_archive_format(std::path::Path::new("/tmp/sample.tar")),
+            detect_archive_format(std::path::Path::new("sample.tar")),
             Some(ArchiveFormat::Tar)
         );
         assert_eq!(
-            detect_archive_format(std::path::Path::new("/tmp/sample.tar.gz")),
+            detect_archive_format(std::path::Path::new("sample.tar.gz")),
             Some(ArchiveFormat::TarGz)
         );
     }

@@ -74,7 +74,7 @@ export function AddFolderDialog({
                     <div className="mt-2 flex gap-2">
                       <input
                         className="w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-sm text-[var(--fg-primary)] outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]"
-                        placeholder="/home/user/Downloads"
+                        placeholder="Select a folder..."
                         value={path}
                         onChange={(e) => setPath(e.target.value)}
                       />

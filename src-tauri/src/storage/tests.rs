@@ -11,12 +11,14 @@ fn folder_repo_crud() {
     let db = Database::new_with_path(db_path).unwrap();
     let repo = FolderRepository::new(db);
 
-    let created = repo.create("/tmp", "Temp").unwrap();
+    let folder_path = dir.path().join("watch");
+    let folder_str = folder_path.to_string_lossy().to_string();
+    let created = repo.create(&folder_str, "Temp").unwrap();
     assert_eq!(created.name, "Temp");
 
         let list = repo.list().unwrap();
         assert_eq!(list.len(), 1);
-        assert_eq!(list[0].path, "/tmp");
+        assert_eq!(list[0].path, folder_str);
         assert_eq!(list[0].rule_count, 0);
 
     repo.set_enabled(&created.id, false).unwrap();
@@ -36,7 +38,9 @@ fn rule_repo_create_list() {
     let folder_repo = FolderRepository::new(db.clone());
     let rule_repo = RuleRepository::new(db);
 
-    let folder = folder_repo.create("/tmp", "Temp").unwrap();
+    let folder_path = dir.path().join("watch");
+    let folder_str = folder_path.to_string_lossy().to_string();
+    let folder = folder_repo.create(&folder_str, "Temp").unwrap();
 
     let rule = Rule {
         id: "".to_string(),

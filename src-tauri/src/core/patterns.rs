@@ -143,8 +143,14 @@ mod tests {
     use std::path::PathBuf;
 
     fn sample_info() -> FileInfo {
+        let temp_path = std::env::temp_dir().join("example.txt");
+        let parent = temp_path
+            .parent()
+            .and_then(|p| p.file_name())
+            .and_then(|s| s.to_str())
+            .unwrap_or("temp");
         FileInfo {
-            path: PathBuf::from("/tmp/example.txt"),
+            path: temp_path,
             name: "example".to_string(),
             extension: "txt".to_string(),
             full_name: "example.txt".to_string(),
@@ -153,7 +159,7 @@ mod tests {
             modified: Utc.with_ymd_and_hms(2024, 1, 3, 4, 5, 6).unwrap(),
             added: Utc.with_ymd_and_hms(2024, 1, 4, 5, 6, 7).unwrap(),
             kind: FileKind::File,
-            parent: Some("tmp".to_string()),
+            parent: Some(parent.to_string()),
             is_dir: false,
             hash: "hash".to_string(),
         }
@@ -166,7 +172,8 @@ mod tests {
         let captures = HashMap::new();
 
         let result = engine.resolve("{name}.{ext}-{parent}", &info, &captures);
-        assert_eq!(result, "example.txt-tmp");
+        let expected_parent = info.parent.clone().unwrap_or_default();
+        assert_eq!(result, format!("example.txt-{}", expected_parent));
     }
 
     #[test]
