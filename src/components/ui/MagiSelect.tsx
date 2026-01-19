@@ -49,8 +49,8 @@ export function MagiSelect({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`flex w-full items-center justify-between border ${
-          isOpen ? "border-[var(--fg-primary)]" : "border-[var(--border-dim)]"
-        } bg-[var(--bg-panel)] px-2 py-1 text-left text-xs font-bold text-[var(--fg-primary)] hover:border-[var(--fg-primary)] focus:outline-none transition-colors rounded-[var(--radius)]`}
+          isOpen ? "border-[var(--accent)]" : "border-[var(--border-main)]"
+        } bg-[var(--bg-panel)] px-2 py-1 text-left text-xs font-medium text-[var(--fg-primary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] focus:outline-none transition-colors rounded-[var(--radius)]`}
         style={{ fontFamily: "inherit" }}
       >
         <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
@@ -63,7 +63,7 @@ export function MagiSelect({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-1 max-h-60 w-full overflow-auto border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-xl rounded-[var(--radius)]">
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-60 w-full overflow-auto border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)] rounded-[var(--radius)]">
           {options.map((option) => (
             <button
               key={option.value}
@@ -72,10 +72,10 @@ export function MagiSelect({
                 onChange(option.value);
                 setIsOpen(false);
               }}
-              className={`block w-full px-2 py-1.5 text-left text-xs font-bold transition-colors uppercase ${
+              className={`block w-full px-2 py-1.5 text-left text-xs font-medium transition-colors ${
                 option.value === value
-                  ? "bg-[var(--fg-primary)] text-[var(--bg-panel)]"
-                  : "text-[var(--fg-primary)] hover:bg-[var(--border-dim)] hover:text-white"
+                  ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+                  : "text-[var(--fg-primary)] hover:bg-[var(--accent-muted)]"
               }`}
               style={{ fontFamily: "inherit" }}
             >

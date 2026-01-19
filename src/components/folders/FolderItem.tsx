@@ -19,10 +19,10 @@ export function FolderItem({
 }: FolderItemProps) {
   return (
     <div
-      className={`group flex items-center justify-between px-2 py-1 font-mono text-xs cursor-pointer select-none border-l-2 transition-colors ${
+      className={`group flex items-center justify-between gap-2 rounded-[var(--radius)] border px-3 py-2 text-xs cursor-pointer select-none transition-colors mb-1 ${
         selected
-          ? "bg-[var(--selection-bg)] text-[var(--selection-fg)] border-[var(--selection-bg)]"
-          : "text-[var(--fg-primary)] border-transparent hover:bg-[var(--fg-primary)] hover:text-[var(--bg-panel)] hover:border-[var(--fg-primary)]"
+          ? "bg-[var(--accent-muted)] text-[var(--fg-primary)] border-[var(--accent)]"
+          : "text-[var(--fg-primary)] border-transparent hover:border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
       }`}
     >
       <button
@@ -30,29 +30,29 @@ export function FolderItem({
         onClick={onSelect}
         type="button"
       >
-        <Folder className="h-4 w-4" />
+        <Folder className="h-4 w-4 text-[var(--fg-muted)]" />
         <div className="min-w-0 flex-1">
           <div
-            className={`flex items-center gap-2 truncate font-bold tracking-wider ${
+            className={`flex items-center gap-2 truncate text-sm font-semibold ${
               folder.enabled ? "" : "opacity-50"
             }`}
           >
-            {folder.name.toUpperCase()}
+            {folder.name}
             {ruleCount && ruleCount > 0 ? (
-              <span className="opacity-80 text-[10px]">
-                [{ruleCount.toString().padStart(2, '0')}]
+              <span className="rounded-full bg-[var(--bg-subtle)] px-2 py-0.5 text-[10px] text-[var(--fg-muted)]">
+                {ruleCount}
               </span>
             ) : null}
           </div>
-          <div className="mt-0.5 truncate text-[9px] opacity-70">
+          <div className="mt-0.5 truncate text-[10px] text-[var(--fg-muted)]">
             {folder.path}
           </div>
         </div>
       </button>
       <div className="pl-2">
         <button
-          className={`h-3 w-3 border flex items-center justify-center ${
-              folder.enabled ? "border-[var(--fg-secondary)]" : "border-[var(--fg-alert)]"
+          className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${
+            folder.enabled ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--border-main)] bg-[var(--bg-panel)]"
           }`}
           title={folder.enabled ? "Disable watcher" : "Enable watcher"}
           onClick={(e) => {
@@ -61,8 +61,8 @@ export function FolderItem({
           }}
           type="button"
         >
-           <div className={`w-1.5 h-1.5 ${
-               folder.enabled ? "bg-[var(--fg-secondary)]" : "bg-transparent"
+           <div className={`h-1.5 w-1.5 rounded-sm ${
+               folder.enabled ? "bg-[var(--accent-contrast)]" : "bg-transparent"
            }`} />
         </button>
       </div>

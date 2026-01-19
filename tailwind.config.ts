@@ -7,9 +7,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["\"Arial Black\"", "Impact", "sans-serif"], /* Large Headers */
-        serif: ["\"Times New Roman\"", "serif"], /* Title Cards */
-        mono: ["\"Courier New\"", "monospace"], /* Data */
+        sans: ["var(--font-stack)", "ui-sans-serif", "system-ui", "sans-serif"],
+        serif: ["\"Times New Roman\"", "serif"],
+        mono: ["\"IBM Plex Mono\"", "\"SF Mono\"", "ui-monospace", "monospace"],
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -28,11 +28,11 @@ export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
 
   return (
     <div className="space-y-6">
-      {showTitle ? <h2 className="text-lg font-semibold">Settings</h2> : null}
+      {showTitle ? <h2 className="text-lg font-semibold text-[var(--fg-primary)]">Settings</h2> : null}
 
       <section>
-        <h3 className="mb-4 text-sm font-bold text-slate-900 dark:text-neutral-200">
-          Startup Behavior
+        <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
+          Startup behavior
         </h3>
         <div className="space-y-3">
           <SettingToggle
@@ -63,11 +63,11 @@ export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
       </section>
 
       <section>
-        <h3 className="mb-4 text-sm font-bold text-slate-900 dark:text-neutral-200">Theme</h3>
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200/50 p-3 dark:border-white/5">
+        <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">Theme</h3>
+        <div className="flex items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-3">
           <div>
-            <div className="font-medium text-slate-700 dark:text-neutral-300">Appearance</div>
-            <div className="text-xs text-slate-500 dark:text-neutral-500">
+            <div className="font-medium text-[var(--fg-primary)]">Appearance</div>
+            <div className="text-xs text-[var(--fg-muted)]">
               Match your system or pick a theme
             </div>
           </div>
@@ -79,8 +79,9 @@ export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
               void saveSettings();
             }}
             options={[
-              { label: "MAGI (Classic)", value: "classic" },
-              { label: "Standard (Minimal)", value: "standard" },
+              { label: "System", value: "system" },
+              { label: "Magi", value: "magi" },
+              { label: "Light", value: "light" },
               { label: "Dark", value: "dark" },
             ]}
           />
@@ -88,7 +89,7 @@ export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
       </section>
 
       <section>
-        <h3 className="mb-4 text-sm font-bold text-slate-900 dark:text-neutral-200">
+        <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
           Notifications
         </h3>
         <div className="space-y-3">
@@ -105,13 +106,13 @@ export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
       </section>
 
       <section>
-        <h3 className="mb-4 text-sm font-bold text-slate-900 dark:text-neutral-200">
+        <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
           Performance
         </h3>
         <div className="space-y-3">
           <SettingRow title="Debounce (ms)" description="Delay before processing changes">
             <input
-              className="w-24 rounded-lg border border-slate-200/60 bg-white/60 px-2 py-1 text-sm text-slate-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-neutral-300"
+              className="w-24 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-sm text-[var(--fg-primary)] shadow-[var(--shadow-sm)] outline-none transition-colors focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]"
               type="number"
               min={100}
               value={settings.debounceMs}
@@ -134,11 +135,11 @@ export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
       </section>
 
       <section>
-        <h3 className="mb-4 text-sm font-bold text-slate-900 dark:text-neutral-200">
-          Ignore Patterns
+        <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
+          Ignore patterns
         </h3>
         <textarea
-          className="w-full rounded-xl border border-slate-200/60 bg-white/60 p-3 text-sm text-slate-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-neutral-300"
+          className="w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] p-3 text-sm text-[var(--fg-primary)] shadow-[var(--shadow-sm)] outline-none transition-colors focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]"
           rows={3}
           value={settings.ignorePatterns.join("\n")}
           onChange={(e) => {
@@ -149,12 +150,12 @@ export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
       </section>
 
       <section>
-        <h3 className="mb-4 text-sm font-bold text-slate-900 dark:text-neutral-200">
-          Log Retention
+        <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
+          Log retention
         </h3>
         <SettingRow title="Log retention (days)" description="How long to keep history">
           <input
-            className="w-24 rounded-lg border border-slate-200/60 bg-white/60 px-2 py-1 text-sm text-slate-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-neutral-300"
+            className="w-24 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-sm text-[var(--fg-primary)] shadow-[var(--shadow-sm)] outline-none transition-colors focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]"
             type="number"
             min={1}
             value={settings.logRetentionDays}
@@ -190,23 +191,23 @@ function SettingToggle({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-all ${
+      className={`flex w-full items-center justify-between rounded-[var(--radius)] border p-3 text-left transition-all ${
         highlight
-          ? "border-blue-500/20 bg-blue-50/50 dark:border-cyan-500/30 dark:bg-cyan-500/5"
-          : "border-transparent hover:border-slate-200 hover:bg-slate-50 dark:hover:border-white/5 dark:hover:bg-white/5"
+          ? "border-[var(--accent)] bg-[var(--accent-muted)]"
+          : "border-transparent hover:border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
       }`}
     >
       <div>
-        <div className="font-medium text-slate-700 dark:text-neutral-300">{title}</div>
-        <div className="text-xs text-slate-500 dark:text-neutral-500">{description}</div>
+        <div className="font-medium text-[var(--fg-primary)]">{title}</div>
+        <div className="text-xs text-[var(--fg-muted)]">{description}</div>
       </div>
       <span
-        className={`relative h-6 w-10 rounded-full transition-all ${
-          checked ? "bg-blue-500 dark:bg-cyan-600" : "bg-slate-200 dark:bg-neutral-800"
+        className={`relative h-6 w-10 rounded-full border border-[var(--border-main)] transition-all ${
+          checked ? "bg-[var(--accent)]" : "bg-[var(--bg-panel)]"
         }`}
       >
         <span
-          className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${
+          className={`absolute top-1 h-4 w-4 rounded-full border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-sm transition-all ${
             checked ? "right-1" : "left-1"
           }`}
         />
@@ -223,10 +224,10 @@ interface SettingRowProps {
 
 function SettingRow({ title, description, children }: SettingRowProps) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200/50 p-3 dark:border-white/5">
+    <div className="flex items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-3">
       <div>
-        <div className="font-medium text-slate-700 dark:text-neutral-300">{title}</div>
-        <div className="text-xs text-slate-500 dark:text-neutral-500">{description}</div>
+        <div className="font-medium text-[var(--fg-primary)]">{title}</div>
+        <div className="text-xs text-[var(--fg-muted)]">{description}</div>
       </div>
       {children}
     </div>

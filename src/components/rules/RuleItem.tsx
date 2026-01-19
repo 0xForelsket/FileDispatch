@@ -43,28 +43,27 @@ export function RuleItem({
   return (
     <div
       onClick={onEdit}
-      className={`group flex items-center gap-2 px-2 py-1 font-mono text-xs cursor-pointer select-none border-l-2 ${
+      className={`group flex items-start gap-3 rounded-[var(--radius)] border px-3 py-2 text-xs cursor-pointer select-none transition-colors mb-1 ${
         selected
-          ? "bg-[var(--selection-bg)] text-[var(--selection-fg)] border-[var(--selection-bg)]"
-          : "text-[var(--fg-primary)] border-transparent hover:bg-[var(--fg-primary)] hover:text-[var(--bg-panel)] hover:border-[var(--fg-primary)]"
+          ? "bg-[var(--accent-muted)] text-[var(--fg-primary)] border-[var(--accent)]"
+          : "text-[var(--fg-primary)] border-transparent hover:border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
       } ${!rule.enabled ? "opacity-50 grayscale" : ""}`}
     >
-      {/* Checkbox (Hex Style) */}
-      <div 
+      <div
         onClick={(e) => {
             e.stopPropagation();
             onToggle(!rule.enabled);
         }}
-        className={`w-3 h-3 shrink-0 border border-current flex items-center justify-center cursor-pointer ${
-            rule.enabled ? "bg-current" : ""
+        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-[var(--border-strong)] transition-colors ${
+            rule.enabled ? "bg-[var(--accent)] border-[var(--accent)]" : "bg-[var(--bg-panel)]"
         }`}
       >
-          {rule.enabled && <div className="w-1.5 h-1.5 bg-[var(--bg-panel)]" />}
+          {rule.enabled && <div className="h-1.5 w-1.5 rounded-sm bg-[var(--accent-contrast)]" />}
       </div>
 
       <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
-        <span className="truncate font-bold tracking-wider">{rule.name.toUpperCase()}</span>
-        <span className="truncate text-[9px] opacity-80 leading-tight">
+        <span className="truncate text-sm font-semibold">{rule.name}</span>
+        <span className="truncate text-[10px] leading-tight text-[var(--fg-muted)]">
           {triggerSummary} &gt;&gt; {actionSummary}
         </span>
       </div>
@@ -73,7 +72,7 @@ export function RuleItem({
          <div className="flex items-center gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="text-[var(--selection-fg)] hover:text-[var(--bg-panel)] hover:bg-[var(--fg-alert)] rounded-sm px-1"
+              className="rounded-[var(--radius)] px-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--fg-alert)] hover:text-[var(--fg-inverse)]"
             >
                 <Trash2 className="h-3 w-3" />
             </button>

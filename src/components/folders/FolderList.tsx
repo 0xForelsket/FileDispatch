@@ -14,14 +14,11 @@ export function FolderList() {
 
 
   return (
-    <div className="h-full flex flex-col font-mono">
+    <div className="h-full flex flex-col">
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {folders.length === 0 ? (
-          <div className="px-4 py-8 text-center text-xs text-[var(--fg-primary)] border border-dashed border-[var(--border-dim)] m-2">
-            <div className="font-bold text-sm tracking-widest mb-2">NO DATA</div>
-            <div className="mt-1 text-[10px] opacity-70">
-              INITIALIZE FOLDER WATCHER
-            </div>
+          <div className="m-2 rounded-[var(--radius)] border border-dashed border-[var(--border-main)] px-4 py-6 text-center text-xs text-[var(--fg-muted)]">
+            No folders yet. Add one to start watching.
           </div>
         ) : (
           folders.map((folder) => (

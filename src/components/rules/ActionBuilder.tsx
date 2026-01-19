@@ -33,7 +33,7 @@ const conflictOptions: { value: ConflictResolution; label: string }[] = [
 ];
 
 const fieldClass =
-  "rounded-none bg-black border border-[var(--border-dim)] px-2 py-1 text-sm text-[var(--fg-primary)] font-bold font-mono shadow-none outline-none focus:border-[var(--fg-primary)] focus:text-[var(--fg-primary)] transition-colors";
+  "rounded-[var(--radius)] bg-[var(--bg-panel)] border border-[var(--border-main)] px-2 py-1 text-sm text-[var(--fg-primary)] shadow-none outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]";
 const longFieldClass = `${fieldClass} min-w-[220px]`;
 
 export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
@@ -54,7 +54,10 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
   return (
     <div className="space-y-3">
       {actions.map((action, index) => (
-        <div key={index} className="p-3 magi-border-sm bg-black relative hover:border-[var(--fg-secondary)] transition-colors">
+        <div
+          key={index}
+          className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-3 transition-colors hover:border-[var(--border-strong)]"
+        >
           <div className="flex flex-wrap items-center gap-2">
             <MagiSelect
               width="w-40"
@@ -64,7 +67,7 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
             />
             {renderActionFields(action, (updated) => updateAction(index, updated))}
             <button
-              className="ml-auto p-1 text-[var(--fg-alert)] hover:bg-[var(--fg-alert)] hover:text-black"
+              className="ml-auto rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--fg-primary)]"
               onClick={() => removeAction(index)}
               type="button"
               aria-label="Remove action"
@@ -75,12 +78,12 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
         </div>
       ))}
       <button
-        className="flex items-center gap-2 px-3 py-1.5 bg-black border border-[var(--fg-secondary)] text-[var(--fg-secondary)] hover:bg-[var(--fg-secondary)] hover:text-black text-xs font-bold font-mono tracking-wider uppercase"
+        className="flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-xs font-semibold text-[var(--fg-primary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)]"
         type="button"
         onClick={() => addAction()}
       >
         <Plus className="h-3 w-3" />
-        Execute Action
+        Add action
       </button>
     </div>
   );
@@ -158,8 +161,9 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
           options={conflictOptions}
         />
         {action.type !== "sortIntoSubfolder" ? (
-          <label className="flex items-center gap-2 text-[11px] text-gray-600">
+          <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
             <input
+              className="accent-[var(--accent)]"
               type="checkbox"
               checked={action.skipDuplicates}
               onChange={(e) => onChange({ ...action, skipDuplicates: e.target.checked })}
@@ -216,8 +220,9 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
             { label: "tar.gz", value: "tarGz" },
           ]}
         />
-        <label className="flex items-center gap-2 text-[11px] text-gray-600">
+        <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
           <input
+            className="accent-[var(--accent)]"
             type="checkbox"
             checked={action.deleteAfter}
             onChange={(e) => onChange({ ...action, deleteAfter: e.target.checked })}
@@ -239,8 +244,9 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
             onChange({ ...action, destination: e.target.value || undefined })
           }
         />
-        <label className="flex items-center gap-2 text-[11px] text-gray-600">
+        <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
           <input
+            className="accent-[var(--accent)]"
             type="checkbox"
             checked={action.deleteAfter}
             onChange={(e) => onChange({ ...action, deleteAfter: e.target.checked })}
@@ -285,7 +291,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
             onChange({ ...action, durationSeconds: Number(e.target.value) })
           }
         />
-        <span className="text-[11px] text-gray-600">seconds</span>
+        <span className="text-[11px] text-[var(--fg-secondary)]">seconds</span>
       </>
     );
   }

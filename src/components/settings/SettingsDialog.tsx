@@ -38,12 +38,12 @@ export function SettingsDialog({ compact = false }: SettingsDialogProps) {
       ? createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
             <div
-              className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm dark:bg-black/40"
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
               onClick={() => setOpen(false)}
             />
-            <div className="relative flex h-[600px] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/20 bg-white/80 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-[#0f0f0f]/90 md:flex-row">
-              <div className="flex w-full flex-col border-b border-slate-200/50 bg-slate-50/50 p-4 dark:border-white/5 dark:bg-black/20 md:w-64 md:border-b-0 md:border-r">
-                <h2 className="mb-4 px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-neutral-500">
+            <div className="relative flex h-[600px] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)] md:flex-row">
+              <div className="flex w-full flex-col border-b border-[var(--border-main)] bg-[var(--bg-subtle)] p-4 md:w-64 md:border-b-0 md:border-r">
+                <h2 className="mb-4 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--fg-muted)]">
                   Settings
                 </h2>
                 <nav className="space-y-1">
@@ -51,10 +51,10 @@ export function SettingsDialog({ compact = false }: SettingsDialogProps) {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                      className={`flex w-full items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-medium transition-all ${
                         activeTab === tab.id
-                          ? "border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-400"
-                          : "text-slate-600 hover:bg-slate-100 dark:text-neutral-400 dark:hover:bg-white/5"
+                          ? "border border-[var(--accent)] bg-[var(--accent-muted)] text-[var(--fg-primary)]"
+                          : "text-[var(--fg-secondary)] hover:bg-[var(--bg-panel)] hover:text-[var(--fg-primary)]"
                       }`}
                       type="button"
                     >
@@ -64,13 +64,13 @@ export function SettingsDialog({ compact = false }: SettingsDialogProps) {
                   ))}
                 </nav>
                 <div className="mt-auto pt-4">
-                  <div className="flex items-center gap-3 rounded-xl border border-slate-200/50 bg-white/60 px-3 py-2 dark:border-white/5 dark:bg-white/5">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500" />
+                  <div className="flex items-center gap-3 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-2">
+                    <div className="h-8 w-8 rounded-full bg-[var(--accent)]" />
                     <div>
-                      <div className="text-sm font-bold text-slate-700 dark:text-neutral-200">
+                      <div className="text-sm font-semibold text-[var(--fg-primary)]">
                         Local User
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-neutral-500">
+                      <div className="text-xs text-[var(--fg-muted)]">
                         Pro License
                       </div>
                     </div>
@@ -78,20 +78,20 @@ export function SettingsDialog({ compact = false }: SettingsDialogProps) {
                 </div>
               </div>
 
-              <div className="flex flex-1 flex-col bg-white/40 dark:bg-transparent">
-                <div className="flex items-center justify-between border-b border-slate-200/50 p-6 dark:border-white/5">
+              <div className="flex flex-1 flex-col">
+                <div className="flex items-center justify-between border-b border-[var(--border-main)] p-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                    <h2 className="text-2xl font-semibold text-[var(--fg-primary)]">
                       {tabs.find((tab) => tab.id === activeTab)?.label}
                     </h2>
-                    <p className="text-sm text-slate-500 dark:text-neutral-500">
+                    <p className="text-sm text-[var(--fg-muted)]">
                       Manage your{" "}
                       {tabs.find((tab) => tab.id === activeTab)?.label.toLowerCase()} preferences
                     </p>
                   </div>
                   <button
                     onClick={() => setOpen(false)}
-                    className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-neutral-500 dark:hover:bg-white/10 dark:hover:text-white"
+                    className="rounded-[var(--radius)] p-2 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
                     type="button"
                   >
                     <X className="h-5 w-5" />
@@ -101,22 +101,22 @@ export function SettingsDialog({ compact = false }: SettingsDialogProps) {
                   {activeTab === "general" ? (
                     <SettingsPanel showTitle={false} />
                   ) : (
-                    <div className="rounded-xl border border-dashed border-slate-200/60 p-6 text-sm text-slate-500 dark:border-white/10 dark:text-neutral-500">
+                    <div className="rounded-[var(--radius)] border border-dashed border-[var(--border-main)] p-6 text-sm text-[var(--fg-muted)]">
                       This section is coming soon.
                     </div>
                   )}
                 </div>
-                <div className="flex justify-end gap-3 border-t border-slate-200/50 bg-slate-50/50 p-4 dark:border-white/5 dark:bg-black/20">
+                <div className="flex justify-end gap-3 border-t border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
                   <button
                     onClick={() => setOpen(false)}
-                    className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-neutral-400 dark:hover:text-white"
+                    className="text-sm font-medium text-[var(--fg-secondary)] transition-colors hover:text-[var(--fg-primary)]"
                     type="button"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => setOpen(false)}
-                    className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-700 dark:bg-cyan-600 dark:shadow-cyan-500/20 dark:hover:bg-cyan-500"
+                    className="rounded-[var(--radius)] bg-[var(--accent)] px-6 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-[var(--shadow-sm)] transition-all hover:opacity-90"
                     type="button"
                   >
                     Save Changes
@@ -133,7 +133,7 @@ export function SettingsDialog({ compact = false }: SettingsDialogProps) {
     <>
       {compact ? (
         <button
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-[#8c8780] transition-colors hover:border-[#2a2b31] hover:text-[#cfc9bf]"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius)] border border-[var(--border-main)] text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
           onClick={() => setOpen(true)}
           type="button"
           title={`Settings (${shortcutLabel})`}
@@ -142,13 +142,13 @@ export function SettingsDialog({ compact = false }: SettingsDialogProps) {
         </button>
       ) : (
         <button
-          className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-600 transition-all hover:bg-white/60 hover:text-slate-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white"
+          className="flex w-full items-center gap-2 rounded-[var(--radius)] px-2.5 py-2 text-xs font-semibold text-[var(--fg-secondary)] transition-all hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
           onClick={() => setOpen(true)}
           type="button"
         >
           <Settings className="h-4 w-4" />
           Settings
-          <kbd className="ml-auto rounded-md border border-white/60 bg-white/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400">
+          <kbd className="ml-auto rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--fg-muted)]">
             {shortcutLabel}
           </kbd>
         </button>

@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 import { settingsGet, settingsUpdate } from "@/lib/tauri";
 
-export type ThemeMode = "light" | "dark" | "system" | "classic" | "standard";
+export type ThemeMode = "light" | "dark" | "system" | "magi";
 
 export interface AppSettings {
   startAtLogin: boolean;
@@ -42,7 +42,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   loadSettings: async () => {
     try {
       const settings = await settingsGet();
-      set({ settings: { ...defaultSettings, ...settings } });
+      const merged = { ...defaultSettings, ...settings };
+      set({ settings: { ...merged, theme: normalizeTheme(merged.theme) } });
     } catch {
       set({ settings: defaultSettings });
     }
@@ -55,3 +56,19 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 }));
+
+function normalizeTheme(value: unknown): ThemeMode {
+  switch (value) {
+    case "magi":
+    case "light":
+    case "dark":
+    case "system":
+      return value;
+    case "classic":
+      return "magi";
+    case "standard":
+      return "light";
+    default:
+      return "system";
+  }
+}

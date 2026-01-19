@@ -44,41 +44,42 @@ export function AddFolderDialog({
   const modal =
     isOpen && typeof document !== "undefined"
       ? createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 font-sans">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
             <div
-              className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
               onClick={() => setIsOpen(false)}
             />
-            <div className="relative w-full max-w-md overflow-hidden bevel-out bg-panel p-1 shadow-2xl">
-              <div className="flex items-center justify-between bg-header px-2 py-1 select-none mb-4">
-                 <span className="text-xs font-bold text-fg-header tracking-wide">Add Folder</span>
-                 <button className="bg-panel bevel-out active:bevel-in p-0.5" onClick={() => setIsOpen(false)}>
-                    <X className="h-3 w-3 text-black" /> 
+            <div className="relative w-full max-w-md overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]">
+              <div className="flex items-center justify-between border-b border-[var(--border-main)] px-4 py-3">
+                 <div>
+                  <h2 className="text-lg font-semibold text-[var(--fg-primary)]">Add folder</h2>
+                  <p className="text-[11px] text-[var(--fg-muted)]">
+                    Watch a new location for automatic sorting.
+                  </p>
+                 </div>
+                 <button
+                   className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                   onClick={() => setIsOpen(false)}
+                   type="button"
+                 >
+                    <X className="h-4 w-4" />
                  </button>
               </div>
-              <div className="px-4 pb-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="text-lg font-bold text-black font-sans">Add Folder</h2>
-                    <p className="text-[11px] text-gray-600">
-                      Watch a new location for automatic sorting.
-                    </p>
-                  </div>
-                </div>
+              <div className="px-4 pb-4 pt-4">
                 <div className="mt-5 space-y-4">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
-                      Folder Path
+                    <label className="text-[11px] font-semibold text-[var(--fg-secondary)]">
+                      Folder path
                     </label>
                     <div className="mt-2 flex gap-2">
                       <input
-                        className="w-full bevel-in bg-white px-2 py-1 text-sm text-black outline-none transition-none focus:ring-0"
+                        className="w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-sm text-[var(--fg-primary)] outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]"
                         placeholder="/home/user/Downloads"
                         value={path}
                         onChange={(e) => setPath(e.target.value)}
                       />
                       <button
-                        className="px-3 bevel-out active:bevel-in bg-panel text-[11px] font-bold text-black active:translate-y-[1px]"
+                        className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1 text-[11px] font-semibold text-[var(--fg-primary)] transition-colors hover:bg-[var(--bg-subtle)]"
                         onClick={handlePick}
                         type="button"
                       >
@@ -87,11 +88,11 @@ export function AddFolderDialog({
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
-                      Display Name
+                    <label className="text-[11px] font-semibold text-[var(--fg-secondary)]">
+                      Display name
                     </label>
                     <input
-                      className="mt-2 w-full bevel-in bg-white px-2 py-1 text-sm text-black outline-none transition-none focus:ring-0"
+                      className="mt-2 w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-sm text-[var(--fg-primary)] outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]"
                       placeholder="Downloads"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
@@ -100,18 +101,18 @@ export function AddFolderDialog({
                 </div>
                 <div className="mt-6 flex justify-end gap-3">
                   <button
-                    className="px-4 py-1.5 bevel-out active:bevel-in bg-panel text-[11px] font-bold text-black active:translate-y-[1px]"
+                    className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-4 py-1.5 text-[11px] font-semibold text-[var(--fg-primary)] transition-colors hover:bg-[var(--bg-subtle)]"
                     onClick={() => setIsOpen(false)}
                     type="button"
                   >
                     Cancel
                   </button>
                   <button
-                    className="px-4 py-1.5 bevel-out active:bevel-in bg-panel text-[11px] font-bold text-black active:translate-y-[1px]"
+                    className="rounded-[var(--radius)] border border-[var(--accent)] bg-[var(--accent)] px-4 py-1.5 text-[11px] font-semibold text-[var(--accent-contrast)] transition-colors hover:opacity-90"
                     onClick={handleSave}
                     type="button"
                   >
-                    Add Folder
+                    Add folder
                   </button>
                 </div>
               </div>
@@ -126,7 +127,7 @@ export function AddFolderDialog({
       <button
         className={
           className ??
-          "flex items-center gap-2 bevel-out active:bevel-in bg-panel px-3 py-1.5 text-sm text-black active:translate-y-[1px]"
+          "flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-sm font-semibold text-[var(--fg-primary)] transition-colors hover:bg-[var(--bg-subtle)]"
         }
         onClick={() => setIsOpen(true)}
         type="button"

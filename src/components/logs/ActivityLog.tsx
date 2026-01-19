@@ -19,7 +19,12 @@ import { useRuleStore } from "@/stores/ruleStore";
 import type { LogEntry, LogStatus } from "@/types";
 import { MagiSelect } from "@/components/ui/MagiSelect";
 
-export function ActivityLog() {
+interface ActivityLogProps {
+  onToggleExpand?: () => void;
+  expanded?: boolean;
+}
+
+export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogProps) {
   const entries = useLogStore((state) => state.entries);
   const undoEntries = useLogStore((state) => state.undoEntries);
   const undoAction = useLogStore((state) => state.undoAction);
@@ -63,17 +68,17 @@ export function ActivityLog() {
 
   return (
     <section className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b-2 border-[var(--border-main)] px-4 py-3 bg-black">
+      <div className="flex items-center justify-between border-b border-[var(--border-main)] bg-[var(--bg-panel)] px-4 py-3">
         <div className="flex items-center gap-3 text-[var(--fg-primary)]">
           <Activity className="h-5 w-5" />
-          <span className="text-2xl uppercase eva-title tracking-normal">EVENT STREAM</span>
+          <span className="text-sm font-semibold">Activity log</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="group relative">
-            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#6f6a62] group-focus-within:text-[#c07a46]" />
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[var(--fg-muted)] group-focus-within:text-[var(--fg-primary)]" />
             <input
-              className="w-48 rounded-none border border-[var(--border-dim)] bg-[var(--bg-panel)] py-1 pl-8 pr-2 text-xs font-mono font-bold text-[var(--fg-primary)] outline-none transition focus:border-[var(--fg-primary)] focus:bg-[var(--fg-primary)] focus:text-[var(--bg-panel)] placeholder:text-[var(--border-dim)]"
-              placeholder="SEARCH LOGS..."
+              className="w-48 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] py-1 pl-8 pr-2 text-xs text-[var(--fg-primary)] outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]"
+              placeholder="Search logs…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -84,7 +89,7 @@ export function ActivityLog() {
               value={ruleFilter}
               onChange={(val) => setRuleFilter(val)}
               options={[
-                { label: "RULE: ALL", value: "all" },
+                { label: "Rule: All", value: "all" },
                 ...ruleOptions.map(name => ({ label: name, value: name }))
               ]}
             />
@@ -95,18 +100,27 @@ export function ActivityLog() {
                value={statusFilter}
                onChange={(val) => setStatusFilter(val as LogStatus | "all")}
                options={[
-                  { label: "STATUS: ALL", value: "all" },
-                  { label: "SUCCESS", value: "success" },
-                  { label: "ERROR", value: "error" },
-                  { label: "SKIPPED", value: "skipped" }
+                  { label: "Status: All", value: "all" },
+                  { label: "Success", value: "success" },
+                  { label: "Error", value: "error" },
+                  { label: "Skipped", value: "skipped" }
                ]}
             />
           </div>
+          {onToggleExpand ? (
+            <button
+              onClick={onToggleExpand}
+              className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-xs font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+              type="button"
+            >
+              {expanded ? "Minimize" : "Expand"}
+            </button>
+          ) : null}
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden bg-black/80">
-        <div className="flex items-center border-b border-[var(--border-dim)] px-4 py-2 text-xs font-bold uppercase tracking-widest text-[var(--fg-primary)] bg-black/50">
+      <div className="flex flex-1 flex-col overflow-hidden bg-[var(--bg-panel)]">
+        <div className="flex items-center border-b border-[var(--border-main)] bg-[var(--bg-subtle)] px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-secondary)]">
           <div className="w-24">Time</div>
           <div className="w-24">Status</div>
           <div className="flex-1">Action</div>
@@ -115,7 +129,7 @@ export function ActivityLog() {
         </div>
         <div className="custom-scrollbar flex-1 overflow-y-auto">
           {filteredEntries.length === 0 ? (
-            <div className="px-4 py-6 text-center text-xs text-[#7f7a73]">
+            <div className="px-4 py-6 text-center text-xs text-[var(--fg-muted)]">
               No events yet.
             </div>
           ) : (
@@ -125,34 +139,34 @@ export function ActivityLog() {
               return (
                 <div
                   key={entry.id}
-                  className="group flex items-center border-b border-[var(--border-dim)] border-dashed px-4 py-2 text-xs font-mono text-[var(--fg-primary)] hover:bg-[var(--fg-primary)] hover:text-black transition-colors"
+                  className="group flex items-center border-b border-[var(--border-main)] px-4 py-2 text-xs text-[var(--fg-primary)] transition-colors hover:bg-[var(--bg-subtle)]"
                 >
-                  <div className="w-24 font-bold opacity-80 group-hover:opacity-100">{formatTime(entry.createdAt)}</div>
+                  <div className="w-24 font-semibold text-[var(--fg-secondary)]">{formatTime(entry.createdAt)}</div>
                   <div className="w-24">
-                    <StatusPill status={entry.status} label={entry.actionType} />
+                    <StatusPill status={entry.status} label={humanizeAction(entry.actionType)} />
                   </div>
                   <div className="flex-1 pr-4">
                     <div className="flex items-center gap-3">
                       <span
-                        className={`inline-flex h-6 w-6 items-center justify-center border border-current ${visual.className}`}
+                        className={`inline-flex h-6 w-6 items-center justify-center rounded-[var(--radius)] border border-[var(--border-main)] ${visual.className}`}
                       >
                         <Icon className="h-3.5 w-3.5" />
                       </span>
                       <div className="min-w-0 flex flex-col justify-center">
-                        <div className="truncate font-bold uppercase">{formatOperation(entry)}</div>
-                        <div className="text-[10px] opacity-70 group-hover:text-black mt-0.5">
+                        <div className="truncate font-semibold">{formatOperation(entry)}</div>
+                        <div className="mt-0.5 text-[10px] text-[var(--fg-muted)]">
                           {formatRuleLabel(entry)}
                         </div>
                       </div>
                     </div>
                   </div>
-                  <div className="w-20 text-right font-bold opacity-80 group-hover:opacity-100">
+                  <div className="w-20 text-right text-[var(--fg-secondary)] font-semibold">
                     {formatBytes(getSizeBytes(entry))}
                   </div>
                   <div className="w-20 text-right">
                     {undoByLog.has(entry.id) ? (
                       <button
-                        className="inline-flex items-center gap-1 border border-current px-2 py-0.5 text-[10px] font-bold uppercase hover:bg-[var(--bg-panel)] hover:text-[var(--fg-primary)] transition-colors group-hover:border-[var(--bg-panel)]"
+                        className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-[var(--border-main)] px-2 py-0.5 text-[10px] font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
                         onClick={() => {
                           const undoEntry = undoByLog.get(entry.id);
                           if (undoEntry) {
@@ -175,13 +189,13 @@ export function ActivityLog() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t-2 border-[var(--border-main)] px-4 py-2 text-xs font-mono text-[var(--fg-primary)] bg-[var(--bg-panel)]">
+      <div className="flex items-center justify-between border-t border-[var(--border-main)] bg-[var(--bg-panel)] px-4 py-2 text-xs text-[var(--fg-secondary)]">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-none bg-[var(--fg-secondary)] animate-pulse" />
-          <span className="uppercase font-bold tracking-widest">STREAM ACTIVE</span>
+          <span className="h-2 w-2 rounded-full bg-[var(--accent)] animate-pulse" />
+          <span className="font-semibold">Stream active</span>
         </div>
         <button
-          className="group flex items-center gap-2 uppercase font-bold tracking-wider hover:bg-[var(--fg-primary)] hover:text-[var(--bg-panel)] px-2 py-0.5 transition-colors"
+          className="group flex items-center gap-2 rounded-[var(--radius)] px-2 py-0.5 font-semibold text-[var(--fg-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
           onClick={() => clearLogs()}
           type="button"
         >
@@ -246,31 +260,30 @@ function formatBytes(bytes: number) {
 function StatusPill({ status, label }: { status: LogStatus; label: string }) {
   if (status === "success") {
     return (
-      <span className="inline-flex items-center border border-[var(--fg-secondary)] bg-[var(--fg-secondary)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--bg-panel)] uppercase tracking-wider group-hover:bg-[var(--bg-panel)] group-hover:text-[var(--fg-secondary)] transition-colors">
-        {label.toUpperCase()}
+      <span className="inline-flex items-center rounded-full border border-[var(--success)] bg-[var(--success)] px-2 py-0.5 text-[10px] font-semibold text-[var(--fg-inverse)]">
+        {label}
       </span>
     );
   }
   if (status === "error") {
     return (
-      <span className="inline-flex items-center border border-[var(--fg-alert)] bg-[var(--fg-alert)] px-1.5 py-0.5 text-[10px] font-bold text-black uppercase tracking-wider group-hover:bg-black group-hover:text-[var(--fg-alert)] transition-colors">
-        {label.toUpperCase()}
+      <span className="inline-flex items-center rounded-full border border-[var(--fg-alert)] bg-[var(--fg-alert)] px-2 py-0.5 text-[10px] font-semibold text-[var(--fg-inverse)]">
+        {label}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center border border-[var(--border-dim)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--border-dim)] uppercase tracking-wider group-hover:border-black group-hover:text-black transition-colors">
-      {label.toUpperCase()}
+    <span className="inline-flex items-center rounded-full border border-[var(--border-main)] px-2 py-0.5 text-[10px] font-semibold text-[var(--fg-muted)]">
+      {label}
     </span>
   );
 }
 
 function getActionVisual(actionType: string): { icon: LucideIcon; className: string } {
-  // Simplify colors to strict MAGI palette
-  const success = "text-[var(--fg-secondary)] group-hover:text-black";
-  const alert = "text-[var(--fg-alert)] group-hover:text-black";
-  const dim = "text-[var(--border-dim)] group-hover:text-black";
-  const standard = "text-[var(--fg-primary)] group-hover:text-black";
+  const success = "text-[var(--success)]";
+  const alert = "text-[var(--fg-alert)]";
+  const dim = "text-[var(--fg-muted)]";
+  const neutral = "text-[var(--fg-secondary)]";
   
   switch (actionType) {
     case "move":
@@ -278,13 +291,13 @@ function getActionVisual(actionType: string): { icon: LucideIcon; className: str
     case "rename":
     case "sortIntoSubfolder":
     case "continue":
-        return { icon: ArrowRightLeft, className: standard };
+        return { icon: ArrowRightLeft, className: neutral };
     case "delete":
     case "deletePermanently":
         return { icon: Trash2, className: alert };
     case "archive":
     case "unarchive":
-        return { icon: Archive, className: standard };
+        return { icon: Archive, className: neutral };
     case "runScript":
         return { icon: Terminal, className: success };
     case "notify":
@@ -293,7 +306,7 @@ function getActionVisual(actionType: string): { icon: LucideIcon; className: str
     case "ignore":
         return { icon: Ban, className: dim };
     default:
-        return { icon: Activity, className: standard };
+        return { icon: Activity, className: neutral };
   }
 }
 

@@ -102,7 +102,7 @@ const matchOptions: { value: MatchType; label: string }[] = [
 ];
 
 const fieldClass =
-  "rounded-none bg-black border border-[var(--border-dim)] px-2 py-1 text-sm text-[var(--fg-primary)] font-bold font-mono shadow-none outline-none focus:border-[var(--fg-primary)] focus:text-[var(--fg-primary)] transition-colors";
+  "rounded-[var(--radius)] bg-[var(--bg-panel)] border border-[var(--border-main)] px-2 py-1 text-sm text-[var(--fg-primary)] shadow-none outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]";
 const smallFieldClass = `${fieldClass} w-20`;
 const longFieldClass = `${fieldClass} min-w-[220px]`;
 
@@ -141,19 +141,19 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-[var(--fg-primary)]">
-          Match Protocol:
+        <span className="text-xs font-semibold text-[var(--fg-secondary)]">
+          Match
         </span>
-        <div className="flex items-center gap-1 border border-[var(--border-dim)] bg-black p-0.5">
+        <div className="flex items-center gap-1 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-0.5">
           {matchOptions.map((option) => (
             <button
               key={option.value}
               type="button"
               onClick={() => updateGroup({ matchType: option.value })}
-              className={`rounded-none px-3 py-1 text-xs font-bold font-mono uppercase tracking-widest transition-none ${
+              className={`rounded-[var(--radius)] px-3 py-1 text-xs font-semibold transition-colors ${
                 group.matchType === option.value
-                  ? "bg-[var(--fg-primary)] text-black"
-                  : "text-[var(--border-dim)] hover:text-[var(--fg-primary)]"
+                  ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+                  : "text-[var(--fg-secondary)] hover:bg-[var(--accent-muted)]"
               }`}
             >
               {option.label}
@@ -165,13 +165,16 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
       {group.conditions.map((condition, index) => {
         if (condition.type === "nested") {
           return (
-            <div key={index} className="space-y-3 p-3 magi-border-sm bg-black/30 ml-4 relative border-l-4 border-l-[var(--fg-secondary)]">
+            <div
+              key={index}
+              className="space-y-3 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-3"
+            >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--fg-secondary)]">
-                  NESTED LOGIC GATE
+                <span className="text-[11px] font-semibold text-[var(--fg-secondary)]">
+                  Nested rule group
                 </span>
                 <button
-                  className="p-1 text-[var(--fg-alert)] hover:bg-[var(--fg-alert)] hover:text-black border border-transparent hover:border-[var(--fg-alert)]"
+                  className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--fg-primary)]"
                   onClick={() => removeCondition(index)}
                   type="button"
                   aria-label="Remove group"
@@ -198,11 +201,10 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
         }
 
         return (
-          <div key={index} className="p-2 border border-[var(--border-dim)] bg-black relative group hover:border-[var(--fg-primary)] transition-colors">
-             {/* Tech Deco */}
-             <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[var(--border-dim)]" />
-             <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[var(--border-dim)]" />
-
+          <div
+            key={index}
+            className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] p-2 transition-colors hover:border-[var(--border-strong)]"
+          >
             <div className="flex flex-wrap items-center gap-2">
               <MagiSelect
                 width="w-40"
@@ -212,7 +214,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
               />
               {renderConditionFields(condition, (updated) => updateCondition(index, updated))}
               <button
-                className="ml-auto p-1 text-[var(--fg-alert)] hover:bg-[var(--fg-alert)] hover:text-black"
+                className="ml-auto rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--fg-primary)]"
                 onClick={() => removeCondition(index)}
                 type="button"
                 aria-label="Remove condition"
@@ -225,20 +227,20 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
       })}
       <div className="flex flex-wrap items-center gap-3">
         <button
-          className="flex items-center gap-2 px-3 py-1.5 bg-black border border-[var(--fg-primary)] text-[var(--fg-primary)] hover:bg-[var(--fg-primary)] hover:text-black text-xs font-bold font-mono tracking-wider uppercase"
+          className="flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-xs font-semibold text-[var(--fg-primary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)]"
           type="button"
           onClick={() => addCondition()}
         >
           <Plus className="h-3 w-3" />
-          Add Condition
+          Add condition
         </button>
         <button
-          className="flex items-center gap-2 px-3 py-1.5 bg-black border border-[var(--fg-secondary)] text-[var(--fg-secondary)] hover:bg-[var(--fg-secondary)] hover:text-black text-xs font-bold font-mono tracking-wider uppercase"
+          className="flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-xs font-semibold text-[var(--fg-primary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)]"
           type="button"
           onClick={addGroup}
         >
           <Plus className="h-3 w-3" />
-          Add Logic Gate
+          Add rule group
         </button>
       </div>
     </div>
@@ -296,8 +298,9 @@ function renderConditionFields(
           value={condition.value}
           onChange={(e) => onChange({ ...condition, value: e.target.value })}
         />
-        <label className="flex items-center gap-2 text-[11px] text-black">
+        <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
           <input
+            className="accent-[var(--accent)]"
             type="checkbox"
             checked={condition.caseSensitive}
             onChange={(e) => onChange({ ...condition, caseSensitive: e.target.checked })}
@@ -337,7 +340,7 @@ function renderConditionFields(
                 })
               }
             />
-            <span className="text-[11px] text-gray-500">and</span>
+            <span className="text-[11px] text-[var(--fg-muted)]">and</span>
             <input
               className={smallFieldClass}
               type="number"
@@ -527,8 +530,9 @@ function renderConditionFields(
           onChange={(val) => onChange({ ...condition, kind: val as FileKind })}
           options={kinds.map(k => ({ label: k, value: k }))}
         />
-        <label className="flex items-center gap-2 text-[11px] text-gray-500">
+        <label className="flex items-center gap-2 text-[11px] text-[var(--fg-muted)]">
           <input
+            className="accent-[var(--accent)]"
             type="checkbox"
             checked={condition.negate}
             onChange={(e) => onChange({ ...condition, negate: e.target.checked })}

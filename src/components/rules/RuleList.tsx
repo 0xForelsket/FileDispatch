@@ -58,7 +58,7 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule }: RuleListPr
     <div className="h-full flex flex-col">
       <div className="custom-scrollbar flex-1 overflow-y-auto">
         {rules.length === 0 ? (
-          <div className="px-4 py-6 text-center text-xs text-[var(--border-dim)]">
+          <div className="px-4 py-6 text-center text-xs text-[var(--fg-muted)]">
             No rules yet. Create one to start organizing files.
           </div>
         ) : (
