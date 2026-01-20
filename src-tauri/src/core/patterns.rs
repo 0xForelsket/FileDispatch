@@ -65,21 +65,58 @@ fn resolve_token(
     let (key, format) = token.split_once(':').unwrap_or((token, ""));
 
     match key {
+        // File info
         "name" => info.name.clone(),
         "ext" => info.extension.clone(),
         "fullname" => info.full_name.clone(),
+        "parent" => info.parent.clone().unwrap_or_default(),
+        "size" => format_size(info.size, format),
+        
+        // Custom date formatting
         "created" => format_date(info.created, format),
         "modified" => format_date(info.modified, format),
         "added" => format_date(info.added, format),
         "now" => format_date(now, format),
-        "year" => now.format("%Y").to_string(),
-        "month" => now.format("%m").to_string(),
-        "day" => now.format("%d").to_string(),
-        "size" => format_size(info.size, format),
-        "parent" => info.parent.clone().unwrap_or_default(),
+        
+        // Shorthand date/time using file's modification date
+        "date" => info.modified.format("%Y-%m-%d").to_string(),
+        "time" => info.modified.format("%H-%M-%S").to_string(),
+        
+        // Individual date components (from file's modification date)
+        "year" => info.modified.format("%Y").to_string(),
+        "month" => info.modified.format("%m").to_string(),
+        "day" => info.modified.format("%d").to_string(),
+        "hour" => info.modified.format("%H").to_string(),
+        "minute" => info.modified.format("%M").to_string(),
+        "second" => info.modified.format("%S").to_string(),
+        "week" => info.modified.format("%V").to_string(),
+        
+        // Named date components with short/long support
+        "weekday" => format_weekday(info.modified, format),
+        "monthname" => format_monthname(info.modified, format),
+        
+        // Utilities
         "counter" => format_counter(counter, format),
         "random" => format_random(format),
+        
+        // Unknown token - return empty
         _ => String::new(),
+    }
+}
+
+fn format_weekday(date: DateTime<Utc>, format: &str) -> String {
+    match format {
+        "long" => date.format("%A").to_string(),   // Monday
+        "short" | "" => date.format("%a").to_string(), // Mon (default)
+        _ => date.format(format).to_string(),
+    }
+}
+
+fn format_monthname(date: DateTime<Utc>, format: &str) -> String {
+    match format {
+        "long" => date.format("%B").to_string(),   // September
+        "short" | "" => date.format("%b").to_string(), // Sep (default)
+        _ => date.format(format).to_string(),
     }
 }
 
