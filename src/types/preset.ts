@@ -24,3 +24,20 @@ export interface Preset {
   variables: PresetVariable[];
   rules: PresetRule[];
 }
+
+export type TemplateCategory =
+  | "photography"
+  | "finance"
+  | "development"
+  | "downloads"
+  | "general";
+
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  category: TemplateCategory;
+  icon: string;
+  tags: string[];
+  preset: Preset;
+}
