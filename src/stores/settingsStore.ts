@@ -14,6 +14,9 @@ export interface AppSettings {
   ignorePatterns: string[];
   logRetentionDays: number;
   theme: ThemeMode;
+  dateFormat: string;
+  timeFormat: string;
+  useShortDateNames: boolean;
 }
 
 interface SettingsState {
@@ -33,6 +36,9 @@ export const defaultSettings: AppSettings = {
   ignorePatterns: [".DS_Store", "Thumbs.db", ".git", "node_modules", "*.tmp", "*.part"],
   logRetentionDays: 30,
   theme: "system",
+  dateFormat: "%Y-%m-%d",
+  timeFormat: "%H-%M-%S",
+  useShortDateNames: true,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
