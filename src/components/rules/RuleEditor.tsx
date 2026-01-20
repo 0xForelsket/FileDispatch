@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 
 import type { Condition, ConditionGroup, Rule } from "@/types";
 import { useRuleStore } from "@/stores/ruleStore";
@@ -15,6 +16,7 @@ interface RuleEditorProps {
   onClose: () => void;
   folderId: string;
   rule: Rule | null;
+  onNewRule?: () => void;
 }
 
 const emptyConditions: ConditionGroup = {
@@ -38,7 +40,7 @@ function createEmptyRule(folderId: string): Rule {
   };
 }
 
-export function RuleEditor({ mode, onClose, folderId, rule }: RuleEditorProps) {
+export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEditorProps) {
   const createRule = useRuleStore((state) => state.createRule);
   const updateRule = useRuleStore((state) => state.updateRule);
   const deleteRule = useRuleStore((state) => state.deleteRule);
@@ -99,8 +101,17 @@ export function RuleEditor({ mode, onClose, folderId, rule }: RuleEditorProps) {
 
   if (!isOpen) {
     return (
-      <div className="flex h-full flex-1 items-center justify-center text-sm text-[var(--fg-muted)]">
-        Select a rule to view or edit.
+      <div className="flex h-full flex-col items-center justify-center gap-4 text-sm text-[var(--fg-muted)]">
+        <div>Select a rule to view or edit.</div>
+        {onNewRule && folderId ? (
+          <button
+            onClick={onNewRule}
+            className="flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-4 py-2 font-semibold text-[var(--fg-primary)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)]"
+          >
+            <Plus className="h-4 w-4" />
+            Create new rule
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -115,9 +126,8 @@ export function RuleEditor({ mode, onClose, folderId, rule }: RuleEditorProps) {
         <div className="absolute inset-0 hex-bg opacity-10 pointer-events-none" />
       ) : null}
 
-      <div className={`flex items-center justify-between px-4 py-3 shrink-0 border-b relative z-10 ${
-        isMagi ? "border-[var(--border-dim)]" : "border-[var(--border-main)]"
-      }`}>
+      <div className={`flex items-center justify-between px-4 py-3 shrink-0 border-b relative z-10 ${isMagi ? "border-[var(--border-dim)]" : "border-[var(--border-main)]"
+        }`}>
         <div>
           <h2 className={`text-lg font-semibold ${isMagi ? "text-3xl uppercase eva-title" : ""}`}>
             {isNew ? (isMagi ? "New Protocol" : "New Rule") : isMagi ? "Edit Protocol" : "Edit Rule"}
@@ -129,11 +139,10 @@ export function RuleEditor({ mode, onClose, folderId, rule }: RuleEditorProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowPreview(!showPreview)}
-            className={`px-3 py-1 text-xs font-semibold border rounded-[var(--radius)] transition-colors ${
-              showPreview
-                ? "bg-[var(--accent)] text-[var(--accent-contrast)] border-[var(--accent)]"
-                : "bg-[var(--bg-panel)] text-[var(--fg-primary)] border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
-            }`}
+            className={`px-3 py-1 text-xs font-semibold border rounded-[var(--radius)] transition-colors ${showPreview
+              ? "bg-[var(--accent)] text-[var(--accent-contrast)] border-[var(--accent)]"
+              : "bg-[var(--bg-panel)] text-[var(--fg-primary)] border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
+              }`}
           >
             {showPreview ? "Hide preview" : "Show preview"}
           </button>
@@ -153,60 +162,59 @@ export function RuleEditor({ mode, onClose, folderId, rule }: RuleEditorProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar relative z-10">
-         {/* Rule Name Section */}
-         <div className={`mb-6 p-4 rounded-[var(--radius)] border relative ${
-           isMagi ? "border-[var(--border-dim)] bg-black/50" : "border-[var(--border-main)] bg-[var(--bg-subtle)]"
-         }`}>
-             {isMagi ? (
-               <div className="absolute top-0 left-0 bg-[var(--fg-primary)] text-black text-[10px] font-bold px-2 py-0.5">IDENTIFICATION</div>
-             ) : null}
-             <div className={isMagi ? "mt-3" : ""}>
-                 <label className={`text-xs font-semibold ${isMagi ? "uppercase tracking-widest text-[var(--border-dim)]" : "text-[var(--fg-secondary)]"}`}>
-                   {isMagi ? "Protocol Name" : "Rule name"}
-                 </label>
-                 <input
-                    className={inputClass}
-                    value={draft.name}
-                    onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                    placeholder={isMagi ? "Enter protocol designation" : "e.g. Sort invoices"}
-                 />
-             </div>
-             
-             <div className="mt-4 flex items-center gap-6">
-                <TogglePill
-                  label={isMagi ? "ENABLED" : "Enabled"}
-                  checked={draft.enabled}
-                  onChange={(checked) => setDraft({ ...draft, enabled: checked })}
-                />
-                <TogglePill
-                  label={isMagi ? "HALT ON MATCH" : "Stop processing"}
-                  checked={draft.stopProcessing}
-                  onChange={(checked) => setDraft({ ...draft, stopProcessing: checked })}
-                />
-             </div>
-         </div>
+        {/* Rule Name Section */}
+        <div className={`mb-6 p-4 rounded-[var(--radius)] border relative ${isMagi ? "border-[var(--border-dim)] bg-black/50" : "border-[var(--border-main)] bg-[var(--bg-subtle)]"
+          }`}>
+          {isMagi ? (
+            <div className="absolute top-0 left-0 bg-[var(--fg-primary)] text-black text-[10px] font-bold px-2 py-0.5">IDENTIFICATION</div>
+          ) : null}
+          <div className={isMagi ? "mt-3" : ""}>
+            <label className={`text-xs font-semibold ${isMagi ? "uppercase tracking-widest text-[var(--border-dim)]" : "text-[var(--fg-secondary)]"}`}>
+              {isMagi ? "Protocol Name" : "Rule name"}
+            </label>
+            <input
+              className={inputClass}
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              placeholder={isMagi ? "Enter protocol designation" : "e.g. Sort invoices"}
+            />
+          </div>
 
-         {/* Conditions Section */}
-         <div className="mb-6">
-             <div className="flex items-center gap-2 mb-3 border-b border-[var(--border-main)] pb-2">
-                 <div className="h-2 w-2 rounded-full bg-[var(--accent)]" />
-                 <h3 className={`text-sm font-semibold ${isMagi ? "uppercase eva-title text-[var(--fg-primary)]" : "text-[var(--fg-primary)]"}`}>
-                   Conditions
-                 </h3>
-             </div>
-             <ConditionBuilder group={draft.conditions} onChange={(conditions) => setDraft({ ...draft, conditions })} />
-         </div>
+          <div className="mt-4 flex items-center gap-6">
+            <TogglePill
+              label={isMagi ? "ENABLED" : "Enabled"}
+              checked={draft.enabled}
+              onChange={(checked) => setDraft({ ...draft, enabled: checked })}
+            />
+            <TogglePill
+              label={isMagi ? "HALT ON MATCH" : "Stop processing"}
+              checked={draft.stopProcessing}
+              onChange={(checked) => setDraft({ ...draft, stopProcessing: checked })}
+            />
+          </div>
+        </div>
 
-         {/* Actions Section */}
-         <div className="mb-6">
-             <div className="flex items-center gap-2 mb-3 border-b border-[var(--border-main)] pb-2">
-                 <div className="h-2 w-2 rounded-full bg-[var(--fg-secondary)]" />
-                 <h3 className={`text-sm font-semibold ${isMagi ? "uppercase eva-title text-[var(--fg-secondary)]" : "text-[var(--fg-primary)]"}`}>
-                   Actions
-                 </h3>
-             </div>
-             <ActionBuilder actions={draft.actions} onChange={(actions) => setDraft({ ...draft, actions })} />
-         </div>
+        {/* Conditions Section */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3 border-b border-[var(--border-main)] pb-2">
+            <div className="h-2 w-2 rounded-full bg-[var(--accent)]" />
+            <h3 className={`text-sm font-semibold ${isMagi ? "uppercase eva-title text-[var(--fg-primary)]" : "text-[var(--fg-primary)]"}`}>
+              Conditions
+            </h3>
+          </div>
+          <ConditionBuilder group={draft.conditions} onChange={(conditions) => setDraft({ ...draft, conditions })} />
+        </div>
+
+        {/* Actions Section */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3 border-b border-[var(--border-main)] pb-2">
+            <div className="h-2 w-2 rounded-full bg-[var(--fg-secondary)]" />
+            <h3 className={`text-sm font-semibold ${isMagi ? "uppercase eva-title text-[var(--fg-secondary)]" : "text-[var(--fg-primary)]"}`}>
+              Actions
+            </h3>
+          </div>
+          <ActionBuilder actions={draft.actions} onChange={(actions) => setDraft({ ...draft, actions })} />
+        </div>
       </div>
 
       {/* Error Message */}
@@ -264,14 +272,12 @@ function TogglePill({ label, checked, onChange }: TogglePillProps) {
   return (
     <div className="flex items-center gap-2 group cursor-pointer" onClick={() => onChange(!checked)}>
       <div
-        className={`h-4 w-7 rounded-full border border-[var(--border-main)] p-0.5 transition-colors ${
-          checked ? "bg-[var(--accent)]" : "bg-[var(--bg-panel)]"
-        }`}
+        className={`h-4 w-7 rounded-full border border-[var(--border-main)] p-0.5 transition-colors ${checked ? "bg-[var(--accent)]" : "bg-[var(--bg-panel)]"
+          }`}
       >
         <div
-          className={`h-3 w-3 rounded-full border border-[var(--border-strong)] bg-[var(--bg-elevated)] transition-transform ${
-            checked ? "translate-x-3" : "translate-x-0"
-          }`}
+          className={`h-3 w-3 rounded-full border border-[var(--border-strong)] bg-[var(--bg-elevated)] transition-transform ${checked ? "translate-x-3" : "translate-x-0"
+            }`}
         />
       </div>
       <span className={`text-[11px] font-semibold ${checked ? "text-[var(--fg-primary)]" : "text-[var(--fg-muted)]"}`}>

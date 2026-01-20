@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, Plus } from "lucide-react";
 
 import { ActivityLog } from "@/components/logs/ActivityLog";
 import { AddFolderDialog } from "@/components/folders/AddFolderDialog";
@@ -173,11 +173,12 @@ function App() {
             <AddFolderDialog
               className={
                 isLinear
-                  ? undefined
+                  ? "flex h-6 w-6 items-center justify-center rounded-[var(--radius)] text-[var(--fg-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)] transition-colors"
                   : "bg-black text-[var(--fg-primary)] px-2 border border-black hover:bg-white hover:text-black font-mono text-xs"
               }
-              label={isLinear ? "Add folder" : "INIT"}
-              showIcon={false}
+              label={isLinear ? "" : "INIT"}
+              showIcon={isLinear}
+              icon={isLinear ? <Plus className="h-4 w-4" /> : undefined}
             />
           </div>
           <div className="flex-1 overflow-y-auto px-1 pb-1 custom-scrollbar">
@@ -197,8 +198,8 @@ function App() {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setIsGalleryOpen(true)}
-                className={`flex items-center gap-1 text-xs font-semibold rounded-[var(--radius)] px-2 py-0.5 transition-colors ${isLinear
-                  ? "border border-[var(--border-main)] bg-[var(--bg-panel)] text-[var(--fg-primary)] hover:bg-[var(--bg-subtle)]"
+                className={`flex items-center gap-1 text-xs font-semibold rounded-[var(--radius)] px-2 py-1 transition-colors ${isLinear
+                  ? "border border-[var(--border-main)] bg-[var(--bg-panel)] text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
                   : "bg-black text-[var(--fg-primary)] border border-black hover:bg-white hover:text-black font-mono"
                   }`}
                 title="Browse Templates"
@@ -208,12 +209,13 @@ function App() {
               </button>
               <button
                 onClick={handleNewRule}
-                className={`text-xs font-semibold rounded-[var(--radius)] px-2 py-0.5 transition-colors ${isLinear
-                  ? "border border-[var(--border-main)] bg-[var(--bg-panel)] text-[var(--fg-primary)] hover:bg-[var(--bg-subtle)]"
+                className={`flex items-center gap-1 text-xs font-semibold rounded-[var(--radius)] px-2 py-1 transition-colors ${isLinear
+                  ? "bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 shadow-sm"
                   : "bg-black text-[var(--fg-primary)] border border-black hover:bg-white hover:text-black font-mono"
                   }`}
-                title="New Rule"
+                title="Create New Rule"
               >
+                <Plus className="h-3 w-3" />
                 {isLinear ? "New" : "NEW"}
               </button>
             </div>
@@ -249,6 +251,7 @@ function App() {
                 onClose={handleCloseEditor}
                 folderId={selectedFolderId ?? ""}
                 rule={effectiveRule}
+                onNewRule={handleNewRule}
               />
             </div>
           </div>
@@ -259,7 +262,7 @@ function App() {
       <div
         className={`transition-all duration-300 ease-in-out p-4 pt-0 ${isLogExpanded
           ? "absolute bottom-0 left-0 right-0 h-[calc(100vh-3rem)] z-40 bg-[var(--bg-app)]/95 backdrop-blur-sm"
-          : "h-64 shrink-0 relative"
+          : "h-48 shrink-0 relative"
           }`}
       >
         <div className="h-full w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] text-[var(--fg-secondary)] text-xs p-2 overflow-y-auto custom-scrollbar relative shadow-[var(--shadow-sm)]">

@@ -59,7 +59,7 @@ export function FolderItem({
               </span>
             ) : null}
           </div>
-          <div className="mt-0.5 truncate text-[10px] text-[var(--fg-muted)]">
+          <div className="mt-0.5 truncate text-[10px] text-[var(--fg-muted)]" title={folder.path}>
             {folder.path}
           </div>
         </div>
