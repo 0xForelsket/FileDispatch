@@ -4,6 +4,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
+use lopdf::dictionary;
 use pdfium_render::prelude::{PdfDocument, PdfRenderConfig, Pdfium};
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -122,7 +123,11 @@ fn extract_text_content(info: &FileInfo, settings: &Settings) -> Result<Option<S
     }
 
     match info.kind {
-        FileKind::Image | FileKind::Video | FileKind::Audio | FileKind::Archive | FileKind::Folder => {
+        FileKind::Image
+        | FileKind::Video
+        | FileKind::Audio
+        | FileKind::Archive
+        | FileKind::Folder => {
             return Ok(None);
         }
         _ => {}
@@ -155,7 +160,7 @@ fn extract_docx_text(path: &Path) -> Result<Option<String>> {
         .read_to_string(&mut doc_xml)?;
 
     let mut reader = Reader::from_str(&doc_xml);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
     let mut text = String::new();
     let mut in_text = false;
@@ -179,7 +184,9 @@ fn extract_docx_text(path: &Path) -> Result<Option<String>> {
             }
             Ok(Event::Text(e)) => {
                 if in_text {
-                    text.push_str(&e.unescape()?.to_string());
+                    let decoded = e.decode()?;
+                    let unescaped = quick_xml::escape::unescape(&decoded)?;
+                    text.push_str(unescaped.as_ref());
                 }
             }
             Ok(Event::Eof) => break,
@@ -221,13 +228,19 @@ fn extract_pdf_text(path: &Path, settings: &Settings) -> Result<Option<String>> 
     }
 }
 
-fn extract_ocr_content(info: &FileInfo, settings: &Settings, ocr: &mut OcrManager) -> Result<Option<String>> {
+fn extract_ocr_content(
+    info: &FileInfo,
+    settings: &Settings,
+    ocr: &mut OcrManager,
+) -> Result<Option<String>> {
     if !settings.content_enable_ocr || !ocr.enabled() {
         return Ok(None);
     }
 
     if info.kind == FileKind::Image {
-        if settings.content_max_ocr_image_bytes > 0 && info.size > settings.content_max_ocr_image_bytes {
+        if settings.content_max_ocr_image_bytes > 0
+            && info.size > settings.content_max_ocr_image_bytes
+        {
             return Ok(None);
         }
         let timeout = Duration::from_millis(settings.content_ocr_timeout_image_ms);
@@ -280,8 +293,8 @@ fn ocr_pdf_pages(
 ) -> Result<Vec<String>> {
     let mut output = Vec::new();
     let max_pages = settings.content_max_ocr_pdf_pages.max(1) as usize;
-    let deadline = Instant::now()
-        + Duration::from_millis(settings.content_ocr_timeout_pdf_ms.max(1));
+    let deadline =
+        Instant::now() + Duration::from_millis(settings.content_ocr_timeout_pdf_ms.max(1));
 
     for (index, page) in document.pages().iter().enumerate() {
         if index >= max_pages {
@@ -325,23 +338,25 @@ fn add_text_layer_to_pdf(
         let stream_id = doc.add_object(stream);
         let page_obj = doc.get_object_mut(*page_id)?;
         if let lopdf::Object::Dictionary(ref mut dict) = page_obj {
-            let contents = dict.get(b"Contents").cloned();
+            let contents = dict.get(b"Contents").map(|obj| obj.clone()).ok();
             let new_contents = match contents {
                 Some(lopdf::Object::Array(mut arr)) => {
                     arr.push(lopdf::Object::Reference(stream_id));
                     lopdf::Object::Array(arr)
                 }
-                Some(existing) => lopdf::Object::Array(vec![existing, lopdf::Object::Reference(stream_id)]),
+                Some(existing) => {
+                    lopdf::Object::Array(vec![existing, lopdf::Object::Reference(stream_id)])
+                }
                 None => lopdf::Object::Reference(stream_id),
             };
             dict.set("Contents", new_contents);
 
-            let resources = dict.get(b"Resources").cloned();
+            let resources = dict.get(b"Resources").map(|obj| obj.clone()).ok();
             let mut resources_dict = match resources {
                 Some(lopdf::Object::Dictionary(dict)) => dict,
                 _ => lopdf::Dictionary::new(),
             };
-            let font_dict = match resources_dict.get(b"Font").cloned() {
+            let font_dict = match resources_dict.get(b"Font").map(|obj| obj.clone()).ok() {
                 Some(lopdf::Object::Dictionary(dict)) => dict,
                 _ => lopdf::Dictionary::new(),
             };
@@ -367,7 +382,7 @@ fn add_text_layer_to_pdf(
 }
 
 fn add_font(doc: &mut lopdf::Document) -> lopdf::ObjectId {
-    let font = lopdf::dictionary! {
+    let font = dictionary! {
         "Type" => "Font",
         "Subtype" => "Type1",
         "BaseFont" => "Helvetica",
@@ -377,11 +392,10 @@ fn add_font(doc: &mut lopdf::Document) -> lopdf::ObjectId {
 
 fn page_dimensions(doc: &lopdf::Document, page_id: lopdf::ObjectId) -> Result<(f64, f64)> {
     let page = doc.get_object(page_id)?;
-    let dict = page
-        .as_dict()
-        .map_err(|_| anyhow!("Invalid page object"))?;
+    let dict = page.as_dict().map_err(|_| anyhow!("Invalid page object"))?;
     let media_box = dict
         .get(b"MediaBox")
+        .ok()
         .and_then(|obj| obj.as_array().ok())
         .ok_or_else(|| anyhow!("Missing MediaBox"))?;
     if media_box.len() < 4 {
@@ -397,7 +411,7 @@ fn page_dimensions(doc: &lopdf::Document, page_id: lopdf::ObjectId) -> Result<(f
 fn obj_to_f64(obj: &lopdf::Object) -> Result<f64> {
     match obj {
         lopdf::Object::Integer(val) => Ok(*val as f64),
-        lopdf::Object::Real(val) => Ok(*val),
+        lopdf::Object::Real(val) => Ok(f64::from(*val)),
         _ => Err(anyhow!("Invalid numeric value")),
     }
 }
@@ -408,7 +422,10 @@ fn build_text_stream(text: &str, page_height: f64) -> lopdf::Stream {
     ops.push(lopdf::content::Operation::new("BT", vec![]));
     ops.push(lopdf::content::Operation::new(
         "Tf",
-        vec![lopdf::Object::Name(b"F1".to_vec()), lopdf::Object::Real(10.0)],
+        vec![
+            lopdf::Object::Name(b"F1".to_vec()),
+            lopdf::Object::Real(10.0),
+        ],
     ));
     ops.push(lopdf::content::Operation::new(
         "Tr",
@@ -422,7 +439,7 @@ fn build_text_stream(text: &str, page_height: f64) -> lopdf::Stream {
             lopdf::Object::Real(0.0),
             lopdf::Object::Real(1.0),
             lopdf::Object::Real(36.0),
-            lopdf::Object::Real(page_height - 36.0),
+            lopdf::Object::Real(page_height as f32 - 36.0_f32),
         ],
     ));
     ops.push(lopdf::content::Operation::new(
@@ -436,13 +453,19 @@ fn build_text_stream(text: &str, page_height: f64) -> lopdf::Stream {
         }
         ops.push(lopdf::content::Operation::new(
             "Tj",
-            vec![lopdf::Object::String(line.as_bytes().to_vec(), lopdf::StringFormat::Literal)],
+            vec![lopdf::Object::String(
+                line.as_bytes().to_vec(),
+                lopdf::StringFormat::Literal,
+            )],
         ));
     }
 
     ops.push(lopdf::content::Operation::new("ET", vec![]));
     let content = lopdf::content::Content { operations: ops };
-    lopdf::Stream::new(lopdf::Dictionary::new(), content.encode().unwrap_or_default())
+    lopdf::Stream::new(
+        lopdf::Dictionary::new(),
+        content.encode().unwrap_or_default(),
+    )
 }
 
 fn escape_pdf_text(text: &str) -> String {

@@ -78,10 +78,7 @@ pub async fn folder_run_now(
         .map_err(|e| e.to_string())?;
 
     // Process each file
-    let settings_snapshot = settings
-        .lock()
-        .map(|s| s.clone())
-        .unwrap_or_default();
+    let settings_snapshot = settings.lock().map(|s| s.clone()).unwrap_or_default();
     let mut ocr_guard = ocr.lock().unwrap();
 
     for entry in entries {
@@ -127,13 +124,14 @@ pub async fn folder_run_now(
             // }
 
             // Evaluate conditions
-            let evaluation = match evaluate_conditions(rule, &info, &settings_snapshot, &mut ocr_guard) {
-                Ok(eval) => eval,
-                Err(e) => {
-                    errors.push(format!("{}: {}", file_name, e));
-                    continue;
-                }
-            };
+            let evaluation =
+                match evaluate_conditions(rule, &info, &settings_snapshot, &mut ocr_guard) {
+                    Ok(eval) => eval,
+                    Err(e) => {
+                        errors.push(format!("{}: {}", file_name, e));
+                        continue;
+                    }
+                };
 
             if !evaluation.matched {
                 continue;

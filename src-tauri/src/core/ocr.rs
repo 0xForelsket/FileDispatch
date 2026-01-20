@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
 use oar_ocr::prelude::*;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::models::{OcrModelSource, Settings};
 

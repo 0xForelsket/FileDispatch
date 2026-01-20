@@ -11,9 +11,8 @@ use crate::core::duplicates::DuplicateDetector;
 use crate::core::executor::{ActionExecutor, ActionOutcome, ActionResultStatus};
 use crate::core::watcher::{FileEvent, FileEventKind};
 use crate::models::{
-    ActionDetails, ActionType, Condition, ConditionGroup, ContentSource, DateOperator, FileKind,
-    LogEntry, LogStatus, MatchType, Rule, SizeUnit, StringCondition, StringOperator, TimeOperator,
-    TimeUnit,
+    ActionDetails, ActionType, Condition, ConditionGroup, DateOperator, FileKind, LogEntry,
+    LogStatus, MatchType, Rule, SizeUnit, StringCondition, StringOperator, TimeOperator, TimeUnit,
 };
 use crate::storage::database::Database;
 use crate::storage::folder_repo::FolderRepository;
@@ -114,11 +113,7 @@ impl RuleEngine {
         let undo_repo = UndoRepository::new(self.db.clone());
 
         let rules = rule_repo.list_by_folder(&event.folder_id)?;
-        let settings = self
-            ._settings
-            .lock()
-            .map(|s| s.clone())
-            .unwrap_or_default();
+        let settings = self._settings.lock().map(|s| s.clone()).unwrap_or_default();
         let mut ocr = self.ocr.lock().unwrap();
 
         for rule in rules {
@@ -528,6 +523,7 @@ fn action_type_to_string(action_type: &ActionType) -> String {
         ActionType::Pause => "pause",
         ActionType::Continue => "continue",
         ActionType::Ignore => "ignore",
+        ActionType::MakePdfSearchable => "makePdfSearchable",
     }
     .to_string()
 }
