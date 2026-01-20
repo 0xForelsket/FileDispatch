@@ -39,6 +39,19 @@ impl MatchRepository {
         })
     }
 
+    /// Check if a file with this hash was already processed by this rule
+    /// (regardless of the file path - handles renames)
+    pub fn has_hash_match(&self, rule_id: &str, file_hash: &str) -> Result<bool> {
+        self.db.with_conn(|conn| {
+            let count: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM rule_matches WHERE rule_id = ?1 AND file_hash = ?2",
+                params![rule_id, file_hash],
+                |row| row.get(0),
+            )?;
+            Ok(count > 0)
+        })
+    }
+
     pub fn record_match(
         &self,
         rule_id: &str,

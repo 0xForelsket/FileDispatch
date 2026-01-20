@@ -10,6 +10,15 @@ export const folderRemove = (id: string) => invoke<void>("folder_remove", { id }
 export const folderToggle = (id: string, enabled: boolean) =>
   invoke<void>("folder_toggle", { id, enabled });
 
+export interface RunResult {
+  total_files: number;
+  processed: number;
+  matched: number;
+  errors: string[];
+}
+export const folderRunNow = (folderId: string) =>
+  invoke<RunResult>("folder_run_now", { folderId });
+
 export const ruleList = (folderId: string) =>
   invoke<Rule[]>("rule_list", { folderId });
 export const ruleGet = (id: string) => invoke<Rule | null>("rule_get", { id });

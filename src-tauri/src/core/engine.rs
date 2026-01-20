@@ -87,11 +87,9 @@ impl RuleEngine {
                 continue;
             }
 
-            if match_repo.has_match(
-                &rule.id,
-                info.path.to_string_lossy().as_ref(),
-                Some(&info.hash),
-            )? {
+            // Skip if this file (by hash) was already processed by this rule
+            // This prevents re-processing after renames or moves
+            if match_repo.has_hash_match(&rule.id, &info.hash)? {
                 continue;
             }
 
@@ -362,7 +360,7 @@ pub(crate) fn evaluate_shell(command: &str, path: &std::path::Path) -> bool {
     status.map(|s| s.success()).unwrap_or(false)
 }
 
-fn log_outcomes(
+pub fn log_outcomes(
     repo: &LogRepository,
     undo_repo: &UndoRepository,
     rule: &Rule,

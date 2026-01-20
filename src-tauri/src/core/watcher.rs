@@ -115,20 +115,17 @@ fn handle_event(
 }
 
 fn resolve_folder_id(path: &Path, folders: &HashMap<PathBuf, String>) -> Option<String> {
-    let mut matched: Option<(&PathBuf, &String)> = None;
+    // Only process files directly in a watched folder (not in subdirectories)
+    // This prevents feedback loops when files are moved to subfolders
+    let parent = path.parent()?;
+    
     for (folder_path, id) in folders.iter() {
-        if path.starts_with(folder_path) {
-            match matched {
-                Some((best_path, _)) => {
-                    if folder_path.components().count() > best_path.components().count() {
-                        matched = Some((folder_path, id));
-                    }
-                }
-                None => matched = Some((folder_path, id)),
-            }
+        // Only match if the file's parent is exactly the watched folder
+        if parent == folder_path {
+            return Some(id.clone());
         }
     }
-    matched.map(|(_, id)| id.clone())
+    None
 }
 
 fn should_ignore(path: &Path, patterns: &[Pattern]) -> bool {

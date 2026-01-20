@@ -12,6 +12,7 @@ use commands::rules::{
     rule_create, rule_delete, rule_duplicate, rule_export, rule_get, rule_import, rule_list,
     rule_reorder, rule_toggle, rule_update,
 };
+use commands::run::folder_run_now;
 use commands::settings::{settings_get, settings_update};
 use commands::undo::{undo_execute, undo_list};
 use core::engine::RuleEngine;
@@ -168,6 +169,7 @@ pub fn run() {
             settings_update,
             undo_list,
             undo_execute,
+            folder_run_now,
         ])
         .run(tauri::generate_context!())
         .expect("error while running File Dispatch");
