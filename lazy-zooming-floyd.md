@@ -192,17 +192,25 @@
 - Incomplete download cleanup
 - Date Last Matched condition
 
-### Medium Priority (Feature Enhancements)
+### High Priority (Core Capability Gaps)
 | # | Feature | Effort | Impact |
 |---|---------|--------|--------|
-| 1 | JavaScript conditions/actions | High | Medium |
-| 2 | Contents/text search | High | Medium |
+| 1 | Contents/text search (optionally OCR later) | High | High |
+| 2 | JavaScript conditions/actions | High | Medium |
+| 3 | Rule sync/backup (cloud or local) | Medium | Medium |
+
+### Medium Priority (System Automation)
+| # | Feature | Effort | Impact |
+|---|---------|--------|--------|
+| 1 | Trash management (age/size based) | Medium | Medium |
+| 2 | App Sweep | Medium | Low |
+| 3 | App folders (browser downloads presets) | Low | Medium |
 
 ### Lower Priority (Nice to Have)
 | # | Feature | Effort | Impact |
 |---|---------|--------|--------|
 | 1 | Folder groups | Medium | Low |
-| 2 | Custom attributes | High | Medium |
+| 2 | Custom attributes (variables) | High | Medium |
 | 3 | Multiple layout options | Medium | Low |
 
 ### Platform-Specific (Won't Implement)
@@ -228,9 +236,9 @@
 
 ### Key Gaps to Address:
 1. **Content Search/OCR** - Search inside files (cross-platform challenge)
-2. **Metadata Actions** - Tags, labels, comments, lock status
-3. **Scriptable Conditions/Actions** - JavaScript-based matching/automation
-4. **System Features** - Rule sync, trash management, app sweep
+2. **Scriptable Conditions/Actions** - JavaScript-based matching/automation
+3. **System Features** - Rule sync, trash management, app sweep
+4. **Metadata Actions** - Tags, labels, comments, lock status
 
 ### Realistic Target: 80% Feature Parity
 Focusing on cross-platform features and UX improvements can bring FileDispatch to ~80% parity with Hazel 6, with the remaining 20% being macOS-specific features that don't apply to a cross-platform app.
