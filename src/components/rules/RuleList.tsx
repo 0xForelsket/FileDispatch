@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 // import { Plus, Terminal } from "lucide-react";
 
 import { useFolderStore } from "@/stores/folderStore";
@@ -12,9 +12,10 @@ interface RuleListProps {
   selectedRuleId: string;
   onSelectRule: (rule: Rule) => void;
   onNewRule: () => void;
+  searchQuery?: string;
 }
 
-export function RuleList({ selectedRuleId, onSelectRule, onNewRule }: RuleListProps) {
+export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery = "" }: RuleListProps) {
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const rules = useRuleStore((state) => state.rules);
   const toggleRule = useRuleStore((state) => state.toggleRule);
@@ -39,20 +40,57 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule }: RuleListPr
 
 
 
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Filter rules based on search query
+  const filteredRules = searchQuery.trim()
+    ? rules.filter((rule) => {
+        const query = searchQuery.toLowerCase();
+        // Match against rule name
+        if (rule.name.toLowerCase().includes(query)) return true;
+        // Match against action types
+        if (rule.actions.some((action) => action.type.toLowerCase().includes(query))) return true;
+        // Match against condition values
+        if (rule.conditions.conditions.some((condition) => {
+          if ("value" in condition && typeof condition.value === "string") {
+            return condition.value.toLowerCase().includes(query);
+          }
+          return condition.type.toLowerCase().includes(query);
+        })) return true;
+        return false;
+      })
+    : rules;
+
   if (!selectedFolderId) {
     return null;
   }
 
-  const moveRule = (from: number, to: number) => {
-    if (to < 0 || to >= rules.length) return;
-    const reordered = [...rules];
-    const [item] = reordered.splice(from, 1);
-    reordered.splice(to, 0, item);
-    void reorderRules(
-      selectedFolderId,
-      reordered.map((rule) => rule.id),
-    );
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
   };
+
+  const handleDragOver = (index: number) => {
+    if (dragIndex === null || index === dragIndex) return;
+    setDragOverIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
+      const reordered = [...rules];
+      const [item] = reordered.splice(dragIndex, 1);
+      reordered.splice(dragOverIndex, 0, item);
+      void reorderRules(
+        selectedFolderId,
+        reordered.map((rule) => rule.id),
+      );
+    }
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
+  // Disable drag-and-drop when filtering to avoid index confusion
+  const isDraggingEnabled = !searchQuery.trim();
 
   return (
     <div className="h-full flex flex-col">
@@ -61,20 +99,26 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule }: RuleListPr
           <div className="px-4 py-6 text-center text-xs text-[var(--fg-muted)]">
             No rules yet. Create one to start organizing files.
           </div>
+        ) : filteredRules.length === 0 ? (
+          <div className="px-4 py-6 text-center text-xs text-[var(--fg-muted)]">
+            No rules match "{searchQuery}"
+          </div>
         ) : (
-          rules.map((rule, index) => (
+          filteredRules.map((rule, index) => (
             <RuleItem
               key={rule.id}
               rule={rule}
+              index={index}
               selected={rule.id === selectedRuleId}
               onToggle={(enabled) => toggleRule(rule.id, enabled, selectedFolderId)}
               onEdit={() => onSelectRule(rule)}
               onDelete={() => deleteRule(rule.id, selectedFolderId)}
               onDuplicate={() => duplicateRule(rule.id, selectedFolderId)}
-              onMoveUp={() => moveRule(index, index - 1)}
-              onMoveDown={() => moveRule(index, index + 1)}
-              canMoveUp={index > 0}
-              canMoveDown={index < rules.length - 1}
+              onDragStart={isDraggingEnabled ? handleDragStart : () => {}}
+              onDragOver={isDraggingEnabled ? handleDragOver : () => {}}
+              onDragEnd={isDraggingEnabled ? handleDragEnd : () => {}}
+              isDragging={isDraggingEnabled && dragIndex === index}
+              isDragOver={isDraggingEnabled && dragOverIndex === index}
             />
           ))
         )}

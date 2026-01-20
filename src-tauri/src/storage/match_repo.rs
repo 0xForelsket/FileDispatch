@@ -76,4 +76,26 @@ impl MatchRepository {
             Ok(())
         })
     }
+
+    /// Get the last time this file was matched by any rule
+    pub fn get_last_match_time(&self, file_path: &str) -> Result<Option<chrono::DateTime<Utc>>> {
+        self.db.with_conn(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT matched_at FROM rule_matches WHERE file_path = ?1 ORDER BY matched_at DESC LIMIT 1",
+            )?;
+            let mut rows = stmt.query_map(params![file_path], |row| {
+                row.get::<_, String>(0)
+            })?;
+            if let Some(row) = rows.next() {
+                let timestamp = row?;
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&timestamp) {
+                    Ok(Some(dt.with_timezone(&Utc)))
+                } else {
+                    Ok(None)
+                }
+            } else {
+                Ok(None)
+            }
+        })
+    }
 }

@@ -11,7 +11,7 @@ use tauri_plugin_opener::open_path;
 use crate::core::patterns::PatternEngine;
 use crate::models::{
     Action, ActionDetails, ActionType, ArchiveAction, ConflictResolution, DeleteAction, OpenAction,
-    PauseAction, Settings, UnarchiveAction,
+    OpenWithAction, PauseAction, Settings, ShowInFileManagerAction, UnarchiveAction,
 };
 use crate::utils::archive::{create_archive, ensure_archive_path, extract_archive};
 use crate::utils::file_info::FileInfo;
@@ -116,6 +116,8 @@ impl ActionExecutor {
                 Action::RunScript(action) => self.execute_script(&action.command, &current_path),
                 Action::Notify(action) => self.execute_notify(&action.message, info, captures),
                 Action::Open(action) => self.execute_open(action, &current_path),
+                Action::ShowInFileManager(action) => self.execute_show_in_file_manager(action, &current_path),
+                Action::OpenWith(action) => self.execute_open_with(action, &current_path),
                 Action::Pause(action) => self.execute_pause(action),
                 Action::Continue => ActionOutcome {
                     action_type: ActionType::Continue,
@@ -369,6 +371,57 @@ impl ActionExecutor {
         match open_path(source_path, None::<&str>) {
             Ok(_) => success_outcome(ActionType::Open, source_path, None),
             Err(err) => error_outcome(ActionType::Open, err.to_string()),
+        }
+    }
+
+    fn execute_show_in_file_manager(&self, _action: &ShowInFileManagerAction, source_path: &Path) -> ActionOutcome {
+        let result = if cfg!(target_os = "windows") {
+            Command::new("explorer")
+                .arg("/select,")
+                .arg(source_path)
+                .status()
+        } else if cfg!(target_os = "macos") {
+            Command::new("open")
+                .arg("-R")
+                .arg(source_path)
+                .status()
+        } else {
+            // Linux - try various file managers
+            let parent = source_path.parent().unwrap_or_else(|| Path::new("."));
+            Command::new("xdg-open")
+                .arg(parent)
+                .status()
+        };
+
+        match result {
+            Ok(status) if status.success() => success_outcome(ActionType::ShowInFileManager, source_path, None),
+            Ok(status) => error_outcome(ActionType::ShowInFileManager, format!("File manager exited with status: {status}")),
+            Err(err) => error_outcome(ActionType::ShowInFileManager, err.to_string()),
+        }
+    }
+
+    fn execute_open_with(&self, action: &OpenWithAction, source_path: &Path) -> ActionOutcome {
+        let app_path = expand_tilde(&action.app_path);
+
+        let result = if cfg!(target_os = "windows") {
+            Command::new(&app_path)
+                .arg(source_path)
+                .spawn()
+        } else if cfg!(target_os = "macos") {
+            Command::new("open")
+                .arg("-a")
+                .arg(&app_path)
+                .arg(source_path)
+                .spawn()
+        } else {
+            Command::new(&app_path)
+                .arg(source_path)
+                .spawn()
+        };
+
+        match result {
+            Ok(_) => success_outcome(ActionType::OpenWith, source_path, None),
+            Err(err) => error_outcome(ActionType::OpenWith, err.to_string()),
         }
     }
 

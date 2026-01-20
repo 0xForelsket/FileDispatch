@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Settings, X } from "lucide-react";
+import { Settings, X, Trash2 } from "lucide-react";
 
 import type { Folder } from "@/types";
 import { useFolderStore } from "@/stores/folderStore";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface FolderOptionsDialogProps {
   folder: Folder;
@@ -13,8 +14,15 @@ interface FolderOptionsDialogProps {
 export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProps) {
   const [open, setOpen] = useState(false);
   const [scanDepth, setScanDepth] = useState(folder.scanDepth);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const updateSettings = useFolderStore((state) => state.updateFolderSettings);
+  const removeFolder = useFolderStore((state) => state.removeFolder);
   const loading = useFolderStore((state) => state.loading);
+
+  const handleDelete = async () => {
+    await removeFolder(folder.id);
+    setOpen(false);
+  };
 
   const handleSave = async () => {
     await updateSettings(folder.id, scanDepth);
@@ -82,6 +90,24 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
                   {scanDepth === -1 && "All files in this folder and all subfolders recursively"}
                 </p>
               </div>
+
+              {/* Danger Zone */}
+              <div className="pt-4 border-t border-[var(--border-main)]">
+                <label className="block text-sm font-medium text-red-500 mb-2">
+                  Danger Zone
+                </label>
+                <p className="text-xs text-[var(--fg-muted)] mb-3">
+                  Remove this folder from FileDispatch. Your files will not be deleted.
+                </p>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-colors"
+                  disabled={loading}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Remove Folder
+                </button>
+              </div>
             </div>
 
             {/* Footer */}
@@ -123,6 +149,16 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
         </button>
       )}
       {modal}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Remove Folder"
+        message={`Are you sure you want to remove "${folder.name}" from FileDispatch? All rules associated with this folder will be deleted. Your actual files will not be affected.`}
+        confirmLabel="Remove"
+        variant="danger"
+      />
     </>
   );
 }

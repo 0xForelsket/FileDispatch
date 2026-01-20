@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, Loader2, Plus } from "lucide-react";
 
 import type { Condition, ConditionGroup, Rule } from "@/types";
 import { useRuleStore } from "@/stores/ruleStore";
@@ -55,6 +55,12 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Live preview state
+  const [livePreviewResults, setLivePreviewResults] = useState<PreviewItem[]>([]);
+  const [livePreviewLoading, setLivePreviewLoading] = useState(false);
+  const [livePreviewExpanded, setLivePreviewExpanded] = useState(false);
+  const livePreviewTimeout = useRef<number | null>(null);
+
   const isOpen = mode !== "empty" && Boolean(folderId);
   const isNew = mode === "new";
 
@@ -99,6 +105,39 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
       setLoadingPreview(false);
     }
   }, [draft, folderId]);
+
+  // Live preview: debounced update when conditions change
+  useEffect(() => {
+    if (!isOpen || draft.conditions.conditions.length === 0) {
+      setLivePreviewResults([]);
+      return;
+    }
+
+    // Clear existing timeout
+    if (livePreviewTimeout.current) {
+      window.clearTimeout(livePreviewTimeout.current);
+    }
+
+    // Debounce the preview request
+    setLivePreviewLoading(true);
+    livePreviewTimeout.current = window.setTimeout(async () => {
+      try {
+        const results = await previewRuleDraft({ ...draft, folderId });
+        setLivePreviewResults(results);
+      } catch {
+        // Silently fail for live preview - don't show errors
+        setLivePreviewResults([]);
+      } finally {
+        setLivePreviewLoading(false);
+      }
+    }, 500);
+
+    return () => {
+      if (livePreviewTimeout.current) {
+        window.clearTimeout(livePreviewTimeout.current);
+      }
+    };
+  }, [draft.conditions, folderId, isOpen]);
 
 
 
@@ -223,6 +262,74 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
             <HelpTooltip content="Conditions determine which files this rule applies to. Use 'Match All' to require every condition, 'Match Any' for at least one, or 'Match None' to exclude files." />
           </div>
           <ConditionBuilder group={draft.conditions} onChange={(conditions) => setDraft({ ...draft, conditions })} />
+
+          {/* Live Preview - Shows match count and expandable list */}
+          {draft.conditions.conditions.length > 0 && (
+            <div className="mt-3 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] overflow-hidden">
+              <button
+                onClick={() => setLivePreviewExpanded(!livePreviewExpanded)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-[var(--bg-panel)] transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  {livePreviewLoading ? (
+                    <Loader2 className="h-3 w-3 animate-spin text-[var(--fg-muted)]" />
+                  ) : livePreviewExpanded ? (
+                    <ChevronDown className="h-3 w-3 text-[var(--fg-muted)]" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3 text-[var(--fg-muted)]" />
+                  )}
+                  <span className="text-[var(--fg-secondary)]">Live Preview</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {livePreviewLoading ? (
+                    <span className="text-[var(--fg-muted)]">Scanning...</span>
+                  ) : livePreviewResults.length > 0 ? (
+                    <>
+                      <span className="text-[var(--accent)] font-medium">
+                        {livePreviewResults.filter((r) => r.matched).length} matches
+                      </span>
+                      <span className="text-[var(--fg-muted)]">
+                        / {livePreviewResults.length} files
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-[var(--fg-muted)]">No files in folder</span>
+                  )}
+                </div>
+              </button>
+
+              {livePreviewExpanded && livePreviewResults.length > 0 && (
+                <div className="border-t border-[var(--border-main)] max-h-48 overflow-y-auto custom-scrollbar">
+                  {livePreviewResults.slice(0, 20).map((item) => (
+                    <div
+                      key={item.filePath}
+                      className={`flex items-center gap-2 px-3 py-1.5 text-xs border-b border-[var(--border-main)] last:border-b-0 ${
+                        item.matched ? "bg-[var(--accent-muted)]/30" : ""
+                      }`}
+                    >
+                      <span className={item.matched ? "text-[var(--accent)]" : "text-[var(--fg-muted)]"}>
+                        {item.matched ? "✓" : "✗"}
+                      </span>
+                      <span className={`truncate ${item.matched ? "text-[var(--fg-primary)]" : "text-[var(--fg-muted)]"}`}>
+                        {item.filePath.split(/[/\\]/).pop()}
+                      </span>
+                    </div>
+                  ))}
+                  {livePreviewResults.length > 20 && (
+                    <div className="px-3 py-2 text-xs text-[var(--fg-muted)] text-center bg-[var(--bg-panel)]">
+                      +{livePreviewResults.length - 20} more files...
+                      <button
+                        onClick={handlePreview}
+                        className="ml-2 text-[var(--accent)] hover:underline"
+                      >
+                        View all
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Actions Section - Hazel style */}

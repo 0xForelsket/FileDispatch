@@ -22,6 +22,8 @@ pub struct FileInfo {
     pub parent: Option<String>,
     pub is_dir: bool,
     pub hash: String,
+    /// When this file was last matched by any rule (populated from match_repo when available)
+    pub last_matched: Option<DateTime<Utc>>,
 }
 
 impl FileInfo {
@@ -88,6 +90,7 @@ impl FileInfo {
             parent,
             is_dir,
             hash,
+            last_matched: None,
         })
     }
 }

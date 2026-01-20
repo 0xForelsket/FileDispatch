@@ -26,6 +26,7 @@ pub enum Condition {
     DateCreated(DateCondition),
     DateModified(DateCondition),
     DateAdded(DateCondition),
+    DateLastMatched(DateCondition),
     CurrentTime(TimeCondition),
     Kind(KindCondition),
     ShellScript(ShellCondition),

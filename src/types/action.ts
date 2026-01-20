@@ -49,6 +49,12 @@ export interface NotifyAction {
 
 export type OpenAction = object;
 
+export type ShowInFileManagerAction = object;
+
+export interface OpenWithAction {
+  appPath: string;
+}
+
 export interface PauseAction {
   durationSeconds: number;
 }
@@ -65,6 +71,8 @@ export type Action =
   | { type: "runScript" } & ScriptAction
   | { type: "notify" } & NotifyAction
   | { type: "open" } & OpenAction
+  | { type: "showInFileManager" } & ShowInFileManagerAction
+  | { type: "openWith" } & OpenWithAction
   | { type: "pause" } & PauseAction
   | { type: "continue" }
   | { type: "ignore" };
@@ -87,6 +95,8 @@ export type ActionType =
   | "runScript"
   | "notify"
   | "open"
+  | "showInFileManager"
+  | "openWith"
   | "pause"
   | "continue"
   | "ignore";

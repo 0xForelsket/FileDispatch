@@ -85,6 +85,7 @@ export type Condition =
   | { type: "dateCreated"; operator: DateOperator }
   | { type: "dateModified"; operator: DateOperator }
   | { type: "dateAdded"; operator: DateOperator }
+  | { type: "dateLastMatched"; operator: DateOperator }
   | { type: "currentTime"; operator: TimeOperator }
   | { type: "kind"; kind: FileKind; negate: boolean }
   | { type: "shellScript"; command: string }

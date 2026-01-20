@@ -29,6 +29,7 @@ const conditionTypes = [
   { value: "dateCreated", label: "Date Created" },
   { value: "dateModified", label: "Date Modified" },
   { value: "dateAdded", label: "Date Added" },
+  { value: "dateLastMatched", label: "Date Last Matched" },
   { value: "currentTime", label: "Current Time" },
   { value: "kind", label: "Kind" },
   { value: "shellScript", label: "Shell Script" },
@@ -261,6 +262,8 @@ function createCondition(type: string): Condition {
       return { type: "dateModified", operator: { type: "is", date: "" } };
     case "dateAdded":
       return { type: "dateAdded", operator: { type: "is", date: "" } };
+    case "dateLastMatched":
+      return { type: "dateLastMatched", operator: { type: "inTheLast", amount: 7, unit: "days" } };
     case "currentTime":
       return { type: "currentTime", operator: { type: "is", time: defaultTime } };
     case "kind":
@@ -379,7 +382,8 @@ function renderConditionFields(
   if (
     condition.type === "dateCreated" ||
     condition.type === "dateModified" ||
-    condition.type === "dateAdded"
+    condition.type === "dateAdded" ||
+    condition.type === "dateLastMatched"
   ) {
     const operator = condition.operator;
     return (

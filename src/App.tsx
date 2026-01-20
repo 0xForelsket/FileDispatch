@@ -7,7 +7,8 @@ import {
   Activity,
   Eye,
   Search,
-  ChevronDown
+  ChevronDown,
+  X
 } from "lucide-react";
 
 import { ActivityLog } from "@/components/logs/ActivityLog";
@@ -53,6 +54,8 @@ function App() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isLogExpanded, setIsLogExpanded] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const effectiveMode = selectedFolderId ? editorMode : "empty";
   const effectiveRule = selectedFolderId ? editingRule : null;
@@ -162,17 +165,46 @@ function App() {
         {/* Separator */}
         <div className="h-5 w-px bg-[var(--border-main)] mx-3" />
 
-        {/* Additional Tools Group */}
+        {/* Additional Tools Group - Search */}
         <div className="flex items-center gap-1">
-          <button
-            className={`flex items-center justify-center p-1.5 rounded transition-colors ${isLinear
-              ? "text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
-              : "text-[var(--fg-primary)]"
-              }`}
-            title="Search"
-          >
-            <Search className="h-4 w-4" strokeWidth={1.5} />
-          </button>
+          {isSearchOpen ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter rules..."
+                autoFocus
+                className="h-6 w-40 px-2 text-xs bg-[var(--bg-panel)] border border-[var(--border-main)] rounded text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none focus:border-[var(--accent)]"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setIsSearchOpen(false);
+                    setSearchQuery("");
+                  }
+                }}
+              />
+              <button
+                onClick={() => {
+                  setIsSearchOpen(false);
+                  setSearchQuery("");
+                }}
+                className="flex items-center justify-center p-1 rounded text-[var(--fg-muted)] hover:text-[var(--fg-primary)]"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className={`flex items-center justify-center p-1.5 rounded transition-colors ${isLinear
+                ? "text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                : "text-[var(--fg-primary)]"
+                }`}
+              title="Search Rules (Ctrl+F)"
+            >
+              <Search className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          )}
         </div>
 
         {/* Spacer */}
@@ -262,6 +294,7 @@ function App() {
               selectedRuleId={effectiveRule?.id ?? ""}
               onNewRule={handleNewRule}
               onSelectRule={handleSelectRule}
+              searchQuery={searchQuery}
             />
           </div>
         </section>

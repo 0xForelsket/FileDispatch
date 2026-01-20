@@ -1,4 +1,4 @@
-import { Plus, X } from "lucide-react";
+import { AlertTriangle, Plus, X } from "lucide-react";
 import { MagiSelect } from "@/components/ui/MagiSelect";
 
 
@@ -21,6 +21,8 @@ const actionTypes = [
   { value: "runScript", label: "Run Script" },
   { value: "notify", label: "Notify" },
   { value: "open", label: "Open (Default App)" },
+  { value: "openWith", label: "Open With..." },
+  { value: "showInFileManager", label: "Show in File Manager" },
   { value: "pause", label: "Pause" },
   { value: "continue", label: "Continue Matching Rules" },
   { value: "ignore", label: "Ignore" },
@@ -56,7 +58,9 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
       {actions.map((action, index) => (
         <div
           key={index}
-          className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-3 transition-colors hover:border-[var(--border-strong)]"
+          className={`rounded-[var(--radius)] border bg-[var(--bg-subtle)] p-3 transition-colors hover:border-[var(--border-strong)] ${
+            action.type === "deletePermanently" ? "border-red-500/50" : "border-[var(--border-main)]"
+          }`}
         >
           <div className="flex flex-wrap items-center gap-2">
             <MagiSelect
@@ -75,6 +79,12 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
               <X className="h-4 w-4" />
             </button>
           </div>
+          {action.type === "deletePermanently" && (
+            <div className="flex items-center gap-2 mt-2 text-xs text-red-500">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>Files will be permanently deleted and cannot be recovered.</span>
+            </div>
+          )}
         </div>
       ))}
       <button
@@ -125,6 +135,10 @@ function createAction(type: string): Action {
       return { type: "notify", message: "" };
     case "open":
       return { type: "open" };
+    case "openWith":
+      return { type: "openWith", appPath: "" };
+    case "showInFileManager":
+      return { type: "showInFileManager" };
     case "pause":
       return { type: "pause", durationSeconds: 5 };
     case "continue":
@@ -293,6 +307,17 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
         />
         <span className="text-[11px] text-[var(--fg-secondary)]">seconds</span>
       </>
+    );
+  }
+
+  if (action.type === "openWith") {
+    return (
+      <input
+        className={longFieldClass}
+        placeholder="Path to application"
+        value={action.appPath}
+        onChange={(e) => onChange({ ...action, appPath: e.target.value })}
+      />
     );
   }
 

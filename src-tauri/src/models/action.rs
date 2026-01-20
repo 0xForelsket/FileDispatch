@@ -15,6 +15,8 @@ pub enum Action {
     RunScript(ScriptAction),
     Notify(NotifyAction),
     Open(OpenAction),
+    ShowInFileManager(ShowInFileManagerAction),
+    OpenWith(OpenWithAction),
     Pause(PauseAction),
     Continue,
     Ignore,
@@ -89,6 +91,16 @@ pub struct OpenAction {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ShowInFileManagerAction {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenWithAction {
+    pub app_path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PauseAction {
     pub duration_seconds: u64,
 }
@@ -132,6 +144,8 @@ pub enum ActionType {
     RunScript,
     Notify,
     Open,
+    ShowInFileManager,
+    OpenWith,
     Pause,
     Continue,
     Ignore,

@@ -70,13 +70,18 @@ impl RuleEngine {
             }
             last_seen.insert(event.path.clone(), now);
         }
-        let info = match FileInfo::from_path(&event.path) {
+        let mut info = match FileInfo::from_path(&event.path) {
             Ok(info) => info,
             Err(_) => return Ok(()),
         };
 
         let rule_repo = RuleRepository::new(self.db.clone());
         let match_repo = MatchRepository::new(self.db.clone());
+
+        // Populate last_matched from database
+        if let Ok(last_matched) = match_repo.get_last_match_time(info.path.to_string_lossy().as_ref()) {
+            info.last_matched = last_matched;
+        }
         let log_repo = LogRepository::new(self.db.clone());
         let undo_repo = UndoRepository::new(self.db.clone());
 
@@ -198,6 +203,18 @@ pub(crate) fn evaluate_condition(
         }),
         Condition::DateAdded(cond) => Ok(EvaluationResult {
             matched: evaluate_date(info.added, &cond.operator),
+            captures: HashMap::new(),
+        }),
+        Condition::DateLastMatched(cond) => Ok(EvaluationResult {
+            // Use the last_matched field from FileInfo if available
+            // Files that have never been matched will return None, and we'll treat them
+            // as "matched a very long time ago" (so they match "not in the last X")
+            matched: info.last_matched
+                .map(|dt| evaluate_date(dt, &cond.operator))
+                .unwrap_or_else(|| {
+                    // If never matched, only match conditions looking for old/never-matched files
+                    matches!(&cond.operator, DateOperator::NotInTheLast { .. })
+                }),
             captures: HashMap::new(),
         }),
         Condition::CurrentTime(cond) => Ok(EvaluationResult {
@@ -439,6 +456,8 @@ fn action_type_to_string(action_type: &ActionType) -> String {
         ActionType::RunScript => "runScript",
         ActionType::Notify => "notify",
         ActionType::Open => "open",
+        ActionType::ShowInFileManager => "showInFileManager",
+        ActionType::OpenWith => "openWith",
         ActionType::Pause => "pause",
         ActionType::Continue => "continue",
         ActionType::Ignore => "ignore",
