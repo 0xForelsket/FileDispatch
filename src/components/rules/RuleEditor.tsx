@@ -137,7 +137,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
         window.clearTimeout(livePreviewTimeout.current);
       }
     };
-  }, [draft.conditions, folderId, isOpen]);
+  }, [draft, folderId, isOpen]);
 
 
 

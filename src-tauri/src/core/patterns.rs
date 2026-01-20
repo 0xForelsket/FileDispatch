@@ -198,6 +198,7 @@ mod tests {
             parent: Some(parent_name),
             is_dir: false,
             hash: "hash".to_string(),
+            last_matched: None,
         }
     }
 

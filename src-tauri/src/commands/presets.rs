@@ -215,11 +215,9 @@ mod tests {
             panic!("expected name condition");
         }
         if let Action::Move(action) = &rule.actions[0] {
-            let expected = std::path::PathBuf::from(&folder_str)
-                .join("dest")
-                .to_string_lossy()
-                .to_string();
-            assert_eq!(action.destination, expected);
+            let normalized_dest = action.destination.replace('\\', "/");
+            let normalized_folder = folder_str.replace('\\', "/");
+            assert_eq!(normalized_dest, format!("{}/dest", normalized_folder));
         } else {
             panic!("expected move action");
         }

@@ -68,8 +68,7 @@ pub fn rule_duplicate(state: State<'_, AppState>, id: String) -> Result<Rule, St
 #[tauri::command]
 pub fn rule_export(state: State<'_, AppState>, folder_id: String) -> Result<String, String> {
     let repo = RuleRepository::new(state.db.clone());
-    let rules = repo.list_by_folder(&folder_id).map_err(|e| e.to_string())?;
-    serde_json::to_string_pretty(&rules).map_err(|e| e.to_string())
+    export_rules(&repo, &folder_id)
 }
 
 #[tauri::command]
@@ -79,11 +78,96 @@ pub fn rule_import(
     payload: String,
 ) -> Result<Vec<Rule>, String> {
     let repo = RuleRepository::new(state.db.clone());
-    let mut rules: Vec<Rule> = serde_json::from_str(&payload).map_err(|e| e.to_string())?;
+    import_rules(&repo, &folder_id, &payload)
+}
+
+fn export_rules(repo: &RuleRepository, folder_id: &str) -> Result<String, String> {
+    let rules = repo.list_by_folder(folder_id).map_err(|e| e.to_string())?;
+    serde_json::to_string_pretty(&rules).map_err(|e| e.to_string())
+}
+
+fn import_rules(
+    repo: &RuleRepository,
+    folder_id: &str,
+    payload: &str,
+) -> Result<Vec<Rule>, String> {
+    let mut rules: Vec<Rule> = serde_json::from_str(payload).map_err(|e| e.to_string())?;
     let mut created = Vec::new();
     for mut rule in rules.drain(..) {
-        rule.folder_id = folder_id.clone();
+        rule.folder_id = folder_id.to_string();
         created.push(repo.create(rule).map_err(|e| e.to_string())?);
     }
     Ok(created)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{export_rules, import_rules};
+    use crate::models::{ConditionGroup, MatchType, Rule};
+    use crate::storage::database::Database;
+    use crate::storage::folder_repo::FolderRepository;
+    use crate::storage::rule_repo::RuleRepository;
+    use tempfile::tempdir;
+
+    fn sample_rule(folder_id: String, name: &str) -> Rule {
+        Rule {
+            id: "rule-id".to_string(),
+            folder_id,
+            name: name.to_string(),
+            enabled: true,
+            stop_processing: true,
+            conditions: ConditionGroup {
+                match_type: MatchType::All,
+                conditions: vec![],
+            },
+            actions: vec![],
+            position: 0,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }
+    }
+
+    #[test]
+    fn export_rules_serializes_folder_rules() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+        let db = Database::new_with_path(db_path).unwrap();
+        let folder_repo = FolderRepository::new(db.clone());
+        let rule_repo = RuleRepository::new(db);
+
+        let folder = folder_repo
+            .create(&dir.path().to_string_lossy(), "Export")
+            .unwrap();
+        let rule = sample_rule(folder.id.clone(), "Export Rule");
+        let created = rule_repo.create(rule).unwrap();
+
+        let payload = export_rules(&rule_repo, &folder.id).unwrap();
+        let parsed: Vec<Rule> = serde_json::from_str(&payload).unwrap();
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].name, created.name);
+    }
+
+    #[test]
+    fn import_rules_rewrites_folder_id_and_creates_rules() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+        let db = Database::new_with_path(db_path).unwrap();
+        let folder_repo = FolderRepository::new(db.clone());
+        let rule_repo = RuleRepository::new(db);
+
+        let target_folder = folder_repo
+            .create(&dir.path().to_string_lossy(), "Import")
+            .unwrap();
+
+        let original = sample_rule("source-folder".to_string(), "Import Rule");
+        let payload = serde_json::to_string(&vec![original]).unwrap();
+        let created = import_rules(&rule_repo, &target_folder.id, &payload).unwrap();
+
+        assert_eq!(created.len(), 1);
+        assert_eq!(created[0].folder_id, target_folder.id);
+        assert_ne!(created[0].id, "rule-id");
+
+        let list = rule_repo.list_by_folder(&target_folder.id).unwrap();
+        assert_eq!(list.len(), 1);
+    }
 }

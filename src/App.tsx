@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   FolderPlus,
   FilePlus,
+  FileDown,
+  FileUp,
   LayoutGrid,
   Settings,
   Activity,
@@ -10,6 +12,8 @@ import {
   ChevronDown,
   X
 } from "lucide-react";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 
 import { ActivityLog } from "@/components/logs/ActivityLog";
 import { AddFolderDialog } from "@/components/folders/AddFolderDialog";
@@ -22,11 +26,13 @@ import { TemplateGallery } from "@/components/templates/TemplateGallery";
 import { useFolders } from "@/hooks/useFolders";
 import { useLogs } from "@/hooks/useLogs";
 import { useRules } from "@/hooks/useRules";
+import { ruleExport, ruleImport } from "@/lib/tauri";
 import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
 import { useRuleStore } from "@/stores/ruleStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type { Rule } from "@/types";
+import { normalizeRuleImportPayload } from "@/lib/ruleTransfer";
 
 function App() {
   useFolders();
@@ -36,6 +42,7 @@ function App() {
   const folders = useFolderStore((state) => state.folders);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const rules = useRuleStore((state) => state.rules);
+  const loadRules = useRuleStore((state) => state.loadRules);
   const logs = useLogStore((state) => state.entries);
   const settings = useSettingsStore((state) => state.settings);
 
@@ -56,11 +63,18 @@ function App() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isRuleExporting, setIsRuleExporting] = useState(false);
+  const [isRuleImporting, setIsRuleImporting] = useState(false);
+  const [ruleTransferError, setRuleTransferError] = useState<string | null>(null);
 
   const effectiveMode = selectedFolderId ? editorMode : "empty";
   const effectiveRule = selectedFolderId ? editingRule : null;
 
   const activeFolder = folders.find((folder) => folder.id === selectedFolderId);
+
+  useEffect(() => {
+    setRuleTransferError(null);
+  }, [selectedFolderId]);
 
   const activeLogs = useMemo(() => {
     if (!selectedFolderId) return logs;
@@ -95,6 +109,47 @@ function App() {
   const handleCloseEditor = () => {
     setEditingRule(null);
     setEditorMode("empty");
+  };
+
+  const handleExportRules = async () => {
+    if (!selectedFolderId) return;
+    setRuleTransferError(null);
+    setIsRuleExporting(true);
+    try {
+      const payload = await ruleExport(selectedFolderId);
+      const defaultName = `${activeFolder?.name ?? "rules"}.filedispatch-rules.json`;
+      const path = await save({
+        defaultPath: defaultName,
+        filters: [{ name: "File Dispatch Rules", extensions: ["filedispatch-rules", "json"] }],
+      });
+      if (!path) return;
+      await writeTextFile(path, payload);
+    } catch (err) {
+      setRuleTransferError(`Export failed: ${String(err)}`);
+    } finally {
+      setIsRuleExporting(false);
+    }
+  };
+
+  const handleImportRules = async () => {
+    if (!selectedFolderId) return;
+    setRuleTransferError(null);
+    setIsRuleImporting(true);
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: "File Dispatch Rules", extensions: ["filedispatch-rules", "json"] }],
+      });
+      if (!selected || Array.isArray(selected)) return;
+      const payload = await readTextFile(String(selected));
+      const normalizedPayload = normalizeRuleImportPayload(payload);
+      await ruleImport(selectedFolderId, normalizedPayload);
+      await loadRules(selectedFolderId);
+    } catch (err) {
+      setRuleTransferError(`Import failed: ${String(err)}`);
+    } finally {
+      setIsRuleImporting(false);
+    }
   };
 
   const isMagi = settings.theme === "magi";
@@ -148,6 +203,30 @@ function App() {
             title="New Rule"
           >
             <FilePlus className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+
+          <button
+            onClick={handleExportRules}
+            disabled={!selectedFolderId || isRuleExporting || isRuleImporting}
+            className={`flex items-center justify-center p-1.5 rounded transition-colors ${isLinear
+              ? "text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)] disabled:opacity-40 disabled:hover:bg-transparent"
+              : "text-[var(--fg-primary)] disabled:opacity-40"
+              }`}
+            title="Export Rules"
+          >
+            <FileDown className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+
+          <button
+            onClick={handleImportRules}
+            disabled={!selectedFolderId || isRuleImporting || isRuleExporting}
+            className={`flex items-center justify-center p-1.5 rounded transition-colors ${isLinear
+              ? "text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)] disabled:opacity-40 disabled:hover:bg-transparent"
+              : "text-[var(--fg-primary)] disabled:opacity-40"
+              }`}
+            title="Import Rules"
+          >
+            <FileUp className="h-4 w-4" strokeWidth={1.5} />
           </button>
 
           <button
@@ -288,6 +367,12 @@ function App() {
               </span>
             )}
           </div>
+
+          {ruleTransferError ? (
+            <div className="px-3 py-1 text-[10px] text-[var(--fg-alert)] border-b border-[var(--border-main)] bg-[var(--bg-subtle)]/60">
+              {ruleTransferError}
+            </div>
+          ) : null}
 
           <div className="flex-1 overflow-y-auto relative p-1.5 custom-scrollbar">
             <RuleList

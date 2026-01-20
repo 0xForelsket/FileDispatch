@@ -267,6 +267,8 @@ fn describe_action(
             format!("Notify: {}", message)
         }
         Action::Open(_) => "Open with default app".to_string(),
+        Action::ShowInFileManager(_) => "Show in file manager".to_string(),
+        Action::OpenWith(action) => format!("Open with {}", action.app_path),
         Action::Pause(action) => format!("Pause {}s", action.duration_seconds),
         Action::Continue => "Continue matching rules".to_string(),
         Action::Ignore => "Ignore".to_string(),

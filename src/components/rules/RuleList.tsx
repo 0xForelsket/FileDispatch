@@ -101,7 +101,7 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery 
           </div>
         ) : filteredRules.length === 0 ? (
           <div className="px-4 py-6 text-center text-xs text-[var(--fg-muted)]">
-            No rules match "{searchQuery}"
+            No rules match &quot;{searchQuery}&quot;
           </div>
         ) : (
           filteredRules.map((rule, index) => (
