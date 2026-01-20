@@ -41,7 +41,7 @@ impl RuleEngine {
     ) -> Self {
         Self {
             event_rx,
-            db,
+            db: db.clone(),
             executor: ActionExecutor::new(app_handle, settings.clone()),
             _settings: settings,
             last_seen: std::sync::Mutex::new(std::collections::HashMap::new()),
