@@ -27,3 +27,9 @@ bun.lockb
 # Beads DB (keep issues JSONL)
 .beads/beads.db*
 .beads/last-touched
+
+# Flatpak build artifacts
+flatpak/build-dir/
+flatpak/.flatpak-builder/
+flatpak/shared-modules/
+flatpak/*.flatpak

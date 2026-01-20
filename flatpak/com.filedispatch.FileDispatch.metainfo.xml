@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.filedispatch.FileDispatch</id>
+  <name>File Dispatch</name>
+  <summary>Automatic file organization with user-defined rules</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="com.filedispatch">
+    <name>File Dispatch Contributors</name>
+  </developer>
+
+  <description>
+    <p>
+      File Dispatch is a cross-platform desktop application that automatically organizes
+      files based on user-defined rules. Think of it as Hazel for Linux and Windows.
+    </p>
+    <p>Features include:</p>
+    <ul>
+      <li>Watch folders for new files and changes</li>
+      <li>Create rules with flexible conditions (name, extension, size, date, etc.)</li>
+      <li>Perform actions like move, copy, rename, archive, delete, and more</li>
+      <li>Preview changes before applying them</li>
+      <li>Undo recent actions</li>
+      <li>Import and export rule presets</li>
+      <li>System tray integration</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">com.filedispatch.FileDispatch.desktop</launchable>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main window showing folders and rules</caption>
+      <image>https://raw.githubusercontent.com/YOUR_USERNAME/FileDispatch/main/screenshots/main.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://github.com/YOUR_USERNAME/FileDispatch</url>
+  <url type="bugtracker">https://github.com/YOUR_USERNAME/FileDispatch/issues</url>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="0.1.0" date="2025-01-20">
+      <description>
+        <p>Initial release with core features:</p>
+        <ul>
+          <li>Folder watching and rule management</li>
+          <li>Multiple condition types and actions</li>
+          <li>Preview mode and undo functionality</li>
+          <li>Rule presets import/export</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+
+  <requires>
+    <display_length compare="ge">800</display_length>
+  </requires>
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+</component>

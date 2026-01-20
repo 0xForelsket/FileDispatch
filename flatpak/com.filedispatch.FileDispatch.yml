@@ -1,0 +1,56 @@
+app-id: com.filedispatch.FileDispatch
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+command: file-dispatch
+
+finish-args:
+  # Display access
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  # GPU acceleration
+  - --device=dri
+  # Network access (for potential future features)
+  - --share=network
+  # File system access for watching folders
+  - --filesystem=home
+  - --filesystem=/media
+  - --filesystem=/mnt
+  - --filesystem=/run/media
+  # Notifications
+  - --talk-name=org.freedesktop.Notifications
+  # System tray
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # File trash access
+  - --talk-name=org.freedesktop.portal.Trash
+  # Autostart (for start-at-login feature)
+  - --talk-name=org.freedesktop.portal.Background
+
+modules:
+  # System tray support - libayatana-appindicator from flathub shared-modules
+  - shared-modules/libayatana-appindicator/libayatana-appindicator-gtk3.json
+
+  - name: file-dispatch
+    buildsystem: simple
+    build-commands:
+      # Copy the pre-built binary
+      - install -Dm755 file-dispatch ${FLATPAK_DEST}/bin/file-dispatch
+      # Install desktop file
+      - install -Dm644 file-dispatch.desktop ${FLATPAK_DEST}/share/applications/com.filedispatch.FileDispatch.desktop
+      # Install icons
+      - install -Dm644 icons/32x32.png ${FLATPAK_DEST}/share/icons/hicolor/32x32/apps/com.filedispatch.FileDispatch.png
+      - install -Dm644 icons/128x128.png ${FLATPAK_DEST}/share/icons/hicolor/128x128/apps/com.filedispatch.FileDispatch.png
+      - install -Dm644 icons/icon.png ${FLATPAK_DEST}/share/icons/hicolor/512x512/apps/com.filedispatch.FileDispatch.png
+      # Install metainfo
+      - install -Dm644 com.filedispatch.FileDispatch.metainfo.xml ${FLATPAK_DEST}/share/metainfo/com.filedispatch.FileDispatch.metainfo.xml
+    sources:
+      - type: file
+        path: ../src-tauri/target/release/file-dispatch
+      - type: file
+        path: file-dispatch.desktop
+      - type: dir
+        path: ../src-tauri/icons
+        dest: icons
+      - type: file
+        path: com.filedispatch.FileDispatch.metainfo.xml
