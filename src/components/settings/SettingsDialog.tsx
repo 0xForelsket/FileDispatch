@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Bell, Monitor, Settings, Shield, User, X } from "lucide-react";
+import { Bell, Calendar, Settings, Shield, User, X } from "lucide-react";
 
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
+import { FormattingPanel } from "@/components/settings/FormattingPanel";
 import { formatShortcut, matchesShortcut } from "@/lib/shortcuts";
 
 const tabs = [
   { id: "general", label: "General", icon: Settings },
-  { id: "account", label: "Account", icon: User },
+  { id: "formatting", label: "Formatting", icon: Calendar },
   { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "system", label: "System", icon: Monitor },
+  { id: "account", label: "Account", icon: User },
   { id: "security", label: "Security", icon: Shield },
 ];
 
@@ -36,97 +37,98 @@ export function SettingsDialog({ compact = false }: SettingsDialogProps) {
   const modal =
     open && typeof document !== "undefined"
       ? createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-            <div
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => setOpen(false)}
-            />
-            <div className="relative flex h-[600px] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)] md:flex-row">
-              <div className="flex w-full flex-col border-b border-[var(--border-main)] bg-[var(--bg-subtle)] p-4 md:w-64 md:border-b-0 md:border-r">
-                <h2 className="mb-4 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--fg-muted)]">
-                  Settings
-                </h2>
-                <nav className="space-y-1">
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex w-full items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-medium transition-all ${
-                        activeTab === tab.id
-                          ? "border border-[var(--accent)] bg-[var(--accent-muted)] text-[var(--fg-primary)]"
-                          : "text-[var(--fg-secondary)] hover:bg-[var(--bg-panel)] hover:text-[var(--fg-primary)]"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+          />
+          <div className="relative flex h-[600px] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)] md:flex-row">
+            <div className="flex w-full flex-col border-b border-[var(--border-main)] bg-[var(--bg-subtle)] p-4 md:w-64 md:border-b-0 md:border-r">
+              <h2 className="mb-4 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--fg-muted)]">
+                Settings
+              </h2>
+              <nav className="space-y-1">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex w-full items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-medium transition-all ${activeTab === tab.id
+                      ? "border border-[var(--accent)] bg-[var(--accent-muted)] text-[var(--fg-primary)]"
+                      : "text-[var(--fg-secondary)] hover:bg-[var(--bg-panel)] hover:text-[var(--fg-primary)]"
                       }`}
-                      type="button"
-                    >
-                      <tab.icon className="h-4 w-4" />
-                      {tab.label}
-                    </button>
-                  ))}
-                </nav>
-                <div className="mt-auto pt-4">
-                  <div className="flex items-center gap-3 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-2">
-                    <div className="h-8 w-8 rounded-full bg-[var(--accent)]" />
-                    <div>
-                      <div className="text-sm font-semibold text-[var(--fg-primary)]">
-                        Local User
-                      </div>
-                      <div className="text-xs text-[var(--fg-muted)]">
-                        Pro License
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-1 flex-col">
-                <div className="flex items-center justify-between border-b border-[var(--border-main)] p-6">
+                    type="button"
+                  >
+                    <tab.icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+              <div className="mt-auto pt-4">
+                <div className="flex items-center gap-3 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-2">
+                  <div className="h-8 w-8 rounded-full bg-[var(--accent)]" />
                   <div>
-                    <h2 className="text-2xl font-semibold text-[var(--fg-primary)]">
-                      {tabs.find((tab) => tab.id === activeTab)?.label}
-                    </h2>
-                    <p className="text-sm text-[var(--fg-muted)]">
-                      Manage your{" "}
-                      {tabs.find((tab) => tab.id === activeTab)?.label.toLowerCase()} preferences
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setOpen(false)}
-                    className="rounded-[var(--radius)] p-2 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
-                    type="button"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-                <div className="custom-scrollbar flex-1 overflow-y-auto p-6">
-                  {activeTab === "general" ? (
-                    <SettingsPanel showTitle={false} />
-                  ) : (
-                    <div className="rounded-[var(--radius)] border border-dashed border-[var(--border-main)] p-6 text-sm text-[var(--fg-muted)]">
-                      This section is coming soon.
+                    <div className="text-sm font-semibold text-[var(--fg-primary)]">
+                      Local User
                     </div>
-                  )}
-                </div>
-                <div className="flex justify-end gap-3 border-t border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
-                  <button
-                    onClick={() => setOpen(false)}
-                    className="text-sm font-medium text-[var(--fg-secondary)] transition-colors hover:text-[var(--fg-primary)]"
-                    type="button"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => setOpen(false)}
-                    className="rounded-[var(--radius)] bg-[var(--accent)] px-6 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-[var(--shadow-sm)] transition-all hover:opacity-90"
-                    type="button"
-                  >
-                    Save Changes
-                  </button>
+                    <div className="text-xs text-[var(--fg-muted)]">
+                      Pro License
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>,
-          document.body,
-        )
+
+            <div className="flex flex-1 flex-col">
+              <div className="flex items-center justify-between border-b border-[var(--border-main)] p-6">
+                <div>
+                  <h2 className="text-2xl font-semibold text-[var(--fg-primary)]">
+                    {tabs.find((tab) => tab.id === activeTab)?.label}
+                  </h2>
+                  <p className="text-sm text-[var(--fg-muted)]">
+                    Manage your{" "}
+                    {tabs.find((tab) => tab.id === activeTab)?.label.toLowerCase()} preferences
+                  </p>
+                </div>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="rounded-[var(--radius)] p-2 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                  type="button"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="custom-scrollbar flex-1 overflow-y-auto p-6">
+                {activeTab === "general" ? (
+                  <SettingsPanel showTitle={false} />
+                ) : activeTab === "formatting" ? (
+                  <FormattingPanel />
+                ) : (
+                  <div className="rounded-[var(--radius)] border border-dashed border-[var(--border-main)] p-6 text-sm text-[var(--fg-muted)]">
+                    This section is coming soon.
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 border-t border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
+                <button
+                  onClick={() => setOpen(false)}
+                  className="text-sm font-medium text-[var(--fg-secondary)] transition-colors hover:text-[var(--fg-primary)]"
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="rounded-[var(--radius)] bg-[var(--accent)] px-6 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-[var(--shadow-sm)] transition-all hover:opacity-90"
+                  type="button"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )
       : null;
 
   return (

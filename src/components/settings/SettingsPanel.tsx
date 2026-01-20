@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { MagiSelect } from "@/components/ui/MagiSelect";
 import { enable, disable } from "@tauri-apps/plugin-autostart";
+import { Switch } from "@/components/ui/Switch";
 
 import { ThemeMode, useSettingsStore } from "@/stores/settingsStore";
 
@@ -166,6 +167,8 @@ export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
           />
         </SettingRow>
       </section>
+
+
     </div>
   );
 }
@@ -178,6 +181,7 @@ interface SettingToggleProps {
   highlight?: boolean;
 }
 
+
 function SettingToggle({
   title,
   description,
@@ -186,33 +190,19 @@ function SettingToggle({
   highlight = false,
 }: SettingToggleProps) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
+    <div
       onClick={() => onChange(!checked)}
-      className={`flex w-full items-center justify-between rounded-[var(--radius)] border p-3 text-left transition-all ${
-        highlight
-          ? "border-[var(--accent)] bg-[var(--accent-muted)]"
-          : "border-transparent hover:border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
-      }`}
+      className={`flex w-full cursor-pointer items-center justify-between rounded-[var(--radius)] border p-3 text-left transition-all ${highlight
+        ? "border-[var(--accent)] bg-[var(--accent-muted)]"
+        : "border-transparent hover:border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
+        }`}
     >
       <div>
         <div className="font-medium text-[var(--fg-primary)]">{title}</div>
         <div className="text-xs text-[var(--fg-muted)]">{description}</div>
       </div>
-      <span
-        className={`relative h-6 w-10 rounded-full border border-[var(--border-main)] transition-all ${
-          checked ? "bg-[var(--accent)]" : "bg-[var(--bg-panel)]"
-        }`}
-      >
-        <span
-          className={`absolute top-1 h-4 w-4 rounded-full border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-sm transition-all ${
-            checked ? "right-1" : "left-1"
-          }`}
-        />
-      </span>
-    </button>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
   );
 }
 

@@ -3,6 +3,8 @@ import { Folder, Play, Loader2 } from "lucide-react";
 
 import type { Folder as FolderType } from "@/types";
 import { folderRunNow, type RunResult } from "@/lib/tauri";
+import { Switch } from "@/components/ui/Switch";
+import { cn } from "@/lib/utils";
 
 interface FolderItemProps {
   folder: FolderType;
@@ -38,25 +40,21 @@ export function FolderItem({
 
   return (
     <div
-      className={`group flex items-center justify-between gap-2 rounded-[var(--radius)] border px-3 py-2 text-xs cursor-pointer select-none transition-colors mb-1 ${selected
+      className={cn(
+        "group flex items-center justify-between gap-3 rounded-[var(--radius)] border px-3 py-2 text-xs cursor-pointer select-none transition-all mb-1",
+        selected
           ? "bg-[var(--accent-muted)] text-[var(--fg-primary)] border-[var(--accent)]"
           : "text-[var(--fg-primary)] border-transparent hover:border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
-        }`}
+      )}
+      onClick={onSelect}
     >
-      <button
-        className="flex w-full items-center gap-2 overflow-hidden text-left outline-none focus:outline-none"
-        onClick={onSelect}
-        type="button"
-      >
-        <Folder className="h-4 w-4 text-[var(--fg-muted)]" />
+      <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+        <Folder className={cn("h-4 w-4 shrink-0", selected ? "text-[var(--accent)]" : "text-[var(--fg-muted)]")} />
         <div className="min-w-0 flex-1">
-          <div
-            className={`flex items-center gap-2 truncate text-sm font-semibold ${folder.enabled ? "" : "opacity-50"
-              }`}
-          >
+          <div className={cn("flex items-center gap-2 truncate text-sm font-semibold", !folder.enabled && "opacity-50")}>
             {folder.name}
             {ruleCount && ruleCount > 0 ? (
-              <span className="rounded-full bg-[var(--bg-subtle)] px-2 py-0.5 text-[10px] text-[var(--fg-muted)]">
+              <span className="shrink-0 rounded-full bg-[var(--bg-subtle)] px-2 py-0.5 text-[10px] text-[var(--fg-muted)]">
                 {ruleCount}
               </span>
             ) : null}
@@ -65,39 +63,35 @@ export function FolderItem({
             {folder.path}
           </div>
         </div>
-      </button>
-      <div className="flex items-center gap-1.5 pl-2">
-        {/* Run Now button */}
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Run Now button - visible on hover or when running */}
         <button
-          className={`flex h-5 w-5 items-center justify-center rounded transition-colors ${running
-              ? "text-[var(--accent)]"
-              : "text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-subtle)]"
-            }`}
-          title="Run rules on existing files"
+          className={cn(
+            "flex h-7 w-7 items-center justify-center rounded transition-all",
+            // Always visible now
+            running ? "text-[var(--accent)] bg-[var(--accent-muted)]" : "text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-elevated)]"
+          )}
+          title="Run rules now"
           onClick={handleRunNow}
           disabled={running}
           type="button"
         >
           {running ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Play className="h-3.5 w-3.5" />
+            <Play className="h-4 w-4 fill-current" />
           )}
         </button>
-        {/* Enable/Disable toggle */}
-        <button
-          className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${folder.enabled ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--border-main)] bg-[var(--bg-panel)]"
-            }`}
-          title={folder.enabled ? "Disable watcher" : "Enable watcher"}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle(!folder.enabled);
-          }}
-          type="button"
-        >
-          <div className={`h-1.5 w-1.5 rounded-sm ${folder.enabled ? "bg-[var(--accent-contrast)]" : "bg-transparent"
-            }`} />
-        </button>
+
+        {/* Enable/Disable switch */}
+        <div title={folder.enabled ? "Watcher enabled" : "Watcher disabled"} onClick={(e) => e.stopPropagation()}>
+          <Switch
+            checked={folder.enabled}
+            onCheckedChange={onToggle}
+          />
+        </div>
       </div>
     </div>
   );
