@@ -6,4 +6,5 @@ export interface Folder {
   createdAt: string;
   updatedAt: string;
   ruleCount?: number;
+  scanDepth: number; // 0=current only, 1-3=depth, -1=unlimited
 }

@@ -18,7 +18,7 @@ impl FolderRepository {
     pub fn list(&self) -> Result<Vec<Folder>> {
         self.db.with_conn(|conn| {
             let mut stmt = conn.prepare(
-                "SELECT f.id, f.path, f.name, f.enabled, f.created_at, f.updated_at, COUNT(r.id) as rule_count
+                "SELECT f.id, f.path, f.name, f.enabled, f.created_at, f.updated_at, f.scan_depth, COUNT(r.id) as rule_count
                  FROM folders f
                  LEFT JOIN rules r ON r.folder_id = f.id
                  GROUP BY f.id
@@ -36,7 +36,7 @@ impl FolderRepository {
     pub fn get(&self, id: &str) -> Result<Option<Folder>> {
         self.db.with_conn(|conn| {
             let mut stmt = conn.prepare(
-                "SELECT f.id, f.path, f.name, f.enabled, f.created_at, f.updated_at, COUNT(r.id) as rule_count
+                "SELECT f.id, f.path, f.name, f.enabled, f.created_at, f.updated_at, f.scan_depth, COUNT(r.id) as rule_count
                  FROM folders f
                  LEFT JOIN rules r ON r.folder_id = f.id
                  WHERE f.id = ?1
@@ -57,11 +57,12 @@ impl FolderRepository {
             created_at: now,
             updated_at: now,
             rule_count: 0,
+            scan_depth: 0, // Default: current folder only
         };
 
         self.db.with_conn(|conn| {
             conn.execute(
-                "INSERT INTO folders (id, path, name, enabled, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                "INSERT INTO folders (id, path, name, enabled, created_at, updated_at, scan_depth) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                 params![
                     folder.id,
                     folder.path,
@@ -69,6 +70,7 @@ impl FolderRepository {
                     bool_to_i64(folder.enabled),
                     folder.created_at.to_rfc3339(),
                     folder.updated_at.to_rfc3339(),
+                    folder.scan_depth,
                 ],
             )?;
             Ok(folder)
@@ -91,11 +93,23 @@ impl FolderRepository {
             Ok(())
         })
     }
+
+    pub fn update_settings(&self, id: &str, scan_depth: i32) -> Result<()> {
+        self.db.with_conn(|conn| {
+            conn.execute(
+                "UPDATE folders SET scan_depth = ?1, updated_at = ?2 WHERE id = ?3",
+                params![scan_depth, Utc::now().to_rfc3339(), id],
+            )?;
+            Ok(())
+        })
+    }
 }
 
 fn map_folder(row: &Row<'_>) -> rusqlite::Result<Folder> {
     let created_at: String = row.get(4)?;
     let updated_at: String = row.get(5)?;
+    let scan_depth: i32 = row.get(6)?;
+    let rule_count: i64 = row.get(7)?;
     let created_at = DateTime::parse_from_rfc3339(&created_at)
         .map_err(|e| rusqlite::Error::FromSqlConversionFailure(4, Type::Text, Box::new(e)))?
         .with_timezone(&Utc);
@@ -109,7 +123,8 @@ fn map_folder(row: &Row<'_>) -> rusqlite::Result<Folder> {
         enabled: i64_to_bool(row.get(3)?),
         created_at,
         updated_at,
-        rule_count: row.get(6)?,
+        scan_depth,
+        rule_count,
     })
 }
 

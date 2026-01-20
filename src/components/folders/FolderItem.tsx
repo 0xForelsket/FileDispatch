@@ -4,6 +4,7 @@ import { Folder, Play, Loader2 } from "lucide-react";
 import type { Folder as FolderType } from "@/types";
 import { folderRunNow, type RunResult } from "@/lib/tauri";
 import { Switch } from "@/components/ui/Switch";
+import { FolderOptionsDialog } from "@/components/folders/FolderOptionsDialog";
 import { cn } from "@/lib/utils";
 
 interface FolderItemProps {
@@ -41,37 +42,40 @@ export function FolderItem({
   return (
     <div
       className={cn(
-        "group flex items-center justify-between gap-3 rounded-[var(--radius)] border px-3 py-2 text-xs cursor-pointer select-none transition-all mb-1",
+        "group flex items-center gap-2 rounded px-2 py-1.5 text-xs cursor-pointer select-none transition-all",
         selected
-          ? "bg-[var(--accent-muted)] text-[var(--fg-primary)] border-[var(--accent)]"
-          : "text-[var(--fg-primary)] border-transparent hover:border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
+          ? "bg-[var(--accent-muted)] text-[var(--fg-primary)]"
+          : "text-[var(--fg-primary)] hover:bg-[var(--bg-subtle)]"
       )}
       onClick={onSelect}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
-        <Folder className={cn("h-4 w-4 shrink-0", selected ? "text-[var(--accent)]" : "text-[var(--fg-muted)]")} />
-        <div className="min-w-0 flex-1">
-          <div className={cn("flex items-center gap-2 truncate text-sm font-semibold", !folder.enabled && "opacity-50")}>
-            {folder.name}
-            {ruleCount && ruleCount > 0 ? (
-              <span className="shrink-0 rounded-full bg-[var(--bg-subtle)] px-2 py-0.5 text-[10px] text-[var(--fg-muted)]">
-                {ruleCount}
-              </span>
-            ) : null}
-          </div>
-          <div className="mt-0.5 truncate text-[10px] text-[var(--fg-muted)]" title={folder.path}>
-            {folder.path}
-          </div>
+      <Folder className={cn("h-3.5 w-3.5 shrink-0", selected ? "text-[var(--accent)]" : "text-[var(--fg-muted)]")} />
+
+      <div className="min-w-0 flex-1">
+        <div className={cn("truncate text-xs font-medium", !folder.enabled && "opacity-50")}>
+          {folder.name}
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
-        {/* Run Now button - visible on hover or when running */}
+      <div className="flex items-center gap-1 shrink-0">
+        {/* Rule count badge */}
+        {ruleCount && ruleCount > 0 ? (
+          <span className="text-[10px] text-[var(--fg-muted)] tabular-nums">
+            {ruleCount}
+          </span>
+        ) : null}
+
+        {/* Folder Options button - only visible on hover */}
+        <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity", selected && "opacity-100")}>
+          <FolderOptionsDialog folder={folder} />
+        </div>
+
+        {/* Run Now button - only visible on hover or when running */}
         <button
           className={cn(
-            "flex h-7 w-7 items-center justify-center rounded transition-all",
-            // Always visible now
-            running ? "text-[var(--accent)] bg-[var(--accent-muted)]" : "text-[var(--fg-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-elevated)]"
+            "flex h-5 w-5 items-center justify-center rounded transition-all",
+            running ? "opacity-100 text-[var(--accent)]" : "opacity-0 group-hover:opacity-100 text-[var(--fg-muted)] hover:text-[var(--accent)]",
+            selected && "opacity-100"
           )}
           title="Run rules now"
           onClick={handleRunNow}
@@ -79,9 +83,9 @@ export function FolderItem({
           type="button"
         >
           {running ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-3 w-3 animate-spin" />
           ) : (
-            <Play className="h-4 w-4 fill-current" />
+            <Play className="h-3 w-3 fill-current" />
           )}
         </button>
 
@@ -90,6 +94,7 @@ export function FolderItem({
           <Switch
             checked={folder.enabled}
             onCheckedChange={onToggle}
+            size="sm"
           />
         </div>
       </div>

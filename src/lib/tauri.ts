@@ -9,6 +9,8 @@ export const folderAdd = (path: string, name: string) =>
 export const folderRemove = (id: string) => invoke<void>("folder_remove", { id });
 export const folderToggle = (id: string, enabled: boolean) =>
   invoke<void>("folder_toggle", { id, enabled });
+export const folderUpdateSettings = (id: string, scanDepth: number) =>
+  invoke<void>("folder_update_settings", { id, scanDepth });
 
 export interface RunResult {
   total_files: number;
@@ -51,6 +53,9 @@ export const previewRule = (ruleId: string) =>
   invoke<PreviewItem[]>("preview_rule", { ruleId });
 export const previewFile = (ruleId: string, filePath: string) =>
   invoke<PreviewItem>("preview_file", { ruleId, filePath });
+
+export const previewRuleDraft = (rule: Rule) =>
+  invoke<PreviewItem[]>("preview_rule_draft", { rule });
 
 export const presetRead = (path: string) => invoke<Preset>("preset_read", { path });
 export const presetInstall = (

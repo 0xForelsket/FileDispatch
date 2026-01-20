@@ -23,7 +23,7 @@ pub fn folder_add(
     let folder = repo.create(&normalized_str, &name).map_err(|e| e.to_string())?;
     if folder.enabled {
         if let Ok(mut watcher) = state.watcher.lock() {
-            let _ = watcher.watch_folder(normalized, folder.id.clone());
+            let _ = watcher.watch_folder(normalized, folder.id.clone(), folder.scan_depth);
         }
     }
     Ok(folder)
@@ -49,11 +49,40 @@ pub fn folder_toggle(state: State<'_, AppState>, id: String, enabled: bool) -> R
         if let Ok(mut watcher) = state.watcher.lock() {
             let normalized = normalize_user_path(&folder.path);
             if enabled {
-                let _ = watcher.watch_folder(normalized, folder.id.clone());
+                let _ = watcher.watch_folder(normalized, folder.id.clone(), folder.scan_depth);
             } else {
                 let _ = watcher.unwatch_folder(normalized.as_ref());
             }
         }
     }
     repo.set_enabled(&id, enabled).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn folder_update_settings(
+    state: State<'_, AppState>,
+    id: String,
+    scan_depth: i32,
+) -> Result<(), String> {
+    let repo = FolderRepository::new(state.db.clone());
+    let folder = repo
+        .get(&id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Folder not found".to_string())?;
+
+    // Update database
+    repo.update_settings(&id, scan_depth)
+        .map_err(|e| e.to_string())?;
+
+    // Update watcher if folder is enabled
+    if folder.enabled {
+        if let Ok(mut watcher) = state.watcher.lock() {
+            let normalized = normalize_user_path(&folder.path);
+            // Unwatch and re-watch to update depth settings
+            let _ = watcher.unwatch_folder(normalized.as_ref());
+            let _ = watcher.watch_folder(normalized, id, scan_depth);
+        }
+    }
+
+    Ok(())
 }

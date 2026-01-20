@@ -6,10 +6,10 @@ import { useRuleStore } from "@/stores/ruleStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { ActionBuilder } from "@/components/rules/ActionBuilder";
 import { ConditionBuilder } from "@/components/rules/ConditionBuilder";
-
-
-
+import { PreviewPanel } from "@/components/preview/PreviewPanel";
+import { previewRuleDraft } from "@/lib/tauri";
 import { matchesShortcut } from "@/lib/shortcuts";
+import type { PreviewItem } from "@/types";
 
 interface RuleEditorProps {
   mode: "empty" | "new" | "edit";
@@ -49,6 +49,9 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
 
   const [draft, setDraft] = useState<Rule>(() => rule ?? createEmptyRule(folderId));
   const [showPreview, setShowPreview] = useState(false);
+  const [previewResults, setPreviewResults] = useState<PreviewItem[]>([]);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const isOpen = mode !== "empty" && Boolean(folderId);
@@ -76,6 +79,25 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
       return;
     }
   }, [draft, updateRule, createRule, folderId, onClose]);
+
+  const handlePreview = useCallback(async () => {
+    setShowPreview(true);
+    setLoadingPreview(true);
+    setPreviewError(null);
+    setPreviewResults([]);
+    try {
+      console.log("Calling previewRuleDraft with:", { ...draft, folderId });
+      const results = await previewRuleDraft({ ...draft, folderId });
+      console.log("Preview results:", results);
+      setPreviewResults(results);
+    } catch (error) {
+      console.error("Preview failed:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setPreviewError(errorMessage);
+    } finally {
+      setLoadingPreview(false);
+    }
+  }, [draft, folderId]);
 
 
 
@@ -117,8 +139,8 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   }
 
   const inputClass = isMagi
-    ? "mt-2 w-full bg-black border border-[var(--border-main)] px-3 py-2 text-sm text-[var(--fg-primary)] font-bold shadow-none outline-none focus:bg-[var(--fg-primary)] focus:text-black transition-colors rounded-none placeholder:text-[var(--border-dim)]"
-    : "mt-2 w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-2 text-sm text-[var(--fg-primary)] shadow-none outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]";
+    ? "w-full bg-black border border-[var(--border-main)] px-3 py-2 text-base text-[var(--fg-primary)] font-bold shadow-none outline-none focus:bg-[var(--fg-primary)] focus:text-black transition-colors rounded-none placeholder:text-[var(--border-dim)]"
+    : "w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-2 text-base text-[var(--fg-primary)] shadow-none outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]";
 
   return (
     <div className="flex h-full flex-col text-[var(--fg-primary)] relative">
@@ -126,61 +148,50 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
         <div className="absolute inset-0 hex-bg opacity-10 pointer-events-none" />
       ) : null}
 
-      <div className={`flex items-center justify-between px-4 py-3 shrink-0 border-b relative z-10 ${isMagi ? "border-[var(--border-dim)]" : "border-[var(--border-main)]"
+      {/* Hazel-style header with rule name as title */}
+      <div className={`flex items-center justify-between px-4 py-2.5 shrink-0 border-b relative z-10 bg-[var(--bg-subtle)]/50 ${isMagi ? "border-[var(--border-dim)]" : "border-[var(--border-main)]"
         }`}>
-        <div>
-          <h2 className={`text-lg font-semibold ${isMagi ? "text-3xl uppercase eva-title" : ""}`}>
-            {isNew ? (isMagi ? "New Protocol" : "New Rule") : isMagi ? "Edit Protocol" : "Edit Rule"}
-          </h2>
-          <p className={`text-xs text-[var(--fg-secondary)] ${isMagi ? "uppercase tracking-widest" : ""} mt-0.5`}>
-            {isMagi ? "Awaiting directive..." : "Define what should happen when files match."}
-          </p>
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <span className={`text-[11px] font-medium uppercase tracking-wider shrink-0 ${isMagi ? "text-[var(--fg-primary)]" : "text-[var(--fg-muted)]"}`}>
+            {isNew ? "New Rule" : "Edit Rule"}
+          </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => setShowPreview(!showPreview)}
-            className={`px-3 py-1 text-xs font-semibold border rounded-[var(--radius)] transition-colors ${showPreview
-              ? "bg-[var(--accent)] text-[var(--accent-contrast)] border-[var(--accent)]"
-              : "bg-[var(--bg-panel)] text-[var(--fg-primary)] border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
+            onClick={handlePreview}
+            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${showPreview
+              ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+              : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:bg-[var(--bg-subtle)]"
               }`}
           >
-            {showPreview ? "Hide preview" : "Show preview"}
+            Preview
           </button>
+          <div className="h-4 w-px bg-[var(--border-main)]" />
           <button
             onClick={onClose}
-            className="px-3 py-1 text-xs font-semibold rounded-[var(--radius)] border border-[var(--border-main)] text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)]"
+            className="px-3 py-1 text-xs font-medium text-[var(--fg-secondary)] rounded transition-colors hover:text-[var(--fg-primary)] hover:bg-[var(--bg-subtle)]"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-3 py-1 text-xs font-semibold rounded-[var(--radius)] border border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-contrast)] transition-colors hover:opacity-90"
+            className="px-3 py-1 text-xs font-semibold rounded bg-[var(--accent)] text-[var(--accent-contrast)] transition-colors hover:opacity-90"
           >
             Save
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar relative z-10">
-        {/* Rule Name Section */}
-        <div className={`mb-6 p-4 rounded-[var(--radius)] border relative ${isMagi ? "border-[var(--border-dim)] bg-black/50" : "border-[var(--border-main)] bg-[var(--bg-subtle)]"
-          }`}>
-          {isMagi ? (
-            <div className="absolute top-0 left-0 bg-[var(--fg-primary)] text-black text-[10px] font-bold px-2 py-0.5">IDENTIFICATION</div>
-          ) : null}
-          <div className={isMagi ? "mt-3" : ""}>
-            <label className={`text-xs font-semibold ${isMagi ? "uppercase tracking-widest text-[var(--border-dim)]" : "text-[var(--fg-secondary)]"}`}>
-              {isMagi ? "Protocol Name" : "Rule name"}
-            </label>
-            <input
-              className={inputClass}
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-              placeholder={isMagi ? "Enter protocol designation" : "e.g. Sort invoices"}
-            />
-          </div>
-
-          <div className="mt-4 flex items-center gap-6">
+      <div className="flex-1 overflow-y-auto px-4 py-4 custom-scrollbar relative z-10">
+        {/* Rule Name - Hazel style prominent input */}
+        <div className="mb-5">
+          <input
+            className={`${inputClass} font-medium`}
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            placeholder={isMagi ? "Enter protocol designation" : "Rule name"}
+          />
+          <div className="mt-3 flex items-center gap-4">
             <TogglePill
               label={isMagi ? "ENABLED" : "Enabled"}
               checked={draft.enabled}
@@ -194,22 +205,22 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
           </div>
         </div>
 
-        {/* Conditions Section */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3 border-b border-[var(--border-main)] pb-2">
-            <div className="h-2 w-2 rounded-full bg-[var(--accent)]" />
-            <h3 className={`text-sm font-semibold ${isMagi ? "uppercase eva-title text-[var(--fg-primary)]" : "text-[var(--fg-primary)]"}`}>
+        {/* Conditions Section - Hazel style */}
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+            <h3 className={`text-xs font-semibold uppercase tracking-wider ${isMagi ? "eva-title text-[var(--fg-primary)]" : "text-[var(--fg-muted)]"}`}>
               Conditions
             </h3>
           </div>
           <ConditionBuilder group={draft.conditions} onChange={(conditions) => setDraft({ ...draft, conditions })} />
         </div>
 
-        {/* Actions Section */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3 border-b border-[var(--border-main)] pb-2">
-            <div className="h-2 w-2 rounded-full bg-[var(--fg-secondary)]" />
-            <h3 className={`text-sm font-semibold ${isMagi ? "uppercase eva-title text-[var(--fg-secondary)]" : "text-[var(--fg-primary)]"}`}>
+        {/* Actions Section - Hazel style */}
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-[var(--fg-secondary)]" />
+            <h3 className={`text-xs font-semibold uppercase tracking-wider ${isMagi ? "eva-title text-[var(--fg-secondary)]" : "text-[var(--fg-muted)]"}`}>
               Actions
             </h3>
           </div>
@@ -223,6 +234,15 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
           {saveError}
         </div>
       ) : null}
+
+      <PreviewPanel
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        results={previewResults}
+        loading={loadingPreview}
+        error={previewError}
+        ruleName={draft.name}
+      />
     </div>
   );
 }
@@ -270,19 +290,20 @@ interface TogglePillProps {
 
 function TogglePill({ label, checked, onChange }: TogglePillProps) {
   return (
-    <div className="flex items-center gap-2 group cursor-pointer" onClick={() => onChange(!checked)}>
+    <label className="flex items-center gap-2 cursor-pointer select-none">
       <div
-        className={`h-4 w-7 rounded-full border border-[var(--border-main)] p-0.5 transition-colors ${checked ? "bg-[var(--accent)]" : "bg-[var(--bg-panel)]"
+        className={`relative h-4 w-7 rounded-full transition-colors ${checked ? "bg-[var(--accent)]" : "bg-[var(--border-main)]"
           }`}
+        onClick={() => onChange(!checked)}
       >
         <div
-          className={`h-3 w-3 rounded-full border border-[var(--border-strong)] bg-[var(--bg-elevated)] transition-transform ${checked ? "translate-x-3" : "translate-x-0"
+          className={`absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-3" : "translate-x-0"
             }`}
         />
       </div>
-      <span className={`text-[11px] font-semibold ${checked ? "text-[var(--fg-primary)]" : "text-[var(--fg-muted)]"}`}>
+      <span className={`text-xs ${checked ? "text-[var(--fg-primary)]" : "text-[var(--fg-muted)]"}`}>
         {label}
       </span>
-    </div>
+    </label>
   );
 }

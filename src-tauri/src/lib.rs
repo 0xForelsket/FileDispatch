@@ -4,9 +4,9 @@ mod models;
 mod storage;
 mod utils;
 
-use commands::folders::{folder_add, folder_list, folder_remove, folder_toggle};
+use commands::folders::{folder_add, folder_list, folder_remove, folder_toggle, folder_update_settings};
 use commands::logs::{log_clear, log_list};
-use commands::preview::{preview_file, preview_rule};
+use commands::preview::{preview_file, preview_rule, preview_rule_draft};
 use commands::presets::{preset_install, preset_read};
 use commands::rules::{
     rule_create, rule_delete, rule_duplicate, rule_export, rule_get, rule_import, rule_list,
@@ -102,7 +102,7 @@ pub fn run() {
                 watcher.set_ignore_patterns(settings.ignore_patterns.clone());
                 for folder in folders.into_iter().filter(|f| f.enabled) {
                     let normalized = normalize_user_path(&folder.path);
-                    let _ = watcher.watch_folder(normalized, folder.id);
+                    let _ = watcher.watch_folder(normalized, folder.id.clone(), folder.scan_depth);
                 }
             }
 
@@ -149,6 +149,7 @@ pub fn run() {
             folder_add,
             folder_remove,
             folder_toggle,
+            folder_update_settings,
             rule_list,
             rule_get,
             rule_create,
@@ -163,6 +164,7 @@ pub fn run() {
             log_clear,
             preview_rule,
             preview_file,
+            preview_rule_draft,
             preset_read,
             preset_install,
             settings_get,

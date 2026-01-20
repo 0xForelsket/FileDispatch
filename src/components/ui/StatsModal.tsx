@@ -13,9 +13,10 @@ interface StatsModalProps {
   savedBytes: number;
   activeRules: number;
   logs: LogEntry[];
+  trigger?: React.ReactNode;
 }
 
-  /* ... (imports and logic same) ... */
+/* ... (imports and logic same) ... */
 
 export function StatsModal({
   total,
@@ -23,6 +24,7 @@ export function StatsModal({
   savedBytes,
   activeRules,
   logs,
+  trigger,
 }: StatsModalProps) {
   const [open, setOpen] = useState(false);
 
@@ -81,91 +83,97 @@ export function StatsModal({
   const totalLabel = total.toLocaleString();
 
   /* ... inside StatsModal component ... */
-  
+
   const modal =
     open && typeof document !== "undefined"
       ? createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-            <div className="relative w-full max-w-5xl overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]">
-              <div className="flex items-center justify-between border-b border-[var(--border-main)] px-5 py-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-[var(--fg-primary)]">Analytics</h2>
-                  <p className="text-xs text-[var(--fg-muted)]">Last {WINDOW_HOURS} hours</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <div className="relative w-full max-w-5xl overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]">
+            <div className="flex items-center justify-between border-b border-[var(--border-main)] px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--fg-primary)]">Analytics</h2>
+                <p className="text-xs text-[var(--fg-muted)]">Last {WINDOW_HOURS} hours</p>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-[var(--fg-muted)]">
+                <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-subtle)] px-2 py-0.5">
+                  Active rules: <span className="text-[var(--fg-primary)]">{activeRules}</span>
+                </span>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="rounded-[var(--radius)] border border-[var(--border-main)] px-3 py-1 text-xs font-semibold text-[var(--fg-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                  type="button"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 p-5 md:grid-cols-3">
+              <div className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
+                <div className="text-[11px] font-semibold text-[var(--fg-secondary)]">Total events</div>
+                <div className="mt-2 text-3xl font-semibold text-[var(--fg-primary)]">{totalLabel}</div>
+                <div className="mt-1 text-[11px] text-[var(--fg-muted)]">
+                  {throughput.recent} events in window
                 </div>
-                <div className="flex items-center gap-3 text-xs text-[var(--fg-muted)]">
-                  <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-subtle)] px-2 py-0.5">
-                    Active rules: <span className="text-[var(--fg-primary)]">{activeRules}</span>
-                  </span>
-                  <button
-                    onClick={() => setOpen(false)}
-                    className="rounded-[var(--radius)] border border-[var(--border-main)] px-3 py-1 text-xs font-semibold text-[var(--fg-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
-                    type="button"
-                  >
-                    Close
-                  </button>
+                <div className="mt-4 flex h-12 items-end gap-1">
+                  {throughput.heights.map((height, index) => (
+                    <div
+                      key={`bar-${index}`}
+                      className="flex-1 rounded-full bg-[var(--accent)]"
+                      style={{ height: `${Math.max(8, height)}%`, opacity: 0.4 + height / 200 }}
+                    />
+                  ))}
                 </div>
               </div>
 
-              <div className="grid gap-4 p-5 md:grid-cols-3">
-                <div className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
-                  <div className="text-[11px] font-semibold text-[var(--fg-secondary)]">Total events</div>
-                  <div className="mt-2 text-3xl font-semibold text-[var(--fg-primary)]">{totalLabel}</div>
-                  <div className="mt-1 text-[11px] text-[var(--fg-muted)]">
-                    {throughput.recent} events in window
-                  </div>
-                  <div className="mt-4 flex h-12 items-end gap-1">
-                    {throughput.heights.map((height, index) => (
-                      <div
-                        key={`bar-${index}`}
-                        className="flex-1 rounded-full bg-[var(--accent)]"
-                        style={{ height: `${Math.max(8, height)}%`, opacity: 0.4 + height / 200 }}
-                      />
-                    ))}
-                  </div>
+              <div className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
+                <div className="text-[11px] font-semibold text-[var(--fg-secondary)]">Efficiency</div>
+                <div className="mt-2 text-3xl font-semibold text-[var(--fg-primary)]">
+                  {efficiencyValue.toFixed(0)}%
                 </div>
-
-                <div className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
-                  <div className="text-[11px] font-semibold text-[var(--fg-secondary)]">Efficiency</div>
-                  <div className="mt-2 text-3xl font-semibold text-[var(--fg-primary)]">
-                    {efficiencyValue.toFixed(0)}%
-                  </div>
-                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[var(--border-main)]">
-                    <div
-                      className="h-full bg-[var(--accent)]"
-                      style={{ width: `${efficiencyValue}%` }}
-                    />
-                  </div>
-                  <div className="mt-2 flex justify-between text-[11px] text-[var(--fg-muted)]">
-                    <span>Success {statusCounts.success}</span>
-                    <span className="text-[var(--fg-alert)]">Errors {statusCounts.error}</span>
-                  </div>
+                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[var(--border-main)]">
+                  <div
+                    className="h-full bg-[var(--accent)]"
+                    style={{ width: `${efficiencyValue}%` }}
+                  />
                 </div>
+                <div className="mt-2 flex justify-between text-[11px] text-[var(--fg-muted)]">
+                  <span>Success {statusCounts.success}</span>
+                  <span className="text-[var(--fg-alert)]">Errors {statusCounts.error}</span>
+                </div>
+              </div>
 
-                <div className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
-                  <div className="text-[11px] font-semibold text-[var(--fg-secondary)]">Saved space</div>
-                  <div className="mt-2 text-3xl font-semibold text-[var(--fg-primary)]">{formatBytes(savedBytes)}</div>
-                  <div className="mt-2 text-[11px] text-[var(--fg-muted)]">
-                    Deleted {statusCounts.deleted} files · Skipped {statusCounts.skipped}
-                  </div>
+              <div className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
+                <div className="text-[11px] font-semibold text-[var(--fg-secondary)]">Saved space</div>
+                <div className="mt-2 text-3xl font-semibold text-[var(--fg-primary)]">{formatBytes(savedBytes)}</div>
+                <div className="mt-2 text-[11px] text-[var(--fg-muted)]">
+                  Deleted {statusCounts.deleted} files · Skipped {statusCounts.skipped}
                 </div>
               </div>
             </div>
-          </div>,
-          document.body,
-        )
+          </div>
+        </div>,
+        document.body,
+      )
       : null;
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="group flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-xs font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
-        type="button"
-      >
-        <BarChart3 className="h-3 w-3" />
-        Analytics
-      </button>
+      {trigger ? (
+        <div onClick={() => setOpen(true)} className="contents">
+          {trigger}
+        </div>
+      ) : (
+        <button
+          onClick={() => setOpen(true)}
+          className="group flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-xs font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+          type="button"
+        >
+          <BarChart3 className="h-3 w-3" />
+          Analytics
+        </button>
+      )}
       {modal}
     </>
   );

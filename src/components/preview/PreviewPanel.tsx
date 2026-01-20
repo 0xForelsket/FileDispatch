@@ -9,10 +9,11 @@ interface PreviewPanelProps {
   onClose: () => void;
   results: PreviewItem[];
   loading: boolean;
+  error: string | null;
   ruleName: string;
 }
 
-export function PreviewPanel({ open, onClose, results, loading, ruleName }: PreviewPanelProps) {
+export function PreviewPanel({ open, onClose, results, loading, error, ruleName }: PreviewPanelProps) {
   if (!open) return null;
 
   const matched = results.filter((item) => item.matched).length;
@@ -54,6 +55,15 @@ export function PreviewPanel({ open, onClose, results, loading, ruleName }: Prev
                   <div className="rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-subtle)] p-6 text-sm text-[var(--fg-muted)]">
                     Loading preview…
                   </div>
+                ) : error ? (
+                  <div className="rounded-[var(--radius)] border border-[var(--fg-alert)] bg-[var(--fg-alert)]/10 p-6">
+                    <div className="text-sm font-semibold text-[var(--fg-alert)] mb-2">
+                      Preview Failed
+                    </div>
+                    <div className="text-sm text-[var(--fg-primary)]">
+                      {error}
+                    </div>
+                  </div>
                 ) : results.length === 0 ? (
                   <div className="rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-subtle)] p-6 text-sm text-[var(--fg-muted)]">
                     No matching files.
@@ -67,6 +77,11 @@ export function PreviewPanel({ open, onClose, results, loading, ruleName }: Prev
                       <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-subtle)] px-3 py-1 text-[var(--fg-muted)]">
                         ✗ {unmatched} no match
                       </span>
+                      {results.length >= 50 && (
+                        <span className="rounded-full border border-[var(--fg-alert)] bg-[var(--fg-alert)]/10 px-3 py-1 text-[var(--fg-alert)]">
+                          ⚠ Limited to 50 files
+                        </span>
+                      )}
                     </div>
                     {results.map((item) => (
                       <GlassCard key={item.filePath} className="p-4">

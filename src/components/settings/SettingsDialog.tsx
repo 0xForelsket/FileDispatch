@@ -16,9 +16,10 @@ const tabs = [
 
 interface SettingsDialogProps {
   compact?: boolean;
+  trigger?: React.ReactNode;
 }
 
-export function SettingsDialog({ compact = false }: SettingsDialogProps) {
+export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
   const shortcutLabel = useMemo(() => formatShortcut({ key: ",", ctrlOrMeta: true }), []);
@@ -133,7 +134,11 @@ export function SettingsDialog({ compact = false }: SettingsDialogProps) {
 
   return (
     <>
-      {compact ? (
+      {trigger ? (
+        <div onClick={() => setOpen(true)} className="contents">
+          {trigger}
+        </div>
+      ) : compact ? (
         <button
           className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius)] border border-[var(--border-main)] text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
           onClick={() => setOpen(true)}

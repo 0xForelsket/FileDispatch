@@ -52,9 +52,11 @@ pub async fn folder_run_now(
         return Err(format!("Folder does not exist: {}", folder_path.display()));
     }
 
-    // Collect all files in the folder (non-recursive for now)
-    let entries: Vec<_> = fs::read_dir(&folder_path)
-        .map_err(|e| e.to_string())?
+    // Collect all files in the folder respecting scan_depth
+    let max_depth = folder.max_depth().unwrap_or(usize::MAX);
+    let entries: Vec<_> = walkdir::WalkDir::new(&folder_path)
+        .max_depth(max_depth)
+        .into_iter()
         .filter_map(|e| e.ok())
         .filter(|e| e.path().is_file())
         .collect();

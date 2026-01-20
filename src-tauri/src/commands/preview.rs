@@ -31,7 +31,9 @@ pub fn preview_rule(
     let mut results = Vec::new();
     let pattern_engine = PatternEngine::new();
 
+    let max_depth = folder.max_depth().unwrap_or(usize::MAX);
     for entry in walkdir::WalkDir::new(&folder.path)
+        .max_depth(max_depth)
         .into_iter()
         .filter_map(Result::ok)
     {
@@ -42,6 +44,135 @@ pub fn preview_rule(
         if let Ok(item) = preview_single(&rule, &path, &pattern_engine) {
             results.push(item);
         }
+    }
+
+    Ok(results)
+}
+
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DraftRule {
+    pub id: String,
+    pub folder_id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub stop_processing: bool,
+    pub conditions: crate::models::ConditionGroup,
+    pub actions: Vec<crate::models::Action>,
+    pub position: i32,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+impl DraftRule {
+    fn to_rule(self) -> crate::models::Rule {
+        let now = chrono::Utc::now();
+        crate::models::Rule {
+            id: self.id,
+            folder_id: self.folder_id,
+            name: self.name,
+            enabled: self.enabled,
+            stop_processing: self.stop_processing,
+            conditions: self.conditions,
+            actions: self.actions,
+            position: self.position,
+            created_at: self
+                .created_at
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(now),
+            updated_at: self
+                .updated_at
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(now),
+        }
+    }
+}
+
+#[tauri::command]
+pub fn preview_rule_draft(
+    state: State<'_, AppState>,
+    rule: DraftRule,
+) -> Result<Vec<PreviewItem>, String> {
+    eprintln!("==== preview_rule_draft called ====");
+    eprintln!("Rule folder_id: {}", rule.folder_id);
+    eprintln!("Rule name: {}", rule.name);
+    eprintln!("Rule conditions count: {}", rule.conditions.conditions.len());
+    eprintln!("Rule actions count: {}", rule.actions.len());
+
+    let rule = rule.to_rule();
+    let folder_repo = FolderRepository::new(state.db.clone());
+    let folder = folder_repo
+        .get(&rule.folder_id)
+        .map_err(|e| {
+            eprintln!("Failed to get folder: {}", e);
+            e.to_string()
+        })?;
+    let Some(folder) = folder else {
+        eprintln!("Folder not found for id: {}", rule.folder_id);
+        return Err(format!("Folder not found: {}", rule.folder_id));
+    };
+
+    eprintln!("Folder path: {}", folder.path);
+
+    // Check if folder path exists
+    if !std::path::Path::new(&folder.path).exists() {
+        eprintln!("Folder path does not exist: {}", folder.path);
+        return Err(format!("Folder path does not exist: {}", folder.path));
+    }
+
+    let mut results = Vec::new();
+    let pattern_engine = PatternEngine::new();
+
+    eprintln!("Starting directory walk...");
+    let max_depth = folder.max_depth().unwrap_or(usize::MAX);
+    let walker = walkdir::WalkDir::new(&folder.path)
+        .max_depth(max_depth)
+        .into_iter();
+
+    let mut file_count = 0;
+    let max_files = 50; // Reduced limit for faster preview
+
+    for entry in walker {
+        // Check file count limit early
+        if file_count >= max_files {
+            eprintln!("Reached file limit of {}, stopping early", max_files);
+            break;
+        }
+
+        let entry = match entry {
+            Ok(e) => e,
+            Err(e) => {
+                eprintln!("Failed to read directory entry: {}", e);
+                continue;
+            }
+        };
+
+        if !entry.file_type().is_file() {
+            continue;
+        }
+
+        file_count += 1;
+        let path = entry.path().to_path_buf();
+
+        if file_count % 10 == 0 {
+            eprintln!("Processing file #{}: {:?}", file_count, path);
+        }
+
+        match preview_single(&rule, &path, &pattern_engine) {
+            Ok(item) => {
+                results.push(item);
+            }
+            Err(e) => {
+                eprintln!("Failed to preview file {:?}: {}", path, e);
+            }
+        }
+    }
+
+    eprintln!("Preview complete: {} files processed, {} results", file_count, results.len());
+
+    if file_count >= max_files {
+        eprintln!("WARNING: Hit file limit. Not all files were previewed.");
     }
 
     Ok(results)

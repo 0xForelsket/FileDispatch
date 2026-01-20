@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import type { Folder } from "@/types";
-import { folderAdd, folderList, folderRemove, folderToggle } from "@/lib/tauri";
+import { folderAdd, folderList, folderRemove, folderToggle, folderUpdateSettings } from "@/lib/tauri";
 
 interface FolderState {
   folders: Folder[];
@@ -12,6 +12,7 @@ interface FolderState {
   addFolder: (path: string, name: string) => Promise<void>;
   removeFolder: (id: string) => Promise<void>;
   toggleFolder: (id: string, enabled: boolean) => Promise<void>;
+  updateFolderSettings: (id: string, scanDepth: number) => Promise<void>;
   selectFolder: (id?: string) => void;
 }
 
@@ -61,6 +62,15 @@ export const useFolderStore = create<FolderState>((set, get) => ({
     set({ loading: true, error: undefined });
     try {
       await folderToggle(id, enabled);
+      await get().loadFolders();
+    } catch (err) {
+      set({ error: String(err), loading: false });
+    }
+  },
+  updateFolderSettings: async (id, scanDepth) => {
+    set({ loading: true, error: undefined });
+    try {
+      await folderUpdateSettings(id, scanDepth);
       await get().loadFolders();
     } catch (err) {
       set({ error: String(err), loading: false });

@@ -48,6 +48,7 @@ impl Database {
         let migrations = Migrations::new(vec![
             M::up(include_str!("migrations/001_initial.sql")),
             M::up(include_str!("migrations/002_undo.sql")),
+            M::up(include_str!("migrations/003_folder_settings.sql")),
         ]);
         migrations.to_latest(&mut conn)?;
         Ok(())
