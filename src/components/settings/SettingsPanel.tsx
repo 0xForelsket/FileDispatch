@@ -108,6 +108,23 @@ export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
 
       <section>
         <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
+          Interface
+        </h3>
+        <div className="space-y-3">
+          <SettingToggle
+            title="Show help tooltips"
+            description="Display helpful hints next to options (recommended for new users)"
+            checked={settings.showTooltips}
+            onChange={(checked) => {
+              setSettings({ showTooltips: checked });
+              void saveSettings();
+            }}
+          />
+        </div>
+      </section>
+
+      <section>
+        <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
           Performance
         </h3>
         <div className="space-y-3">

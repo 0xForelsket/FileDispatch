@@ -7,6 +7,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { ActionBuilder } from "@/components/rules/ActionBuilder";
 import { ConditionBuilder } from "@/components/rules/ConditionBuilder";
 import { PreviewPanel } from "@/components/preview/PreviewPanel";
+import { HelpTooltip } from "@/components/ui/HelpTooltip";
 import { previewRuleDraft } from "@/lib/tauri";
 import { matchesShortcut } from "@/lib/shortcuts";
 import type { PreviewItem } from "@/types";
@@ -185,22 +186,29 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
       <div className="flex-1 overflow-y-auto px-4 py-4 custom-scrollbar relative z-10">
         {/* Rule Name - Hazel style prominent input */}
         <div className="mb-5">
-          <input
-            className={`${inputClass} font-medium`}
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            placeholder={isMagi ? "Enter protocol designation" : "Rule name"}
-          />
-          <div className="mt-3 flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <label className={`text-sm font-medium shrink-0 ${isMagi ? "text-[var(--fg-primary)] uppercase tracking-wider" : "text-[var(--fg-secondary)]"}`}>
+              {isMagi ? "Designation:" : "Name:"}
+            </label>
+            <input
+              className={`${inputClass} font-medium flex-1`}
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              placeholder={isMagi ? "Enter protocol designation" : "e.g. Sort Images by Date"}
+            />
+          </div>
+          <div className="mt-3 flex items-center gap-5">
             <TogglePill
               label={isMagi ? "ENABLED" : "Enabled"}
               checked={draft.enabled}
               onChange={(checked) => setDraft({ ...draft, enabled: checked })}
+              tooltip="When enabled, this rule will actively process files that match its conditions. Disable to temporarily pause this rule without deleting it."
             />
             <TogglePill
               label={isMagi ? "HALT ON MATCH" : "Stop processing"}
               checked={draft.stopProcessing}
               onChange={(checked) => setDraft({ ...draft, stopProcessing: checked })}
+              tooltip="When enabled, files matching this rule won't be checked against any rules below it. Disable to allow multiple rules to process the same file."
             />
           </div>
         </div>
@@ -212,6 +220,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
             <h3 className={`text-xs font-semibold uppercase tracking-wider ${isMagi ? "eva-title text-[var(--fg-primary)]" : "text-[var(--fg-muted)]"}`}>
               Conditions
             </h3>
+            <HelpTooltip content="Conditions determine which files this rule applies to. Use 'Match All' to require every condition, 'Match Any' for at least one, or 'Match None' to exclude files." />
           </div>
           <ConditionBuilder group={draft.conditions} onChange={(conditions) => setDraft({ ...draft, conditions })} />
         </div>
@@ -223,6 +232,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
             <h3 className={`text-xs font-semibold uppercase tracking-wider ${isMagi ? "eva-title text-[var(--fg-secondary)]" : "text-[var(--fg-muted)]"}`}>
               Actions
             </h3>
+            <HelpTooltip content="Actions define what happens to files that match the conditions above. Actions run in order from top to bottom." />
           </div>
           <ActionBuilder actions={draft.actions} onChange={(actions) => setDraft({ ...draft, actions })} />
         </div>
@@ -286,24 +296,28 @@ interface TogglePillProps {
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  tooltip?: string;
 }
 
-function TogglePill({ label, checked, onChange }: TogglePillProps) {
+function TogglePill({ label, checked, onChange, tooltip }: TogglePillProps) {
   return (
-    <label className="flex items-center gap-2 cursor-pointer select-none">
-      <div
-        className={`relative h-4 w-7 rounded-full transition-colors ${checked ? "bg-[var(--accent)]" : "bg-[var(--border-main)]"
-          }`}
-        onClick={() => onChange(!checked)}
-      >
+    <div className="flex items-center gap-1.5">
+      <label className="flex items-center gap-2 cursor-pointer select-none">
         <div
-          className={`absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-3" : "translate-x-0"
+          className={`relative h-4 w-7 rounded-full transition-colors ${checked ? "bg-[var(--accent)]" : "bg-[var(--border-main)]"
             }`}
-        />
-      </div>
-      <span className={`text-xs ${checked ? "text-[var(--fg-primary)]" : "text-[var(--fg-muted)]"}`}>
-        {label}
-      </span>
-    </label>
+          onClick={() => onChange(!checked)}
+        >
+          <div
+            className={`absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-3" : "translate-x-0"
+              }`}
+          />
+        </div>
+        <span className={`text-xs ${checked ? "text-[var(--fg-primary)]" : "text-[var(--fg-muted)]"}`}>
+          {label}
+        </span>
+      </label>
+      {tooltip && <HelpTooltip content={tooltip} />}
+    </div>
   );
 }

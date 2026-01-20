@@ -17,6 +17,7 @@ export interface AppSettings {
   dateFormat: string;
   timeFormat: string;
   useShortDateNames: boolean;
+  showTooltips: boolean;
 }
 
 interface SettingsState {
@@ -39,6 +40,7 @@ export const defaultSettings: AppSettings = {
   dateFormat: "%Y-%m-%d",
   timeFormat: "%H-%M-%S",
   useShortDateNames: true,
+  showTooltips: true,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
