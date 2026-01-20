@@ -12,7 +12,10 @@ interface FolderState {
   addFolder: (path: string, name: string) => Promise<void>;
   removeFolder: (id: string) => Promise<void>;
   toggleFolder: (id: string, enabled: boolean) => Promise<void>;
-  updateFolderSettings: (id: string, scanDepth: number) => Promise<void>;
+  updateFolderSettings: (
+    id: string,
+    settings: Pick<Folder, "scanDepth" | "removeDuplicates" | "trashIncompleteDownloads" | "incompleteTimeoutMinutes">,
+  ) => Promise<void>;
   selectFolder: (id?: string) => void;
 }
 
@@ -67,10 +70,10 @@ export const useFolderStore = create<FolderState>((set, get) => ({
       set({ error: String(err), loading: false });
     }
   },
-  updateFolderSettings: async (id, scanDepth) => {
+  updateFolderSettings: async (id, settings) => {
     set({ loading: true, error: undefined });
     try {
-      await folderUpdateSettings(id, scanDepth);
+      await folderUpdateSettings(id, settings);
       await get().loadFolders();
     } catch (err) {
       set({ error: String(err), loading: false });

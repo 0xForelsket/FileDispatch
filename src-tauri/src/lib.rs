@@ -4,10 +4,12 @@ mod models;
 mod storage;
 mod utils;
 
-use commands::folders::{folder_add, folder_list, folder_remove, folder_toggle, folder_update_settings};
+use commands::folders::{
+    folder_add, folder_list, folder_remove, folder_toggle, folder_update_settings,
+};
 use commands::logs::{log_clear, log_list};
-use commands::preview::{preview_file, preview_rule, preview_rule_draft};
 use commands::presets::{preset_install, preset_read};
+use commands::preview::{preview_file, preview_rule, preview_rule_draft};
 use commands::rules::{
     rule_create, rule_delete, rule_duplicate, rule_export, rule_get, rule_import, rule_list,
     rule_reorder, rule_toggle, rule_update,
@@ -16,17 +18,19 @@ use commands::run::folder_run_now;
 use commands::settings::{settings_get, settings_update};
 use commands::undo::{undo_execute, undo_list};
 use core::engine::RuleEngine;
+use core::incomplete::IncompleteCleaner;
 use core::state::AppState;
 use core::watcher::WatcherService;
 use models::Settings;
+use std::time::Duration;
 use storage::database::Database;
 use storage::folder_repo::FolderRepository;
 use storage::log_repo::LogRepository;
-use utils::platform::normalize_user_path;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::Manager;
 use tauri_plugin_store::StoreBuilder;
+use utils::platform::normalize_user_path;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -106,6 +110,14 @@ pub fn run() {
                     let _ = watcher.watch_folder(normalized, folder.id.clone(), folder.scan_depth);
                 }
             }
+
+            let incomplete_cleaner = IncompleteCleaner::new(db.clone());
+            std::thread::spawn(move || loop {
+                if let Err(err) = incomplete_cleaner.run_once() {
+                    eprintln!("Incomplete cleanup error: {err}");
+                }
+                std::thread::sleep(Duration::from_secs(300));
+            });
 
             let show = MenuItem::new(app, "Show", true, None::<&str>)?;
             let hide = MenuItem::new(app, "Hide", true, None::<&str>)?;

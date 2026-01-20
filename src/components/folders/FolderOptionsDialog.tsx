@@ -5,6 +5,7 @@ import { Settings, X, Trash2 } from "lucide-react";
 import type { Folder } from "@/types";
 import { useFolderStore } from "@/stores/folderStore";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Switch } from "@/components/ui/Switch";
 
 interface FolderOptionsDialogProps {
   folder: Folder;
@@ -14,6 +15,9 @@ interface FolderOptionsDialogProps {
 export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProps) {
   const [open, setOpen] = useState(false);
   const [scanDepth, setScanDepth] = useState(folder.scanDepth);
+  const [removeDuplicates, setRemoveDuplicates] = useState(folder.removeDuplicates);
+  const [trashIncompleteDownloads, setTrashIncompleteDownloads] = useState(folder.trashIncompleteDownloads);
+  const [incompleteTimeoutMinutes, setIncompleteTimeoutMinutes] = useState(folder.incompleteTimeoutMinutes);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const updateSettings = useFolderStore((state) => state.updateFolderSettings);
   const removeFolder = useFolderStore((state) => state.removeFolder);
@@ -25,12 +29,28 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
   };
 
   const handleSave = async () => {
-    await updateSettings(folder.id, scanDepth);
+    await updateSettings(folder.id, {
+      scanDepth,
+      removeDuplicates,
+      trashIncompleteDownloads,
+      incompleteTimeoutMinutes,
+    });
     setOpen(false);
   };
 
+  const handleOpen = () => {
+    setScanDepth(folder.scanDepth);
+    setRemoveDuplicates(folder.removeDuplicates);
+    setTrashIncompleteDownloads(folder.trashIncompleteDownloads);
+    setIncompleteTimeoutMinutes(folder.incompleteTimeoutMinutes);
+    setOpen(true);
+  };
+
   const handleCancel = () => {
-    setScanDepth(folder.scanDepth); // Reset to original value
+    setScanDepth(folder.scanDepth);
+    setRemoveDuplicates(folder.removeDuplicates);
+    setTrashIncompleteDownloads(folder.trashIncompleteDownloads);
+    setIncompleteTimeoutMinutes(folder.incompleteTimeoutMinutes);
     setOpen(false);
   };
 
@@ -91,6 +111,63 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
                 </p>
               </div>
 
+              {/* Duplicate Removal */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-3">
+                  <div>
+                    <div className="text-sm font-medium text-[var(--fg-primary)]">
+                      Automatically remove duplicate files
+                    </div>
+                    <p className="text-xs text-[var(--fg-muted)]">
+                      Delete exact copies of files already in this folder
+                    </p>
+                  </div>
+                  <Switch
+                    checked={removeDuplicates}
+                    onCheckedChange={setRemoveDuplicates}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Incomplete Downloads */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-3">
+                  <div>
+                    <div className="text-sm font-medium text-[var(--fg-primary)]">
+                      Clean up incomplete downloads
+                    </div>
+                    <p className="text-xs text-[var(--fg-muted)]">
+                      Automatically remove interrupted or aborted downloads
+                    </p>
+                  </div>
+                  <Switch
+                    checked={trashIncompleteDownloads}
+                    onCheckedChange={setTrashIncompleteDownloads}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-3">
+                  <div>
+                    <div className="text-sm font-medium text-[var(--fg-primary)]">
+                      Move to trash after
+                    </div>
+                    <p className="text-xs text-[var(--fg-muted)]">
+                      Minutes of no size changes before cleanup
+                    </p>
+                  </div>
+                  <input
+                    className="w-24 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-sm text-[var(--fg-primary)] shadow-[var(--shadow-sm)] outline-none transition-colors focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)] disabled:opacity-50"
+                    type="number"
+                    min={1}
+                    value={incompleteTimeoutMinutes}
+                    onChange={(e) => setIncompleteTimeoutMinutes(Number(e.target.value))}
+                    disabled={!trashIncompleteDownloads || loading}
+                  />
+                </div>
+              </div>
+
               {/* Danger Zone */}
               <div className="pt-4 border-t border-[var(--border-main)]">
                 <label className="block text-sm font-medium text-red-500 mb-2">
@@ -136,12 +213,12 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
   return (
     <>
       {trigger ? (
-        <div onClick={() => setOpen(true)} className="contents">
+        <div onClick={handleOpen} className="contents">
           {trigger}
         </div>
       ) : (
         <button
-          onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+          onClick={(e) => { e.stopPropagation(); handleOpen(); }}
           className="flex h-5 w-5 items-center justify-center rounded text-[var(--fg-muted)] hover:text-[var(--fg-primary)] transition-colors"
           title="Folder options"
         >

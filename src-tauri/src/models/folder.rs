@@ -7,6 +7,10 @@ fn default_scan_depth() -> i32 {
     0 // Current folder only
 }
 
+fn default_incomplete_timeout_minutes() -> u32 {
+    60
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Folder {
@@ -20,6 +24,12 @@ pub struct Folder {
     pub rule_count: i64,
     #[serde(default = "default_scan_depth")]
     pub scan_depth: i32,
+    #[serde(default)]
+    pub remove_duplicates: bool,
+    #[serde(default)]
+    pub trash_incomplete_downloads: bool,
+    #[serde(default = "default_incomplete_timeout_minutes")]
+    pub incomplete_timeout_minutes: u32,
 }
 
 impl Folder {

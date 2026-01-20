@@ -20,7 +20,9 @@ pub fn folder_add(
     let repo = FolderRepository::new(state.db.clone());
     let normalized = normalize_user_path(&path);
     let normalized_str = normalized.to_string_lossy().to_string();
-    let folder = repo.create(&normalized_str, &name).map_err(|e| e.to_string())?;
+    let folder = repo
+        .create(&normalized_str, &name)
+        .map_err(|e| e.to_string())?;
     if folder.enabled {
         if let Ok(mut watcher) = state.watcher.lock() {
             let _ = watcher.watch_folder(normalized, folder.id.clone(), folder.scan_depth);
@@ -63,6 +65,9 @@ pub fn folder_update_settings(
     state: State<'_, AppState>,
     id: String,
     scan_depth: i32,
+    remove_duplicates: bool,
+    trash_incomplete_downloads: bool,
+    incomplete_timeout_minutes: u32,
 ) -> Result<(), String> {
     let repo = FolderRepository::new(state.db.clone());
     let folder = repo
@@ -71,8 +76,15 @@ pub fn folder_update_settings(
         .ok_or_else(|| "Folder not found".to_string())?;
 
     // Update database
-    repo.update_settings(&id, scan_depth)
-        .map_err(|e| e.to_string())?;
+    let normalized_timeout = incomplete_timeout_minutes.max(1);
+    repo.update_settings(
+        &id,
+        scan_depth,
+        remove_duplicates,
+        trash_incomplete_downloads,
+        normalized_timeout,
+    )
+    .map_err(|e| e.to_string())?;
 
     // Update watcher if folder is enabled
     if folder.enabled {

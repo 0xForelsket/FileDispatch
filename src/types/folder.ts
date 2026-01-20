@@ -7,4 +7,7 @@ export interface Folder {
   updatedAt: string;
   ruleCount?: number;
   scanDepth: number; // 0=current only, 1-3=depth, -1=unlimited
+  removeDuplicates: boolean;
+  trashIncompleteDownloads: boolean;
+  incompleteTimeoutMinutes: number;
 }

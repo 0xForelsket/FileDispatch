@@ -6,13 +6,15 @@ use anyhow::Result;
 use chrono::{Duration, Utc};
 use regex::RegexBuilder;
 
+use crate::core::duplicates::DuplicateDetector;
 use crate::core::executor::{ActionExecutor, ActionOutcome, ActionResultStatus};
-use crate::core::watcher::FileEvent;
+use crate::core::watcher::{FileEvent, FileEventKind};
 use crate::models::{
     ActionDetails, ActionType, Condition, ConditionGroup, DateOperator, FileKind, LogEntry,
     LogStatus, MatchType, Rule, SizeUnit, StringOperator, TimeOperator, TimeUnit,
 };
 use crate::storage::database::Database;
+use crate::storage::folder_repo::FolderRepository;
 use crate::storage::log_repo::LogRepository;
 use crate::storage::match_repo::MatchRepository;
 use crate::storage::rule_repo::RuleRepository;
@@ -26,6 +28,7 @@ pub struct RuleEngine {
     _settings: std::sync::Arc<std::sync::Mutex<crate::models::Settings>>,
     last_seen: std::sync::Mutex<std::collections::HashMap<std::path::PathBuf, std::time::Instant>>,
     paused: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    duplicate_detector: DuplicateDetector,
 }
 
 impl RuleEngine {
@@ -43,6 +46,7 @@ impl RuleEngine {
             _settings: settings,
             last_seen: std::sync::Mutex::new(std::collections::HashMap::new()),
             paused,
+            duplicate_detector: DuplicateDetector::new(db.clone()),
         }
     }
 
@@ -75,11 +79,30 @@ impl RuleEngine {
             Err(_) => return Ok(()),
         };
 
+        let folder_repo = FolderRepository::new(self.db.clone());
+        let folder = match folder_repo.get(&event.folder_id)? {
+            Some(folder) => folder,
+            None => return Ok(()),
+        };
+
+        if folder.remove_duplicates
+            && matches!(event.kind, FileEventKind::Created | FileEventKind::Renamed)
+        {
+            if self
+                .duplicate_detector
+                .check_and_remove(&folder, &event.path)?
+            {
+                return Ok(());
+            }
+        }
+
         let rule_repo = RuleRepository::new(self.db.clone());
         let match_repo = MatchRepository::new(self.db.clone());
 
         // Populate last_matched from database
-        if let Ok(last_matched) = match_repo.get_last_match_time(info.path.to_string_lossy().as_ref()) {
+        if let Ok(last_matched) =
+            match_repo.get_last_match_time(info.path.to_string_lossy().as_ref())
+        {
             info.last_matched = last_matched;
         }
         let log_repo = LogRepository::new(self.db.clone());
@@ -209,7 +232,8 @@ pub(crate) fn evaluate_condition(
             // Use the last_matched field from FileInfo if available
             // Files that have never been matched will return None, and we'll treat them
             // as "matched a very long time ago" (so they match "not in the last X")
-            matched: info.last_matched
+            matched: info
+                .last_matched
                 .map(|dt| evaluate_date(dt, &cond.operator))
                 .unwrap_or_else(|| {
                     // If never matched, only match conditions looking for old/never-matched files
@@ -483,8 +507,8 @@ mod tests {
         ActionType, Condition, ConditionGroup, MatchType, Rule, StringCondition, StringOperator,
         TimeOperator,
     };
-    use chrono::NaiveTime;
     use crate::utils::file_info::FileInfo;
+    use chrono::NaiveTime;
     use std::fs;
     use tempfile::tempdir;
 

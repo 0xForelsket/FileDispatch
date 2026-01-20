@@ -9,8 +9,15 @@ export const folderAdd = (path: string, name: string) =>
 export const folderRemove = (id: string) => invoke<void>("folder_remove", { id });
 export const folderToggle = (id: string, enabled: boolean) =>
   invoke<void>("folder_toggle", { id, enabled });
-export const folderUpdateSettings = (id: string, scanDepth: number) =>
-  invoke<void>("folder_update_settings", { id, scanDepth });
+export interface FolderSettingsUpdate {
+  scanDepth: number;
+  removeDuplicates: boolean;
+  trashIncompleteDownloads: boolean;
+  incompleteTimeoutMinutes: number;
+}
+
+export const folderUpdateSettings = (id: string, settings: FolderSettingsUpdate) =>
+  invoke<void>("folder_update_settings", { id, ...settings });
 
 export interface RunResult {
   total_files: number;
