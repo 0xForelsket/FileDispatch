@@ -168,17 +168,17 @@ fn extract_docx_text(path: &Path) -> Result<Option<String>> {
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) => {
-                let name = e.name().as_ref();
-                if is_tag(name, b"t") {
+                let name = e.name().as_ref().to_vec();
+                if is_tag(&name, b"t") {
                     in_text = true;
                 }
             }
             Ok(Event::End(e)) => {
-                let name = e.name().as_ref();
-                if is_tag(name, b"t") {
+                let name = e.name().as_ref().to_vec();
+                if is_tag(&name, b"t") {
                     in_text = false;
                     text.push(' ');
-                } else if is_tag(name, b"p") {
+                } else if is_tag(&name, b"p") {
                     text.push('\n');
                 }
             }
