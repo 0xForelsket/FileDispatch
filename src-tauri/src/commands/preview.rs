@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use tauri::State;
 
+use crate::core::content::ContentCache;
 use crate::core::engine::{evaluate_condition, evaluate_conditions};
 use crate::core::patterns::PatternEngine;
 use crate::core::state::AppState;
@@ -30,6 +31,12 @@ pub fn preview_rule(
 
     let mut results = Vec::new();
     let pattern_engine = PatternEngine::new();
+    let settings = state
+        .settings
+        .lock()
+        .map(|s| s.clone())
+        .unwrap_or_default();
+    let mut ocr = state.ocr.lock().unwrap();
 
     let max_depth = folder.max_depth().unwrap_or(usize::MAX);
     for entry in walkdir::WalkDir::new(&folder.path)
@@ -41,7 +48,7 @@ pub fn preview_rule(
             continue;
         }
         let path = entry.path().to_path_buf();
-        if let Ok(item) = preview_single(&rule, &path, &pattern_engine) {
+        if let Ok(item) = preview_single(&rule, &path, &pattern_engine, &settings, &mut ocr) {
             results.push(item);
         }
     }
@@ -123,6 +130,12 @@ pub fn preview_rule_draft(
 
     let mut results = Vec::new();
     let pattern_engine = PatternEngine::new();
+    let settings = state
+        .settings
+        .lock()
+        .map(|s| s.clone())
+        .unwrap_or_default();
+    let mut ocr = state.ocr.lock().unwrap();
 
     eprintln!("Starting directory walk...");
     let max_depth = folder.max_depth().unwrap_or(usize::MAX);
@@ -159,7 +172,7 @@ pub fn preview_rule_draft(
             eprintln!("Processing file #{}: {:?}", file_count, path);
         }
 
-        match preview_single(&rule, &path, &pattern_engine) {
+        match preview_single(&rule, &path, &pattern_engine, &settings, &mut ocr) {
             Ok(item) => {
                 results.push(item);
             }
@@ -189,22 +202,32 @@ pub fn preview_file(
     let Some(rule) = rule else {
         return Err("Rule not found".to_string());
     };
+    let settings = state
+        .settings
+        .lock()
+        .map(|s| s.clone())
+        .unwrap_or_default();
+    let mut ocr = state.ocr.lock().unwrap();
     let path = PathBuf::from(file_path);
     let pattern_engine = PatternEngine::new();
-    preview_single(&rule, &path, &pattern_engine).map_err(|e| e.to_string())
+    preview_single(&rule, &path, &pattern_engine, &settings, &mut ocr)
+        .map_err(|e| e.to_string())
 }
 
 fn preview_single(
     rule: &crate::models::Rule,
     path: &PathBuf,
     pattern_engine: &PatternEngine,
+    settings: &crate::models::Settings,
+    ocr: &mut crate::core::ocr::OcrManager,
 ) -> anyhow::Result<PreviewItem> {
     let info = FileInfo::from_path(path)?;
-    let evaluation = evaluate_conditions(rule, &info)?;
+    let evaluation = evaluate_conditions(rule, &info, settings, ocr)?;
 
     let mut condition_results = Vec::new();
+    let mut cache = ContentCache::default();
     for condition in &rule.conditions.conditions {
-        condition_results.push(evaluate_condition(condition, &info)?.matched);
+        condition_results.push(evaluate_condition(condition, &info, settings, ocr, &mut cache)?.matched);
     }
 
     let actions = if evaluation.matched {
@@ -269,6 +292,7 @@ fn describe_action(
         Action::Open(_) => "Open with default app".to_string(),
         Action::ShowInFileManager(_) => "Show in file manager".to_string(),
         Action::OpenWith(action) => format!("Open with {}", action.app_path),
+        Action::MakePdfSearchable(_) => "Make PDF searchable (OCR)".to_string(),
         Action::Pause(action) => format!("Pause {}s", action.duration_seconds),
         Action::Continue => "Continue matching rules".to_string(),
         Action::Ignore => "Ignore".to_string(),

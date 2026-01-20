@@ -59,6 +59,11 @@ export interface PauseAction {
   durationSeconds: number;
 }
 
+export interface MakePdfSearchableAction {
+  skipIfText: boolean;
+  overwrite: boolean;
+}
+
 export type Action =
   | { type: "move" } & MoveAction
   | { type: "copy" } & CopyAction
@@ -73,6 +78,7 @@ export type Action =
   | { type: "open" } & OpenAction
   | { type: "showInFileManager" } & ShowInFileManagerAction
   | { type: "openWith" } & OpenWithAction
+  | { type: "makePdfSearchable" } & MakePdfSearchableAction
   | { type: "pause" } & PauseAction
   | { type: "continue" }
   | { type: "ignore" };
@@ -97,6 +103,7 @@ export type ActionType =
   | "open"
   | "showInFileManager"
   | "openWith"
+  | "makePdfSearchable"
   | "pause"
   | "continue"
   | "ignore";

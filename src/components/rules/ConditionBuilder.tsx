@@ -25,6 +25,7 @@ const conditionTypes = [
   { value: "name", label: "Name" },
   { value: "extension", label: "Extension" },
   { value: "fullName", label: "Full Name" },
+  { value: "contents", label: "Contents" },
   { value: "size", label: "Size" },
   { value: "dateCreated", label: "Date Created" },
   { value: "dateModified", label: "Date Modified" },
@@ -254,6 +255,8 @@ function createCondition(type: string): Condition {
       return { type: "extension", operator: "is", value: "", caseSensitive: false };
     case "fullName":
       return { type: "fullName", operator: "is", value: "", caseSensitive: false };
+    case "contents":
+      return { type: "contents", operator: "contains", value: "", caseSensitive: false, source: "auto" };
     case "size":
       return { type: "size", operator: { type: "greaterThan" }, value: 1, unit: "megabytes" };
     case "dateCreated":
@@ -283,7 +286,8 @@ function renderConditionFields(
   if (
     condition.type === "name" ||
     condition.type === "extension" ||
-    condition.type === "fullName"
+    condition.type === "fullName" ||
+    condition.type === "contents"
   ) {
     return (
       <>
@@ -301,6 +305,18 @@ function renderConditionFields(
           value={condition.value}
           onChange={(e) => onChange({ ...condition, value: e.target.value })}
         />
+        {condition.type === "contents" ? (
+          <MagiSelect
+            width="w-28"
+            value={condition.source}
+            onChange={(val) => onChange({ ...condition, source: val as "text" | "ocr" | "auto" })}
+            options={[
+              { label: "Auto", value: "auto" },
+              { label: "Text", value: "text" },
+              { label: "OCR", value: "ocr" },
+            ]}
+          />
+        ) : null}
         <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
           <input
             className="accent-[var(--accent)]"

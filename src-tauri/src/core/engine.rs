@@ -6,12 +6,14 @@ use anyhow::Result;
 use chrono::{Duration, Utc};
 use regex::RegexBuilder;
 
+use crate::core::content::{resolve_contents, ContentCache};
 use crate::core::duplicates::DuplicateDetector;
 use crate::core::executor::{ActionExecutor, ActionOutcome, ActionResultStatus};
 use crate::core::watcher::{FileEvent, FileEventKind};
 use crate::models::{
-    ActionDetails, ActionType, Condition, ConditionGroup, DateOperator, FileKind, LogEntry,
-    LogStatus, MatchType, Rule, SizeUnit, StringOperator, TimeOperator, TimeUnit,
+    ActionDetails, ActionType, Condition, ConditionGroup, ContentSource, DateOperator, FileKind,
+    LogEntry, LogStatus, MatchType, Rule, SizeUnit, StringCondition, StringOperator, TimeOperator,
+    TimeUnit,
 };
 use crate::storage::database::Database;
 use crate::storage::folder_repo::FolderRepository;
@@ -26,6 +28,7 @@ pub struct RuleEngine {
     db: Database,
     executor: ActionExecutor,
     _settings: std::sync::Arc<std::sync::Mutex<crate::models::Settings>>,
+    ocr: std::sync::Arc<std::sync::Mutex<crate::core::ocr::OcrManager>>,
     last_seen: std::sync::Mutex<std::collections::HashMap<std::path::PathBuf, std::time::Instant>>,
     paused: std::sync::Arc<std::sync::atomic::AtomicBool>,
     duplicate_detector: DuplicateDetector,
@@ -37,13 +40,15 @@ impl RuleEngine {
         db: Database,
         app_handle: tauri::AppHandle,
         settings: std::sync::Arc<std::sync::Mutex<crate::models::Settings>>,
+        ocr: std::sync::Arc<std::sync::Mutex<crate::core::ocr::OcrManager>>,
         paused: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> Self {
         Self {
             event_rx,
             db: db.clone(),
-            executor: ActionExecutor::new(app_handle, settings.clone()),
+            executor: ActionExecutor::new(app_handle, settings.clone(), ocr.clone()),
             _settings: settings,
+            ocr,
             last_seen: std::sync::Mutex::new(std::collections::HashMap::new()),
             paused,
             duplicate_detector: DuplicateDetector::new(db.clone()),
@@ -109,6 +114,12 @@ impl RuleEngine {
         let undo_repo = UndoRepository::new(self.db.clone());
 
         let rules = rule_repo.list_by_folder(&event.folder_id)?;
+        let settings = self
+            ._settings
+            .lock()
+            .map(|s| s.clone())
+            .unwrap_or_default();
+        let mut ocr = self.ocr.lock().unwrap();
 
         for rule in rules {
             if !rule.enabled {
@@ -121,7 +132,7 @@ impl RuleEngine {
                 continue;
             }
 
-            let evaluation = evaluate_conditions(&rule, &info)?;
+            let evaluation = evaluate_conditions(&rule, &info, &settings, &mut ocr)?;
             if !evaluation.matched {
                 continue;
             }
@@ -151,16 +162,28 @@ pub(crate) struct EvaluationResult {
     pub captures: HashMap<String, String>,
 }
 
-pub(crate) fn evaluate_conditions(rule: &Rule, info: &FileInfo) -> Result<EvaluationResult> {
-    evaluate_group(&rule.conditions, info)
+pub(crate) fn evaluate_conditions(
+    rule: &Rule,
+    info: &FileInfo,
+    settings: &crate::models::Settings,
+    ocr: &mut crate::core::ocr::OcrManager,
+) -> Result<EvaluationResult> {
+    let mut cache = ContentCache::default();
+    evaluate_group(&rule.conditions, info, settings, ocr, &mut cache)
 }
 
-pub(crate) fn evaluate_group(group: &ConditionGroup, info: &FileInfo) -> Result<EvaluationResult> {
+pub(crate) fn evaluate_group(
+    group: &ConditionGroup,
+    info: &FileInfo,
+    settings: &crate::models::Settings,
+    ocr: &mut crate::core::ocr::OcrManager,
+    cache: &mut ContentCache,
+) -> Result<EvaluationResult> {
     match group.match_type {
         MatchType::All => {
             let mut captures = HashMap::new();
             for condition in &group.conditions {
-                let result = evaluate_condition(condition, info)?;
+                let result = evaluate_condition(condition, info, settings, ocr, cache)?;
                 if !result.matched {
                     return Ok(EvaluationResult {
                         matched: false,
@@ -176,7 +199,7 @@ pub(crate) fn evaluate_group(group: &ConditionGroup, info: &FileInfo) -> Result<
         }
         MatchType::Any => {
             for condition in &group.conditions {
-                let result = evaluate_condition(condition, info)?;
+                let result = evaluate_condition(condition, info, settings, ocr, cache)?;
                 if result.matched {
                     return Ok(result);
                 }
@@ -188,7 +211,7 @@ pub(crate) fn evaluate_group(group: &ConditionGroup, info: &FileInfo) -> Result<
         }
         MatchType::None => {
             for condition in &group.conditions {
-                let result = evaluate_condition(condition, info)?;
+                let result = evaluate_condition(condition, info, settings, ocr, cache)?;
                 if result.matched {
                     return Ok(EvaluationResult {
                         matched: false,
@@ -207,11 +230,31 @@ pub(crate) fn evaluate_group(group: &ConditionGroup, info: &FileInfo) -> Result<
 pub(crate) fn evaluate_condition(
     condition: &Condition,
     info: &FileInfo,
+    settings: &crate::models::Settings,
+    ocr: &mut crate::core::ocr::OcrManager,
+    cache: &mut ContentCache,
 ) -> Result<EvaluationResult> {
     match condition {
         Condition::Name(cond) => evaluate_string(&info.name, cond),
         Condition::Extension(cond) => evaluate_string(&info.extension, cond),
         Condition::FullName(cond) => evaluate_string(&info.full_name, cond),
+        Condition::Contents(cond) => {
+            let text = resolve_contents(info, settings, ocr, &cond.source, cache)
+                .unwrap_or_else(|_| None)
+                .unwrap_or_default();
+            if text.is_empty() {
+                return Ok(EvaluationResult {
+                    matched: false,
+                    captures: HashMap::new(),
+                });
+            }
+            let string_cond = StringCondition {
+                operator: cond.operator.clone(),
+                value: cond.value.clone(),
+                case_sensitive: cond.case_sensitive,
+            };
+            evaluate_string(&text, &string_cond)
+        }
         Condition::Size(cond) => Ok(EvaluationResult {
             matched: evaluate_size(info.size, cond),
             captures: HashMap::new(),
@@ -253,7 +296,7 @@ pub(crate) fn evaluate_condition(
             matched: evaluate_shell(&cond.command, &info.path),
             captures: HashMap::new(),
         }),
-        Condition::Nested(group) => evaluate_group(group, info),
+        Condition::Nested(group) => evaluate_group(group, info, settings, ocr, cache),
     }
 }
 

@@ -23,6 +23,7 @@ const actionTypes = [
   { value: "open", label: "Open (Default App)" },
   { value: "openWith", label: "Open With..." },
   { value: "showInFileManager", label: "Show in File Manager" },
+  { value: "makePdfSearchable", label: "Make PDF Searchable (OCR)" },
   { value: "pause", label: "Pause" },
   { value: "continue", label: "Continue Matching Rules" },
   { value: "ignore", label: "Ignore" },
@@ -137,6 +138,8 @@ function createAction(type: string): Action {
       return { type: "open" };
     case "openWith":
       return { type: "openWith", appPath: "" };
+    case "makePdfSearchable":
+      return { type: "makePdfSearchable", skipIfText: true, overwrite: true };
     case "showInFileManager":
       return { type: "showInFileManager" };
     case "pause":
@@ -318,6 +321,36 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
         value={action.appPath}
         onChange={(e) => onChange({ ...action, appPath: e.target.value })}
       />
+    );
+  }
+
+  if (action.type === "makePdfSearchable") {
+    return (
+      <>
+        <MagiSelect
+          width="w-44"
+          value={action.overwrite ? "overwrite" : "copy"}
+          onChange={(val) =>
+            onChange({ ...action, overwrite: val === "overwrite" })
+          }
+          options={[
+            { label: "Overwrite original", value: "overwrite" },
+            { label: "Save copy (same folder)", value: "copy" },
+          ]}
+        />
+        <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
+          <input
+            className="accent-[var(--accent)]"
+            type="checkbox"
+            checked={action.skipIfText}
+            onChange={(e) => onChange({ ...action, skipIfText: e.target.checked })}
+          />
+          Skip if text already exists
+        </label>
+        <span className="text-[11px] text-[var(--fg-muted)]">
+          Adds a selectable text layer using OCR.
+        </span>
+      </>
     );
   }
 

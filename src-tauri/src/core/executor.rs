@@ -8,10 +8,13 @@ use tauri::AppHandle;
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::open_path;
 
+use crate::core::ocr::OcrManager;
+use crate::core::content::make_pdf_searchable;
 use crate::core::patterns::PatternEngine;
 use crate::models::{
-    Action, ActionDetails, ActionType, ArchiveAction, ConflictResolution, DeleteAction, OpenAction,
-    OpenWithAction, PauseAction, Settings, ShowInFileManagerAction, UnarchiveAction,
+    Action, ActionDetails, ActionType, ArchiveAction, ConflictResolution, DeleteAction,
+    MakePdfSearchableAction, OpenAction, OpenWithAction, PauseAction, Settings,
+    ShowInFileManagerAction, UnarchiveAction,
 };
 use crate::utils::archive::{create_archive, ensure_archive_path, extract_archive};
 use crate::utils::file_info::FileInfo;
@@ -36,17 +39,20 @@ pub struct ActionExecutor {
     pattern_engine: PatternEngine,
     app_handle: AppHandle,
     settings: std::sync::Arc<std::sync::Mutex<Settings>>,
+    ocr: std::sync::Arc<std::sync::Mutex<OcrManager>>,
 }
 
 impl ActionExecutor {
     pub fn new(
         app_handle: AppHandle,
         settings: std::sync::Arc<std::sync::Mutex<Settings>>,
+        ocr: std::sync::Arc<std::sync::Mutex<OcrManager>>,
     ) -> Self {
         Self {
             pattern_engine: PatternEngine::new(),
             app_handle,
             settings,
+            ocr,
         }
     }
 
@@ -118,6 +124,9 @@ impl ActionExecutor {
                 Action::Open(action) => self.execute_open(action, &current_path),
                 Action::ShowInFileManager(action) => self.execute_show_in_file_manager(action, &current_path),
                 Action::OpenWith(action) => self.execute_open_with(action, &current_path),
+                Action::MakePdfSearchable(action) => {
+                    self.execute_make_pdf_searchable(action, &current_path)
+                }
                 Action::Pause(action) => self.execute_pause(action),
                 Action::Continue => ActionOutcome {
                     action_type: ActionType::Continue,
@@ -425,6 +434,48 @@ impl ActionExecutor {
         }
     }
 
+    fn execute_make_pdf_searchable(
+        &self,
+        action: &MakePdfSearchableAction,
+        source_path: &Path,
+    ) -> ActionOutcome {
+        let settings = self
+            .settings
+            .lock()
+            .map(|s| s.clone())
+            .unwrap_or_default();
+        let mut ocr = self.ocr.lock().unwrap();
+        let output_path = if action.overwrite {
+            source_path.to_path_buf()
+        } else {
+            searchable_output_path(source_path)
+        };
+
+        match make_pdf_searchable(
+            source_path,
+            &output_path,
+            &settings,
+            &mut ocr,
+            action.skip_if_text,
+        ) {
+            Ok(crate::core::content::MakePdfSearchableStatus::Completed) => {
+                let dest = if output_path != source_path {
+                    Some(output_path)
+                } else {
+                    None
+                };
+                success_outcome(ActionType::MakePdfSearchable, source_path, dest)
+            }
+            Ok(crate::core::content::MakePdfSearchableStatus::SkippedAlreadyText) => ActionOutcome {
+                action_type: ActionType::MakePdfSearchable,
+                status: ActionResultStatus::Skipped,
+                details: None,
+                error: Some("PDF already has selectable text".to_string()),
+            },
+            Err(err) => error_outcome(ActionType::MakePdfSearchable, err.to_string()),
+        }
+    }
+
     fn execute_pause(&self, action: &PauseAction) -> ActionOutcome {
         std::thread::sleep(Duration::from_secs(action.duration_seconds));
         let mut outcome = success_outcome(ActionType::Pause, Path::new("pause"), None);
@@ -610,6 +661,17 @@ fn unique_path(path: &Path) -> PathBuf {
         }
         i += 1;
     }
+}
+
+fn searchable_output_path(path: &Path) -> PathBuf {
+    let parent = path.parent().unwrap_or_else(|| Path::new(""));
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("document");
+    let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("pdf");
+    let candidate = parent.join(format!("{stem}-searchable.{ext}"));
+    unique_path(&candidate)
 }
 
 fn success_outcome(action_type: ActionType, source: &Path, dest: Option<PathBuf>) -> ActionOutcome {

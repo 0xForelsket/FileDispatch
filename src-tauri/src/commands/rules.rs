@@ -83,7 +83,7 @@ pub fn rule_import(
 
 fn export_rules(repo: &RuleRepository, folder_id: &str) -> Result<String, String> {
     let rules = repo.list_by_folder(folder_id).map_err(|e| e.to_string())?;
-    serde_json::to_string_pretty(&rules).map_err(|e| e.to_string())
+    serde_yaml::to_string(&rules).map_err(|e| e.to_string())
 }
 
 fn import_rules(
@@ -91,13 +91,43 @@ fn import_rules(
     folder_id: &str,
     payload: &str,
 ) -> Result<Vec<Rule>, String> {
-    let mut rules: Vec<Rule> = serde_json::from_str(payload).map_err(|e| e.to_string())?;
+    let parsed = parse_rule_payload(payload)?;
+    let mut rules = parsed;
     let mut created = Vec::new();
     for mut rule in rules.drain(..) {
         rule.folder_id = folder_id.to_string();
         created.push(repo.create(rule).map_err(|e| e.to_string())?);
     }
     Ok(created)
+}
+
+fn parse_rule_payload(payload: &str) -> Result<Vec<Rule>, String> {
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum RulePayload {
+        One(Rule),
+        Many(Vec<Rule>),
+    }
+
+    let trimmed = payload.trim();
+    if trimmed.is_empty() {
+        return Err("Rule import file is empty.".to_string());
+    }
+
+    if trimmed.starts_with('{') || trimmed.starts_with('[') {
+        if let Ok(parsed) = serde_json::from_str::<RulePayload>(trimmed) {
+            return Ok(match parsed {
+                RulePayload::One(rule) => vec![rule],
+                RulePayload::Many(rules) => rules,
+            });
+        }
+    }
+
+    let parsed: RulePayload = serde_yaml::from_str(trimmed).map_err(|e| e.to_string())?;
+    Ok(match parsed {
+        RulePayload::One(rule) => vec![rule],
+        RulePayload::Many(rules) => rules,
+    })
 }
 
 #[cfg(test)]
@@ -142,7 +172,7 @@ mod tests {
         let created = rule_repo.create(rule).unwrap();
 
         let payload = export_rules(&rule_repo, &folder.id).unwrap();
-        let parsed: Vec<Rule> = serde_json::from_str(&payload).unwrap();
+        let parsed: Vec<Rule> = serde_yaml::from_str(&payload).unwrap();
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0].name, created.name);
     }
@@ -160,7 +190,7 @@ mod tests {
             .unwrap();
 
         let original = sample_rule("source-folder".to_string(), "Import Rule");
-        let payload = serde_json::to_string(&vec![original]).unwrap();
+        let payload = serde_yaml::to_string(&vec![original]).unwrap();
         let created = import_rules(&rule_repo, &target_folder.id, &payload).unwrap();
 
         assert_eq!(created.len(), 1);
@@ -169,5 +199,25 @@ mod tests {
 
         let list = rule_repo.list_by_folder(&target_folder.id).unwrap();
         assert_eq!(list.len(), 1);
+    }
+
+    #[test]
+    fn import_rules_accepts_json_payload() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+        let db = Database::new_with_path(db_path).unwrap();
+        let folder_repo = FolderRepository::new(db.clone());
+        let rule_repo = RuleRepository::new(db);
+
+        let target_folder = folder_repo
+            .create(&dir.path().to_string_lossy(), "ImportJson")
+            .unwrap();
+
+        let original = sample_rule("source-folder".to_string(), "Import JSON");
+        let payload = serde_json::to_string(&original).unwrap();
+        let created = import_rules(&rule_repo, &target_folder.id, &payload).unwrap();
+
+        assert_eq!(created.len(), 1);
+        assert_eq!(created[0].folder_id, target_folder.id);
     }
 }

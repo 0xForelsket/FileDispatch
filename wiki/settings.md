@@ -43,6 +43,37 @@ These settings affect pattern token output:
 
 ---
 
+## Content & OCR
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Enable OCR for content matching** | Use OCR for images/scanned PDFs when a Contents condition runs | On |
+| **Max text extraction size (MB)** | Skip text extraction for very large files | 10 |
+| **Max OCR image size (MB)** | Skip OCR for large images | 15 |
+| **Max OCR PDF size (MB)** | Skip OCR for large PDFs | 30 |
+| **Max OCR PDF pages** | Stop OCR after N pages | 25 |
+| **OCR timeout per image (sec)** | Abort if a page/image takes too long | 15 |
+| **OCR timeout per PDF (sec)** | Total time allowed per PDF | 120 |
+
+---
+
+## OCR Models
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Model source** | Bundled (English) or Custom models | Bundled |
+
+**Bundled models (English, fast):**
+- `pp-ocrv5_mobile_det.onnx` — text detection (4.6 MB)
+- `en_pp-ocrv5_mobile_rec.onnx` — English recognition (7.5 MB)
+- `ppocrv5_en_dict.txt` — dictionary
+
+**Custom models:**
+- Use larger server models for higher accuracy
+- Swap to language-specific recognition + dictionary files
+
+---
+
 ## Ignore Patterns
 
 Files matching these patterns are ignored:

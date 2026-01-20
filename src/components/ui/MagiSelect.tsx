@@ -13,6 +13,7 @@ interface MagiSelectProps {
   className?: string;
   width?: string;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 export function MagiSelect({
@@ -22,6 +23,7 @@ export function MagiSelect({
   className = "",
   width = "w-full",
   placeholder = "SELECT",
+  disabled = false,
 }: MagiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,10 +49,18 @@ export function MagiSelect({
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (disabled) return;
+          setIsOpen(!isOpen);
+        }}
+        disabled={disabled}
         className={`flex w-full items-center justify-between border ${
           isOpen ? "border-[var(--accent)]" : "border-[var(--border-main)]"
-        } bg-[var(--bg-panel)] px-2 py-1 text-left text-xs font-medium text-[var(--fg-primary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] focus:outline-none transition-colors rounded-[var(--radius)]`}
+        } bg-[var(--bg-panel)] px-2 py-1 text-left text-xs font-medium text-[var(--fg-primary)] focus:outline-none transition-colors rounded-[var(--radius)] ${
+          disabled
+            ? "opacity-60 cursor-not-allowed"
+            : "hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)]"
+        }`}
         style={{ fontFamily: "inherit" }}
       >
         <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
@@ -62,7 +72,7 @@ export function MagiSelect({
       </button>
 
       {/* Dropdown Menu */}
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className="absolute left-0 top-full z-50 mt-1 max-h-60 w-full overflow-auto border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)] rounded-[var(--radius)]">
           {options.map((option) => (
             <button

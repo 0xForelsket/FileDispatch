@@ -47,8 +47,8 @@
 | **Finder Tags** | ✅ | ❌ | macOS tags |
 | **Color Label** | ✅ | ❌ | macOS color labels |
 | **Comments** | ✅ | ❌ | Spotlight comments |
-| **Contents (text search)** | ✅ | ❌ | Search inside files |
-| **OCR text recognition** | ✅ | ❌ | New in Hazel 6 |
+| **Contents (text search)** | ✅ | ⚠️ | PDF/DOCX/plain text + OCR (auto/forced); size/timeouts |
+| **OCR text recognition** | ✅ | ⚠️ | oar-ocr for images/scanned PDFs; English by default |
 | **Source URL** | ✅ | ❌ | Download origin tracking |
 | **Locked status** | ✅ | ❌ | File lock state |
 
@@ -65,6 +65,7 @@
 | Sort into subfolder | ✅ | ✅ | Date/category organization |
 | Archive (zip) | ✅ | ✅ | zip, tar, tar.gz |
 | Unarchive | ✅ | ✅ | Extract with options |
+| Make PDF searchable (OCR) | ❌ | ✅ | Adds selectable text layer (overwrite/copy/skip) |
 | Delete (trash) | ✅ | ✅ | Move to trash |
 | Delete permanently | ✅ | ✅ | Permanent deletion |
 | **Sync** | ✅ | ❌ | One-way folder sync |
@@ -174,7 +175,7 @@
 | Menu bar/tray icon | ✅ | ⚠️ | Minimize to tray exists |
 | **App Sweep** | ✅ | ❌ | Clean up deleted app files |
 | **Trash management** | ✅ | ❌ | Auto-empty based on age/size |
-| **Rule sync (iCloud/Dropbox)** | ✅ | ❌ | Sync rules across machines |
+| **Rule sync (iCloud/Dropbox)** | ✅ | ⚠️ | Manual YAML export/import; no cloud sync yet |
 | Cross-platform | ❌ | ✅ | FileDispatch advantage |
 
 ---
@@ -182,6 +183,10 @@
 ## PRIORITY IMPLEMENTATION ROADMAP
 
 ### Recently Completed
+- Contents condition (text + OCR)
+- Make PDF searchable action (OCR)
+- Manual rule export/import (YAML)
+- OCR model + limits settings (size/timeouts)
 - Rule reordering UI
 - Search/filter rules
 - Confirmation dialogs
@@ -195,16 +200,16 @@
 ### High Priority (Core Capability Gaps)
 | # | Feature | Effort | Impact |
 |---|---------|--------|--------|
-| 1 | Contents/text search (optionally OCR later) | High | High |
-| 2 | JavaScript conditions/actions | High | Medium |
-| 3 | Rule sync/backup (cloud or local) | Medium | Medium |
+| 1 | Rule sync across machines (cloud) | High | High |
+| 2 | Trash management (age/size based) | Medium | Medium |
+| 3 | Run rules on folder contents | Medium | High |
 
 ### Medium Priority (System Automation)
 | # | Feature | Effort | Impact |
 |---|---------|--------|--------|
-| 1 | Trash management (age/size based) | Medium | Medium |
-| 2 | App Sweep | Medium | Low |
-| 3 | App folders (browser downloads presets) | Low | Medium |
+| 1 | App Sweep | Medium | Low |
+| 2 | App folders (browser downloads presets) | Low | Medium |
+| 3 | Subfolder depth / item count conditions | Medium | Medium |
 
 ### Lower Priority (Nice to Have)
 | # | Feature | Effort | Impact |
@@ -212,6 +217,9 @@
 | 1 | Folder groups | Medium | Low |
 | 2 | Custom attributes (variables) | High | Medium |
 | 3 | Multiple layout options | Medium | Low |
+
+### Deferred / Not Planned (for now)
+- JavaScript conditions/actions (deprioritized)
 
 ### Platform-Specific (Won't Implement)
 - AppleScript/Automator (macOS only)
@@ -225,7 +233,7 @@
 
 ## SUMMARY
 
-### Overall Coverage: ~70% of Hazel 6 features (rough estimate)
+### Overall Coverage: ~75–80% of Hazel 6 features (rough estimate)
 
 ### FileDispatch Strengths vs Hazel:
 - ✅ Cross-platform (Windows, macOS, Linux)
@@ -235,10 +243,10 @@
 - ✅ More archive formats (tar, tar.gz)
 
 ### Key Gaps to Address:
-1. **Content Search/OCR** - Search inside files (cross-platform challenge)
-2. **Scriptable Conditions/Actions** - JavaScript-based matching/automation
-3. **System Features** - Rule sync, trash management, app sweep
-4. **Metadata Actions** - Tags, labels, comments, lock status
+1. **Rule Sync** - Cloud sync across machines (manual YAML export exists)
+2. **System Cleanup** - Trash management and app sweep
+3. **Metadata Actions** - Tags, labels, comments, lock status
+4. **Advanced Conditions** - Subfolder depth & item count
 
 ### Realistic Target: 80% Feature Parity
 Focusing on cross-platform features and UX improvements can bring FileDispatch to ~80% parity with Hazel 6, with the remaining 20% being macOS-specific features that don't apply to a cross-platform app.

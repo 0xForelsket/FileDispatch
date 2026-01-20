@@ -1,4 +1,6 @@
 pub mod duplicates;
+pub mod ocr;
+pub mod content;
 pub mod engine;
 pub mod executor;
 pub mod incomplete;

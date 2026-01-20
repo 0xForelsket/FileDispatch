@@ -37,6 +37,9 @@ pub fn settings_update(
     if let Ok(mut stored) = state.settings.lock() {
         *stored = settings.clone();
     }
+    if let Ok(mut ocr) = state.ocr.lock() {
+        ocr.update_settings(settings.clone());
+    }
     let log_repo = crate::storage::log_repo::LogRepository::new(state.db.clone());
     let _ = log_repo.cleanup(settings.log_retention_days);
     store.save().map_err(|e| e.to_string())

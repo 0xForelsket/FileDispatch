@@ -92,7 +92,8 @@ fn apply_variables_to_condition(condition: &mut Condition, vars: &HashMap<String
     match condition {
         Condition::Name(StringCondition { value, .. })
         | Condition::Extension(StringCondition { value, .. })
-        | Condition::FullName(StringCondition { value, .. }) => {
+        | Condition::FullName(StringCondition { value, .. })
+        | Condition::Contents(crate::models::ContentsCondition { value, .. }) => {
             *value = substitute(value, vars);
         }
         Condition::ShellScript(script) => {

@@ -18,6 +18,17 @@ export interface AppSettings {
   timeFormat: string;
   useShortDateNames: boolean;
   showTooltips: boolean;
+  contentEnableOcr: boolean;
+  contentMaxTextBytes: number;
+  contentMaxOcrImageBytes: number;
+  contentMaxOcrPdfBytes: number;
+  contentMaxOcrPdfPages: number;
+  contentOcrTimeoutImageMs: number;
+  contentOcrTimeoutPdfMs: number;
+  ocrModelSource: "bundled" | "custom";
+  ocrModelDetPath: string;
+  ocrModelRecPath: string;
+  ocrModelDictPath: string;
 }
 
 interface SettingsState {
@@ -41,6 +52,17 @@ export const defaultSettings: AppSettings = {
   timeFormat: "%H-%M-%S",
   useShortDateNames: true,
   showTooltips: true,
+  contentEnableOcr: true,
+  contentMaxTextBytes: 10 * 1024 * 1024,
+  contentMaxOcrImageBytes: 15 * 1024 * 1024,
+  contentMaxOcrPdfBytes: 30 * 1024 * 1024,
+  contentMaxOcrPdfPages: 25,
+  contentOcrTimeoutImageMs: 15_000,
+  contentOcrTimeoutPdfMs: 120_000,
+  ocrModelSource: "bundled",
+  ocrModelDetPath: "",
+  ocrModelRecPath: "",
+  ocrModelDictPath: "",
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({

@@ -17,6 +17,7 @@ pub enum Action {
     Open(OpenAction),
     ShowInFileManager(ShowInFileManagerAction),
     OpenWith(OpenWithAction),
+    MakePdfSearchable(MakePdfSearchableAction),
     Pause(PauseAction),
     Continue,
     Ignore,
@@ -101,6 +102,13 @@ pub struct OpenWithAction {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MakePdfSearchableAction {
+    pub skip_if_text: bool,
+    pub overwrite: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PauseAction {
     pub duration_seconds: u64,
 }
@@ -146,6 +154,7 @@ pub enum ActionType {
     Open,
     ShowInFileManager,
     OpenWith,
+    MakePdfSearchable,
     Pause,
     Continue,
     Ignore,

@@ -129,6 +129,8 @@ function summarizeConditions(conditions: Condition[]) {
       return `*.${first.value || "…"}`;
     case "fullName":
       return `name ${first.operator} ${first.value || "…"}`;
+    case "contents":
+      return `contents ${first.operator} ${first.value || "…"}`;
     case "kind":
       return `${first.negate ? "not " : ""}${first.kind}`;
     case "size":
@@ -173,6 +175,8 @@ function summarizeAction(action?: Rule["actions"][number]) {
       return "unarchive";
     case "open":
       return "open";
+    case "makePdfSearchable":
+      return "ocr pdf";
     case "pause":
       return `pause ${action.durationSeconds}s`;
     case "continue":

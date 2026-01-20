@@ -22,6 +22,7 @@ pub enum Condition {
     Name(StringCondition),
     Extension(StringCondition),
     FullName(StringCondition),
+    Contents(ContentsCondition),
     Size(SizeCondition),
     DateCreated(DateCondition),
     DateModified(DateCondition),
@@ -151,4 +152,21 @@ pub enum FileKind {
 #[serde(rename_all = "camelCase")]
 pub struct ShellCondition {
     pub command: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentsCondition {
+    pub operator: StringOperator,
+    pub value: String,
+    pub case_sensitive: bool,
+    pub source: ContentSource,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ContentSource {
+    Text,
+    Ocr,
+    Auto,
 }

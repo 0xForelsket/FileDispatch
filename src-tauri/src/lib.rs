@@ -19,6 +19,7 @@ use commands::settings::{settings_get, settings_update};
 use commands::undo::{undo_execute, undo_list};
 use core::engine::RuleEngine;
 use core::incomplete::IncompleteCleaner;
+use core::ocr::OcrManager;
 use core::state::AppState;
 use core::watcher::WatcherService;
 use models::Settings;
@@ -47,6 +48,7 @@ pub fn run() {
         db: db.clone(),
         watcher: std::sync::Arc::new(std::sync::Mutex::new(watcher)),
         settings: std::sync::Arc::new(std::sync::Mutex::new(Settings::default())),
+        ocr: std::sync::Arc::new(std::sync::Mutex::new(OcrManager::new_placeholder())),
         paused: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
     };
 
@@ -87,11 +89,15 @@ pub fn run() {
                 .unwrap_or_default();
 
             let state = app.state::<AppState>();
+            if let Ok(mut ocr) = state.ocr.lock() {
+                ocr.update(app.handle().clone(), settings.clone());
+            }
             let engine = RuleEngine::new(
                 event_rx,
                 db.clone(),
                 app.handle().clone(),
                 state.settings.clone(),
+                state.ocr.clone(),
                 state.paused.clone(),
             );
             engine.start();
@@ -102,6 +108,9 @@ pub fn run() {
             if let Ok(folders) = repo.list() {
                 if let Ok(mut stored) = state.settings.lock() {
                     *stored = settings.clone();
+                }
+                if let Ok(mut ocr) = state.ocr.lock() {
+                    ocr.update(app.handle().clone(), settings.clone());
                 }
                 let mut watcher = state.watcher.lock().unwrap();
                 watcher.set_ignore_patterns(settings.ignore_patterns.clone());

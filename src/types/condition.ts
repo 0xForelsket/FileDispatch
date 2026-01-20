@@ -16,6 +16,15 @@ export interface StringCondition {
   caseSensitive: boolean;
 }
 
+export type ContentSource = "text" | "ocr" | "auto";
+
+export interface ContentCondition {
+  operator: StringOperator;
+  value: string;
+  caseSensitive: boolean;
+  source: ContentSource;
+}
+
 export type ComparisonOperator =
   | { type: "equals" }
   | { type: "notEquals" }
@@ -81,6 +90,7 @@ export type Condition =
   | { type: "name"; operator: StringOperator; value: string; caseSensitive: boolean }
   | { type: "extension"; operator: StringOperator; value: string; caseSensitive: boolean }
   | { type: "fullName"; operator: StringOperator; value: string; caseSensitive: boolean }
+  | { type: "contents"; operator: StringOperator; value: string; caseSensitive: boolean; source: ContentSource }
   | { type: "size"; operator: ComparisonOperator; value?: number; unit: SizeUnit }
   | { type: "dateCreated"; operator: DateOperator }
   | { type: "dateModified"; operator: DateOperator }

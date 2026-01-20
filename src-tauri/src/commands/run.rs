@@ -35,6 +35,7 @@ pub async fn folder_run_now(
 ) -> Result<RunResult, String> {
     let db = state.db.clone();
     let settings = state.settings.clone();
+    let ocr = state.ocr.clone();
 
     // Get folder path
     let folder_repo = FolderRepository::new(db.clone());
@@ -63,7 +64,7 @@ pub async fn folder_run_now(
     let mut errors = Vec::new();
 
     // Create executor
-    let executor = ActionExecutor::new(app.clone(), settings);
+    let executor = ActionExecutor::new(app.clone(), settings.clone(), ocr.clone());
 
     // Get repositories
     let rule_repo = RuleRepository::new(db.clone());
@@ -77,6 +78,12 @@ pub async fn folder_run_now(
         .map_err(|e| e.to_string())?;
 
     // Process each file
+    let settings_snapshot = settings
+        .lock()
+        .map(|s| s.clone())
+        .unwrap_or_default();
+    let mut ocr_guard = ocr.lock().unwrap();
+
     for entry in entries {
         let file_path = entry.path();
         let file_name = file_path
@@ -120,7 +127,7 @@ pub async fn folder_run_now(
             // }
 
             // Evaluate conditions
-            let evaluation = match evaluate_conditions(rule, &info) {
+            let evaluation = match evaluate_conditions(rule, &info, &settings_snapshot, &mut ocr_guard) {
                 Ok(eval) => eval,
                 Err(e) => {
                     errors.push(format!("{}: {}", file_name, e));

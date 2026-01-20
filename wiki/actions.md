@@ -126,6 +126,38 @@ Open the file with the default application.
 
 ---
 
+## Open With
+
+Open the file with a specific application.
+
+| Field | Description |
+|-------|-------------|
+| Application Path | Full path to the app/executable |
+
+---
+
+## Show in File Manager
+
+Reveal the file in your system file manager (Finder, Explorer, etc.).
+
+---
+
+## Make PDF Searchable (OCR)
+
+Adds a hidden text layer to a PDF so text becomes selectable and searchable.
+
+| Field | Description |
+|-------|-------------|
+| Output | Overwrite original or save a copy in the same folder |
+| Skip if Text Exists | Skip PDFs that already have selectable text |
+
+Notes:
+- Works on **PDF files only**
+- Uses OCR settings and models from **Settings**
+- Copies are saved as `{name}-searchable.pdf` (auto-increments if needed)
+
+---
+
 ## Conflict Resolution
 
 When a file already exists at the destination:

@@ -117,10 +117,10 @@ function App() {
     setIsRuleExporting(true);
     try {
       const payload = await ruleExport(selectedFolderId);
-      const defaultName = `${activeFolder?.name ?? "rules"}.filedispatch-rules.json`;
+      const defaultName = `${activeFolder?.name ?? "rules"}.filedispatch-rules.yaml`;
       const path = await save({
         defaultPath: defaultName,
-        filters: [{ name: "File Dispatch Rules", extensions: ["filedispatch-rules", "json"] }],
+        filters: [{ name: "File Dispatch Rules", extensions: ["filedispatch-rules", "yaml", "yml", "json"] }],
       });
       if (!path) return;
       await writeTextFile(path, payload);
@@ -138,7 +138,7 @@ function App() {
     try {
       const selected = await open({
         multiple: false,
-        filters: [{ name: "File Dispatch Rules", extensions: ["filedispatch-rules", "json"] }],
+        filters: [{ name: "File Dispatch Rules", extensions: ["filedispatch-rules", "yaml", "yml", "json"] }],
       });
       if (!selected || Array.isArray(selected)) return;
       const payload = await readTextFile(String(selected));

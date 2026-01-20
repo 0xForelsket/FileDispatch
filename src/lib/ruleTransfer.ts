@@ -1,10 +1,6 @@
 export function normalizeRuleImportPayload(payload: string) {
-  const parsed = JSON.parse(payload) as unknown;
-  if (Array.isArray(parsed)) {
-    return JSON.stringify(parsed);
+  if (!payload.trim()) {
+    throw new Error("Rule import file is empty.");
   }
-  if (parsed && typeof parsed === "object") {
-    return JSON.stringify([parsed]);
-  }
-  throw new Error("Rule import file must contain a rule or an array of rules.");
+  return payload;
 }

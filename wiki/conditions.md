@@ -11,6 +11,7 @@ Match text in the filename.
 | **Name** | Filename without extension | `report`, `Invoice-2024` |
 | **Extension** | File extension | `pdf`, `jpg`, `docx` |
 | **Full Name** | Complete filename | `report.pdf` |
+| **Contents** | Text inside files (plain text, PDF/DOCX, OCR) | `invoice`, `total due` |
 
 ### String Operators
 
@@ -24,6 +25,21 @@ Match text in the filename.
 | ends with | Ends with text |
 | matches | Regex pattern match |
 | does not match | Doesn't match regex |
+
+---
+
+## Contents Matching
+
+Use **Contents** to search inside files.
+
+**Sources:**
+- **Auto**: Try text extraction first, then OCR if needed
+- **Text**: Only PDF/DOCX/plain text extraction
+- **OCR**: Images and scanned PDFs (uses OCR)
+
+**Notes:**
+- OCR is English by default; custom models can add languages
+- Large files may be skipped based on size/timeouts (see Settings)
 
 ---
 
