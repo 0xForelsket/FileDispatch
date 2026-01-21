@@ -1,4 +1,5 @@
-import { Plus, X } from "lucide-react";
+import { useState } from "react";
+import { GripVertical, Plus, X } from "lucide-react";
 import { MagiSelect } from "@/components/ui/MagiSelect";
 
 
@@ -98,9 +99,9 @@ const kinds: FileKind[] = [
 ];
 
 const matchOptions: { value: MatchType; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "any", label: "Any" },
-  { value: "none", label: "None" },
+  { value: "all", label: "all" },
+  { value: "any", label: "any" },
+  { value: "none", label: "none" },
 ];
 
 const fieldClass =
@@ -109,6 +110,9 @@ const smallFieldClass = `${fieldClass} w-20`;
 const longFieldClass = `${fieldClass} min-w-[220px]`;
 
 export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilderProps) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   const updateGroup = (updates: Partial<ConditionGroup>) =>
     onChange({ ...group, ...updates });
 
@@ -140,43 +144,75 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
     });
   };
 
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (index: number) => {
+    if (dragIndex !== null && dragIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
+      const next = [...group.conditions];
+      const [removed] = next.splice(dragIndex, 1);
+      next.splice(dragOverIndex, 0, removed);
+      updateGroup({ conditions: next });
+    }
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-[var(--fg-secondary)]">
-          Match
-        </span>
-        <div className="flex items-center gap-1 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-0.5">
-          {matchOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => updateGroup({ matchType: option.value })}
-              className={`rounded-[var(--radius)] px-3 py-1 text-xs font-semibold transition-colors ${
-                group.matchType === option.value
-                  ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                  : "text-[var(--fg-secondary)] hover:bg-[var(--accent-muted)]"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-3">
+      {/* Natural language header: "If [all] of the following conditions are met" */}
+      <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-[var(--fg-secondary)]">
+        <span>If</span>
+        <MagiSelect
+          width="w-20"
+          value={group.matchType}
+          onChange={(val) => updateGroup({ matchType: val as MatchType })}
+          options={matchOptions}
+        />
+        <span>of the following conditions are met</span>
       </div>
 
       {group.conditions.map((condition, index) => {
+        const isDragging = dragIndex === index;
+        const isDragOver = dragOverIndex === index;
+
         if (condition.type === "nested") {
           return (
             <div
               key={index}
-              className="space-y-3 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-3"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "move";
+                handleDragStart(index);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                handleDragOver(index);
+              }}
+              onDragEnd={handleDragEnd}
+              className={`space-y-3 rounded-[var(--radius)] border bg-[var(--bg-subtle)] p-3 ml-4 transition-all ${
+                isDragging ? "opacity-50 scale-[0.98]" : ""
+              } ${isDragOver ? "border-[var(--accent)] border-2" : "border-[var(--border-main)]"}`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-[var(--fg-secondary)]">
-                  Nested rule group
-                </span>
+                <div className="flex items-center gap-2">
+                  <div className="cursor-grab active:cursor-grabbing text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]">
+                    <GripVertical className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
+                    Nested group
+                  </span>
+                </div>
                 <button
-                  className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--fg-primary)]"
+                  className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--fg-alert)]/15 hover:text-[var(--fg-alert)]"
                   onClick={() => removeCondition(index)}
                   type="button"
                   aria-label="Remove group"
@@ -205,9 +241,25 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
         return (
           <div
             key={index}
-            className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] p-2 transition-colors hover:border-[var(--border-strong)]"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = "move";
+              handleDragStart(index);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              handleDragOver(index);
+            }}
+            onDragEnd={handleDragEnd}
+            className={`group rounded-[var(--radius)] border bg-[var(--bg-panel)] p-2 transition-all ${
+              isDragging ? "opacity-50 scale-[0.98]" : "hover:border-[var(--border-strong)]"
+            } ${isDragOver ? "border-[var(--accent)] border-2" : "border-[var(--border-main)]"}`}
           >
             <div className="flex flex-wrap items-center gap-2">
+              <div className="cursor-grab active:cursor-grabbing text-[var(--fg-muted)] opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--fg-secondary)]">
+                <GripVertical className="h-3.5 w-3.5" />
+              </div>
               <MagiSelect
                 width="w-40"
                 value={condition.type}
@@ -216,7 +268,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
               />
               {renderConditionFields(condition, (updated) => updateCondition(index, updated))}
               <button
-                className="ml-auto rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--fg-primary)]"
+                className="ml-auto rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--fg-alert)]/15 hover:text-[var(--fg-alert)]"
                 onClick={() => removeCondition(index)}
                 type="button"
                 aria-label="Remove condition"

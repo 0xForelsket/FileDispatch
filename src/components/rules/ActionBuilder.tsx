@@ -1,4 +1,6 @@
-import { AlertTriangle, Plus, X } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, FolderOpen, GripVertical, Plus, X } from "lucide-react";
+import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import { MagiSelect } from "@/components/ui/MagiSelect";
 
 
@@ -40,6 +42,9 @@ const fieldClass =
 const longFieldClass = `${fieldClass} min-w-[220px]`;
 
 export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   const updateAction = (index: number, updated: Action) => {
     const next = [...actions];
     next[index] = updated;
@@ -54,40 +59,85 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
     onChange([...actions, createAction(type)]);
   };
 
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (index: number) => {
+    if (dragIndex !== null && dragIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
+      const next = [...actions];
+      const [removed] = next.splice(dragIndex, 1);
+      next.splice(dragOverIndex, 0, removed);
+      onChange(next);
+    }
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
   return (
     <div className="space-y-3">
-      {actions.map((action, index) => (
-        <div
-          key={index}
-          className={`rounded-[var(--radius)] border bg-[var(--bg-subtle)] p-3 transition-colors hover:border-[var(--border-strong)] ${
-            action.type === "deletePermanently" ? "border-red-500/50" : "border-[var(--border-main)]"
-          }`}
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <MagiSelect
-              width="w-40"
-              value={action.type}
-              onChange={(val) => updateAction(index, createAction(val))}
-              options={actionTypes}
-            />
-            {renderActionFields(action, (updated) => updateAction(index, updated))}
-            <button
-              className="ml-auto rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--fg-primary)]"
-              onClick={() => removeAction(index)}
-              type="button"
-              aria-label="Remove action"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          {action.type === "deletePermanently" && (
-            <div className="flex items-center gap-2 mt-2 text-xs text-red-500">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              <span>Files will be permanently deleted and cannot be recovered.</span>
+      {/* Natural language header */}
+      <div className="text-[13px] text-[var(--fg-secondary)]">
+        Do the following to the matched file or folder:
+      </div>
+
+      {actions.map((action, index) => {
+        const isDragging = dragIndex === index;
+        const isDragOver = dragOverIndex === index;
+
+        return (
+          <div
+            key={index}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = "move";
+              handleDragStart(index);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              handleDragOver(index);
+            }}
+            onDragEnd={handleDragEnd}
+            className={`group rounded-[var(--radius)] border bg-[var(--bg-subtle)] p-3 transition-all ${
+              isDragging ? "opacity-50 scale-[0.98]" : "hover:border-[var(--border-strong)]"
+            } ${isDragOver ? "border-[var(--accent)] border-2" : action.type === "deletePermanently" ? "border-red-500/50" : "border-[var(--border-main)]"}`}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="cursor-grab active:cursor-grabbing text-[var(--fg-muted)] opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--fg-secondary)]">
+                <GripVertical className="h-3.5 w-3.5" />
+              </div>
+              <MagiSelect
+                width="w-40"
+                value={action.type}
+                onChange={(val) => updateAction(index, createAction(val))}
+                options={actionTypes}
+              />
+              {renderActionFields(action, (updated) => updateAction(index, updated))}
+              <button
+                className="ml-auto rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--fg-alert)]/15 hover:text-[var(--fg-alert)]"
+                onClick={() => removeAction(index)}
+                type="button"
+                aria-label="Remove action"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          )}
-        </div>
-      ))}
+            {action.type === "deletePermanently" && (
+              <div className="flex items-center gap-2 mt-2 text-xs text-red-500">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <span>Files will be permanently deleted and cannot be recovered.</span>
+              </div>
+            )}
+          </div>
+        );
+      })}
       <button
         className="flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-xs font-semibold text-[var(--fg-primary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)]"
         type="button"
@@ -159,15 +209,133 @@ function createAction(type: string): Action {
   }
 }
 
+async function pickFolder(currentPath?: string): Promise<string | null> {
+  try {
+    const selected = await openFolderDialog({
+      directory: true,
+      multiple: false,
+      defaultPath: currentPath || undefined,
+      title: "Select destination folder",
+    });
+    return selected as string | null;
+  } catch {
+    return null;
+  }
+}
+
+function FolderInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  const handlePickFolder = async () => {
+    const folder = await pickFolder(value || undefined);
+    if (folder) {
+      onChange(folder);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1.5 min-w-[220px]">
+      <input
+        className={`${fieldClass} flex-1`}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        type="button"
+        onClick={handlePickFolder}
+        className="flex items-center justify-center h-[30px] w-[30px] rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] text-[var(--fg-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)] hover:border-[var(--border-strong)] transition-colors"
+        title="Browse for folder"
+      >
+        <FolderOpen className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// Sample file info for preview
+const SAMPLE_FILE = {
+  name: "document",
+  ext: "pdf",
+  fullname: "document.pdf",
+  date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+  time: new Date().toTimeString().slice(0, 8).replace(/:/g, "-"), // HH-MM-SS
+  year: new Date().getFullYear().toString(),
+  month: String(new Date().getMonth() + 1).padStart(2, "0"),
+  day: String(new Date().getDate()).padStart(2, "0"),
+  hour: String(new Date().getHours()).padStart(2, "0"),
+  minute: String(new Date().getMinutes()).padStart(2, "0"),
+  second: String(new Date().getSeconds()).padStart(2, "0"),
+  counter: "1",
+  random: Math.random().toString(36).substring(2, 8),
+};
+
+function resolvePatternPreview(pattern: string): string {
+  if (!pattern) return "";
+
+  let output = pattern;
+  const tokens: Record<string, string> = {
+    name: SAMPLE_FILE.name,
+    ext: SAMPLE_FILE.ext,
+    fullname: SAMPLE_FILE.fullname,
+    date: SAMPLE_FILE.date,
+    time: SAMPLE_FILE.time,
+    year: SAMPLE_FILE.year,
+    month: SAMPLE_FILE.month,
+    day: SAMPLE_FILE.day,
+    hour: SAMPLE_FILE.hour,
+    minute: SAMPLE_FILE.minute,
+    second: SAMPLE_FILE.second,
+    counter: SAMPLE_FILE.counter,
+    random: SAMPLE_FILE.random,
+    weekday: "Mon",
+    monthname: "Jan",
+  };
+
+  // Replace all {token} patterns
+  output = output.replace(/\{([^}:]+)(?::[^}]*)?\}/g, (match, token) => {
+    return tokens[token] ?? match;
+  });
+
+  return output;
+}
+
+function RenamePreview({ pattern }: { pattern: string }) {
+  const preview = resolvePatternPreview(pattern);
+
+  if (!pattern) {
+    return (
+      <div className="text-[11px] text-[var(--fg-muted)] pl-1">
+        Available tokens: {"{name}"}, {"{ext}"}, {"{date}"}, {"{year}"}, {"{month}"}, {"{day}"}, {"{counter}"}, {"{random}"}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-[11px] pl-1">
+      <span className="text-[var(--fg-muted)]">Preview:</span>
+      <span className="text-[var(--fg-secondary)] font-mono">{SAMPLE_FILE.fullname}</span>
+      <span className="text-[var(--fg-muted)]">→</span>
+      <span className="text-[var(--accent)] font-medium font-mono">{preview}</span>
+    </div>
+  );
+}
+
 function renderActionFields(action: Action, onChange: (action: Action) => void) {
   if (action.type === "move" || action.type === "copy" || action.type === "sortIntoSubfolder") {
     return (
       <>
-        <input
-          className={longFieldClass}
-          placeholder="Destination path"
+        <span className="text-[13px] text-[var(--fg-muted)]">to folder:</span>
+        <FolderInput
           value={action.destination}
-          onChange={(e) => onChange({ ...action, destination: e.target.value })}
+          onChange={(val) => onChange({ ...action, destination: val })}
+          placeholder="Select folder..."
         />
         <MagiSelect
           width="w-32"
@@ -194,33 +362,37 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
 
   if (action.type === "rename") {
     return (
-      <>
-        <input
-          className={longFieldClass}
-          placeholder="New name pattern"
-          value={action.pattern}
-          onChange={(e) => onChange({ ...action, pattern: e.target.value })}
-        />
-        <MagiSelect
-          width="w-32"
-          value={action.onConflict}
-          onChange={(val) =>
-            onChange({ ...action, onConflict: val as ConflictResolution })
-          }
-          options={conflictOptions}
-        />
-      </>
+      <div className="flex flex-col gap-2 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[13px] text-[var(--fg-muted)]">to:</span>
+          <input
+            className={longFieldClass}
+            placeholder="e.g. {date}_{name}.{ext}"
+            value={action.pattern}
+            onChange={(e) => onChange({ ...action, pattern: e.target.value })}
+          />
+          <MagiSelect
+            width="w-32"
+            value={action.onConflict}
+            onChange={(val) =>
+              onChange({ ...action, onConflict: val as ConflictResolution })
+            }
+            options={conflictOptions}
+          />
+        </div>
+        <RenamePreview pattern={action.pattern} />
+      </div>
     );
   }
 
   if (action.type === "archive") {
     return (
       <>
-        <input
-          className={longFieldClass}
-          placeholder="Destination (folder or file path)"
+        <span className="text-[13px] text-[var(--fg-muted)]">to:</span>
+        <FolderInput
           value={action.destination}
-          onChange={(e) => onChange({ ...action, destination: e.target.value })}
+          onChange={(val) => onChange({ ...action, destination: val })}
+          placeholder="Select destination..."
         />
         <MagiSelect
           width="w-32"
@@ -253,13 +425,11 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
   if (action.type === "unarchive") {
     return (
       <>
-        <input
-          className={longFieldClass}
-          placeholder="Destination (optional)"
+        <span className="text-[13px] text-[var(--fg-muted)]">to:</span>
+        <FolderInput
           value={action.destination ?? ""}
-          onChange={(e) =>
-            onChange({ ...action, destination: e.target.value || undefined })
-          }
+          onChange={(val) => onChange({ ...action, destination: val || undefined })}
+          placeholder="Same folder (optional)"
         />
         <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
           <input

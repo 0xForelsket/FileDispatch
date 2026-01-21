@@ -273,14 +273,14 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
           </div>
         </div>
 
-        {/* Conditions Section - Hazel style */}
+        {/* Conditions Section */}
         <div className="mb-5">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-3">
             <div className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
             <h3 className={`text-xs font-semibold uppercase tracking-wider ${isMagi ? "eva-title text-[var(--fg-primary)]" : "text-[var(--fg-muted)]"}`}>
               Conditions
             </h3>
-            <HelpTooltip content="Conditions determine which files this rule applies to. Use 'Match All' to require every condition, 'Match Any' for at least one, or 'Match None' to exclude files." />
+            <HelpTooltip content="Conditions determine which files this rule applies to. Use 'all' to require every condition, 'any' for at least one, or 'none' to exclude files." />
           </div>
           <ConditionBuilder group={draft.conditions} onChange={(conditions) => setDraft({ ...draft, conditions })} />
 
@@ -353,9 +353,9 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
           )}
         </div>
 
-        {/* Actions Section - Hazel style */}
+        {/* Actions Section */}
         <div className="mb-5">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-3">
             <div className="h-1.5 w-1.5 rounded-full bg-[var(--fg-secondary)]" />
             <h3 className={`text-xs font-semibold uppercase tracking-wider ${isMagi ? "eva-title text-[var(--fg-secondary)]" : "text-[var(--fg-muted)]"}`}>
               Actions
