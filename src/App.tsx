@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  FolderPlus,
   FilePlus,
   FileDown,
   FileUp,
@@ -17,11 +16,13 @@ import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 
 import { ActivityLog } from "@/components/logs/ActivityLog";
 import { AddFolderDialog } from "@/components/folders/AddFolderDialog";
+import { AddGroupDialog } from "@/components/folders/AddGroupDialog";
 import { FolderList } from "@/components/folders/FolderList";
 import { RuleList } from "@/components/rules/RuleList";
 import { RuleEditor } from "@/components/rules/RuleEditor";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { StatsModal } from "@/components/ui/StatsModal";
+import { AddFolderIcon, AddGroupIcon } from "@/components/ui/CustomIcons";
 import { TemplateGallery } from "@/components/templates/TemplateGallery";
 import { useFolders } from "@/hooks/useFolders";
 import { useLogs } from "@/hooks/useLogs";
@@ -174,7 +175,28 @@ function App() {
               }`}
             label=""
             showIcon
-            icon={<FolderPlus className="h-4 w-4" strokeWidth={1.5} />}
+            icon={<AddFolderIcon className="h-4 w-4" />}
+          />
+
+          <AddGroupDialog
+            trigger={
+              <button
+                className={`flex items-center justify-center p-1.5 rounded transition-colors ${isLinear
+                  ? "text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                  : "text-[var(--fg-primary)] border border-transparent hover:border-[var(--fg-primary)] hover:bg-[var(--bg-panel)]"
+                  }`}
+                title="New Group"
+              >
+                <AddGroupIcon className="h-4 w-4" />
+                {/* Visual distinction for "Group" vs "Folder" - maybe add a small badge or use different icon if available? 
+                     FolderPlus is reused. Let's overlay a small 'G' or just use tooltip.
+                     Actually, Hazel uses a specific icon. I'll stick to FolderPlus but maybe add an identifier in the icon or use a different one if available.
+                     Lucide has `FolderPlus` and `Folder`. `Folder` + `Plus` maybe? 
+                     Let's use FolderPlus for both for now, tooltip distinguishes them.
+                  */}
+                <span className="sr-only">New Group</span>
+              </button>
+            }
           />
         </div>
 

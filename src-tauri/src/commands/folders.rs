@@ -97,7 +97,6 @@ pub fn folder_update_settings(
     }
 
     Ok(())
-    Ok(())
 }
 
 #[tauri::command]

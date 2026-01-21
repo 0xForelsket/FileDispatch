@@ -1,7 +1,7 @@
 
 import { useMemo, useState } from "react";
-import { ChevronRight, FolderPlus } from "lucide-react";
-import { AddGroupDialog } from "./AddGroupDialog";
+import { ChevronRight } from "lucide-react";
+
 
 import { useFolderStore } from "@/stores/folderStore";
 import { useRuleStore } from "@/stores/ruleStore";
@@ -175,23 +175,6 @@ export function FolderList() {
         onDrop={(e) => handleDrop(e, undefined)} // Root drop
       >
         <div className="flex flex-col gap-1 min-h-[50px]">
-          {/* Group Header & Add Actions */}
-          <div className="flex items-center justify-between px-2 py-1 select-none">
-            <div className="text-[11px] font-bold text-[var(--fg-muted)] uppercase tracking-wide">
-              Folders
-            </div>
-            <AddGroupDialog
-              trigger={
-                <button
-                  className="p-1 rounded hover:bg-[var(--bg-subtle)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] transition-colors"
-                  title="New Group"
-                >
-                  <FolderPlus className="w-3.5 h-3.5" />
-                </button>
-              }
-            />
-          </div>
-
           {/* List */}
           <div className="flex flex-col gap-0.5" >
             {folders.length === 0 ? (
