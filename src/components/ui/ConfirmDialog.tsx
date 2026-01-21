@@ -52,46 +52,48 @@ export function ConfirmDialog({
 
   const variantStyles = {
     danger: {
-      icon: "text-red-500",
-      button: "bg-red-600 hover:bg-red-700 text-white",
+      icon: "text-[var(--fg-alert)]",
+      button: "bg-[var(--fg-alert)] hover:bg-red-600 text-white",
     },
     warning: {
-      icon: "text-amber-500",
-      button: "bg-amber-600 hover:bg-amber-700 text-white",
+      icon: "text-[var(--warning)]",
+      button: "bg-[var(--warning)] hover:opacity-90 text-white",
     },
     default: {
       icon: "text-[var(--accent)]",
-      button: "bg-[var(--accent)] hover:opacity-90 text-[var(--accent-contrast)]",
+      button: "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-contrast)]",
     },
   };
 
   const styles = variantStyles[variant];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
       <div
         ref={dialogRef}
-        className="w-full max-w-sm mx-4 bg-[var(--bg-panel)] border border-[var(--border-main)] rounded-lg shadow-xl animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-sm mx-4 bg-[var(--bg-panel)] border border-[var(--border-main)] rounded-[calc(var(--radius)+4px)] shadow-[var(--shadow-lg)] animate-in fade-in zoom-in-95 duration-200"
       >
-        <div className="flex items-center justify-between p-4 border-b border-[var(--border-main)]">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className={`h-5 w-5 ${styles.icon}`} />
-            <h3 className="text-sm font-medium text-[var(--fg-primary)]">{title}</h3>
+        <div className="flex items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-full bg-[var(--bg-subtle)] ${styles.icon}`}>
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <h3 className="text-[15px] font-semibold text-[var(--fg-primary)]">{title}</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--bg-subtle)]"
+            className="p-1.5 rounded-[var(--radius)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--bg-hover)] transition-all duration-150"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="p-4">
-          <p className="text-sm text-[var(--fg-secondary)]">{message}</p>
+        <div className="px-5 pb-4">
+          <p className="text-[13px] leading-relaxed text-[var(--fg-secondary)]">{message}</p>
         </div>
-        <div className="flex justify-end gap-2 p-4 border-t border-[var(--border-main)]">
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-[var(--border-dim)] bg-[var(--bg-subtle)]/50 rounded-b-[calc(var(--radius)+4px)]">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded border border-[var(--border-main)] text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] transition-colors"
+            className="px-4 py-2 text-[13px] font-medium rounded-[var(--radius)] border border-[var(--border-main)] text-[var(--fg-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)] hover:border-[var(--border-strong)] transition-all duration-150"
           >
             {cancelLabel}
           </button>
@@ -100,7 +102,7 @@ export function ConfirmDialog({
               onConfirm();
               onClose();
             }}
-            className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${styles.button}`}
+            className={`px-4 py-2 text-[13px] font-medium rounded-[var(--radius)] transition-all duration-150 ${styles.button}`}
           >
             {confirmLabel}
           </button>

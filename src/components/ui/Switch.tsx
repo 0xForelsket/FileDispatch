@@ -28,19 +28,21 @@ export function Switch({
                 onCheckedChange(!checked);
             }}
             className={cn(
-                "relative inline-flex shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                "relative inline-flex shrink-0 cursor-pointer items-center rounded-full transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-panel)] disabled:cursor-not-allowed disabled:opacity-50",
                 isSmall ? "h-4 w-7" : "h-5 w-9",
-                checked ? "bg-[var(--accent)]" : "bg-[var(--bg-panel)] border-[var(--border-main)]",
+                checked
+                    ? "bg-[var(--accent)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]"
+                    : "bg-[var(--border-main)] hover:bg-[var(--border-strong)]",
                 className
             )}
         >
             <span
                 className={cn(
-                    "pointer-events-none block rounded-full bg-[var(--bg-elevated)] shadow-lg ring-0 transition-transform",
+                    "pointer-events-none block rounded-full shadow-sm ring-0 transition-all duration-200 ease-out",
                     isSmall ? "h-2.5 w-2.5" : "h-3.5 w-3.5",
                     checked
-                        ? isSmall ? "translate-x-3" : "translate-x-4"
-                        : "translate-x-0.5 bg-[var(--fg-muted)]"
+                        ? cn(isSmall ? "translate-x-3" : "translate-x-4", "bg-white")
+                        : "translate-x-0.5 bg-white"
                 )}
             />
         </button>

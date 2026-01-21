@@ -64,33 +64,41 @@ export const RuleItem = memo(function RuleItem({
       }}
       onDragEnd={onDragEnd}
       onClick={() => onEdit(rule.id)}
-      className={`group flex items-start gap-1 rounded px-1 py-1.5 text-xs cursor-pointer select-none transition-all ${
+      className={`group flex items-start gap-2 rounded-[var(--radius)] px-2 py-2 text-xs cursor-pointer select-none transition-all duration-150 ease-out ${
         selected
-          ? "bg-[var(--accent-muted)] text-[var(--fg-primary)]"
-          : "text-[var(--fg-primary)] hover:bg-[var(--bg-subtle)]"
-      } ${!rule.enabled ? "opacity-50" : ""} ${isDragging ? "opacity-40" : ""} ${isDragOver ? "border-t-2 border-[var(--accent)]" : ""}`}
+          ? "bg-[var(--accent-muted)] text-[var(--fg-primary)] shadow-sm"
+          : "text-[var(--fg-primary)] hover:bg-[var(--bg-hover)]"
+      } ${!rule.enabled ? "opacity-50" : ""} ${isDragging ? "opacity-40 scale-[0.98]" : ""} ${isDragOver ? "border-t-2 border-[var(--accent)]" : ""}`}
     >
       <div
-        className="mt-0.5 cursor-grab active:cursor-grabbing text-[var(--fg-muted)] opacity-0 group-hover:opacity-100 transition-opacity"
+        className="mt-0.5 cursor-grab active:cursor-grabbing text-[var(--fg-muted)] opacity-0 group-hover:opacity-100 transition-opacity duration-150"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <GripVertical className="h-3.5 w-3.5" />
       </div>
-      <div
+      {/* Things-style circular checkbox */}
+      <button
+        type="button"
         onClick={(e) => {
             e.stopPropagation();
             onToggle(rule.id, !rule.enabled);
         }}
-        className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border transition-colors ${
-            rule.enabled ? "bg-[var(--accent)] border-[var(--accent)]" : "bg-[var(--bg-panel)] border-[var(--border-strong)]"
+        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ease-out ${
+            rule.enabled
+              ? "bg-[var(--accent)] border-[var(--accent)] shadow-sm"
+              : "bg-transparent border-[var(--border-strong)] hover:border-[var(--fg-muted)]"
         }`}
       >
-          {rule.enabled && <div className="h-1.5 w-1.5 rounded-sm bg-[var(--accent-contrast)]" />}
-      </div>
+          {rule.enabled && (
+            <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+      </button>
 
-      <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
-        <span className="truncate text-xs font-medium">{rule.name}</span>
-        <span className="truncate text-[10px] leading-tight text-[var(--fg-muted)]">
+      <div className="min-w-0 flex-1 flex flex-col gap-0.5 overflow-hidden">
+        <span className="truncate text-[13px] font-medium leading-tight">{rule.name}</span>
+        <span className="truncate text-[11px] leading-tight text-[var(--fg-muted)]">
           {triggerSummary} → {actionSummary}
         </span>
       </div>
@@ -99,9 +107,9 @@ export const RuleItem = memo(function RuleItem({
          <div className="flex items-center">
             <button
               onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
-              className="rounded p-0.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--fg-alert)]/20 hover:text-[var(--fg-alert)]"
+              className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-all duration-150 hover:bg-[var(--fg-alert)]/15 hover:text-[var(--fg-alert)]"
             >
-                <Trash2 className="h-3 w-3" />
+                <Trash2 className="h-3.5 w-3.5" />
             </button>
          </div>
       )}
