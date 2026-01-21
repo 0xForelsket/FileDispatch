@@ -47,6 +47,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   const deleteRule = useRuleStore((state) => state.deleteRule);
   const theme = useSettingsStore((state) => state.settings.theme);
   const previewMaxFiles = useSettingsStore((state) => state.settings.previewMaxFiles);
+  const livePreviewMaxFiles = Math.min(previewMaxFiles, 50);
   const isMagi = theme === "magi";
 
   const [draft, setDraft] = useState<Rule>(() => rule ?? createEmptyRule(folderId));
@@ -64,6 +65,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
 
   // Request ID for race condition prevention
   const previewRequestId = useRef(0);
+  const draftRef = useRef(draft);
 
   const isOpen = mode !== "empty" && Boolean(folderId);
   const isNew = mode === "new";
@@ -119,8 +121,16 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
 
   // Live preview: debounced update when conditions change
   useEffect(() => {
-    if (!isOpen || draft.conditions.conditions.length === 0) {
-      setLivePreviewResults([]);
+    draftRef.current = draft;
+  }, [draft]);
+
+  // Live preview: debounced update when conditions change
+  useEffect(() => {
+    if (!isOpen || !livePreviewExpanded || draft.conditions.conditions.length === 0) {
+      if (!isOpen || draft.conditions.conditions.length === 0) {
+        setLivePreviewResults([]);
+      }
+      setLivePreviewLoading(false);
       return;
     }
 
@@ -133,10 +143,13 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
     const currentRequestId = ++previewRequestId.current;
 
     // Debounce the preview request
-    setLivePreviewLoading(true);
     livePreviewTimeout.current = window.setTimeout(async () => {
       try {
-        const results = await previewRuleDraft({ ...draft, folderId }, previewMaxFiles);
+        setLivePreviewLoading(true);
+        const results = await previewRuleDraft(
+          { ...draftRef.current, folderId },
+          livePreviewMaxFiles,
+        );
         // Only update if this is still the latest request
         if (currentRequestId === previewRequestId.current) {
           setLivePreviewResults(results);
@@ -158,9 +171,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
         window.clearTimeout(livePreviewTimeout.current);
       }
     };
-  }, [draft, folderId, isOpen, previewMaxFiles]);
-
-
+  }, [draft.conditions, folderId, isOpen, livePreviewExpanded, livePreviewMaxFiles]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -302,7 +313,9 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
                   <span className="text-[var(--fg-secondary)]">Live Preview</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {livePreviewLoading ? (
+                  {!livePreviewExpanded ? (
+                    <span className="text-[var(--fg-muted)]">Expand to preview</span>
+                  ) : livePreviewLoading ? (
                     <span className="text-[var(--fg-muted)]">Scanning...</span>
                   ) : livePreviewResults.length > 0 ? (
                     <>
