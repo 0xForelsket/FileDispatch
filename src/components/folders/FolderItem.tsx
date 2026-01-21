@@ -49,54 +49,58 @@ export function FolderItem({
       )}
       onClick={onSelect}
     >
-      <Folder className={cn("h-3.5 w-3.5 shrink-0", selected ? "text-[var(--accent)]" : "text-[var(--fg-muted)]")} />
+      <Folder className={cn("h-3.5 w-3.5 shrink-0", selected ? "text-[var(--accent)]" : "text-[var(--fg-muted)]", folder.isGroup && "fill-[var(--bg-subtle)]")} />
 
       <div className="min-w-0 flex-1">
-        <div className={cn("truncate text-xs font-medium", !folder.enabled && "opacity-50")}>
+        <div className={cn("truncate text-xs font-medium", !folder.enabled && !folder.isGroup && "opacity-50")}>
           {folder.name}
         </div>
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        {/* Rule count badge */}
-        {ruleCount && ruleCount > 0 ? (
-          <span className="text-[10px] text-[var(--fg-muted)] tabular-nums">
-            {ruleCount}
-          </span>
-        ) : null}
+        {!folder.isGroup && (
+          <>
+            {/* Rule count badge */}
+            {ruleCount && ruleCount > 0 ? (
+              <span className="text-[10px] text-[var(--fg-muted)] tabular-nums">
+                {ruleCount}
+              </span>
+            ) : null}
 
-        {/* Folder Options button - only visible on hover */}
-        <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity", selected && "opacity-100")}>
-          <FolderOptionsDialog folder={folder} />
-        </div>
+            {/* Folder Options button - only visible on hover */}
+            <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity", selected && "opacity-100")}>
+              <FolderOptionsDialog folder={folder} />
+            </div>
 
-        {/* Run Now button - only visible on hover or when running */}
-        <button
-          className={cn(
-            "flex h-5 w-5 items-center justify-center rounded transition-all",
-            running ? "opacity-100 text-[var(--accent)]" : "opacity-0 group-hover:opacity-100 text-[var(--fg-muted)] hover:text-[var(--accent)]",
-            selected && "opacity-100"
-          )}
-          title="Run rules now"
-          onClick={handleRunNow}
-          disabled={running}
-          type="button"
-        >
-          {running ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Play className="h-3 w-3 fill-current" />
-          )}
-        </button>
+            {/* Run Now button - only visible on hover or when running */}
+            <button
+              className={cn(
+                "flex h-5 w-5 items-center justify-center rounded transition-all",
+                running ? "opacity-100 text-[var(--accent)]" : "opacity-0 group-hover:opacity-100 text-[var(--fg-muted)] hover:text-[var(--accent)]",
+                selected && "opacity-100"
+              )}
+              title="Run rules now"
+              onClick={handleRunNow}
+              disabled={running}
+              type="button"
+            >
+              {running ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Play className="h-3 w-3 fill-current" />
+              )}
+            </button>
 
-        {/* Enable/Disable switch */}
-        <div title={folder.enabled ? "Watcher enabled" : "Watcher disabled"} onClick={(e) => e.stopPropagation()}>
-          <Switch
-            checked={folder.enabled}
-            onCheckedChange={onToggle}
-            size="sm"
-          />
-        </div>
+            {/* Enable/Disable switch */}
+            <div title={folder.enabled ? "Watcher enabled" : "Watcher disabled"} onClick={(e) => e.stopPropagation()}>
+              <Switch
+                checked={folder.enabled}
+                onCheckedChange={onToggle}
+                size="sm"
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

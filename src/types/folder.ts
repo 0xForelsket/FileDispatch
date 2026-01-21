@@ -10,4 +10,6 @@ export interface Folder {
   removeDuplicates: boolean;
   trashIncompleteDownloads: boolean;
   incompleteTimeoutMinutes: number;
+  parentId?: string;
+  isGroup: boolean;
 }

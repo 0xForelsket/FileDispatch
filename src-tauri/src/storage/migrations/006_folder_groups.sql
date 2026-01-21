@@ -1,0 +1,2 @@
+ALTER TABLE folders ADD COLUMN parent_id TEXT;
+ALTER TABLE folders ADD COLUMN is_group INTEGER DEFAULT 0;

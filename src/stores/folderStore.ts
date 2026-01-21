@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import type { Folder } from "@/types";
-import { folderAdd, folderList, folderRemove, folderToggle, folderUpdateSettings } from "@/lib/tauri";
+import { folderAdd, folderList, folderRemove, folderToggle, folderUpdateSettings, folderCreateGroup, folderMove, folderRename } from "@/lib/tauri";
 
 interface FolderState {
   folders: Folder[];
@@ -16,6 +16,9 @@ interface FolderState {
     id: string,
     settings: Pick<Folder, "scanDepth" | "removeDuplicates" | "trashIncompleteDownloads" | "incompleteTimeoutMinutes">,
   ) => Promise<void>;
+  createGroup: (name: string, parentId?: string) => Promise<void>;
+  moveFolder: (id: string, parentId?: string) => Promise<void>;
+  renameFolder: (id: string, name: string) => Promise<void>;
   selectFolder: (id?: string) => void;
 }
 
@@ -42,6 +45,33 @@ export const useFolderStore = create<FolderState>((set, get) => ({
     set({ loading: true, error: undefined });
     try {
       await folderAdd(path, name);
+      await get().loadFolders();
+    } catch (err) {
+      set({ error: String(err), loading: false });
+    }
+  },
+  createGroup: async (name, parentId) => {
+    set({ loading: true, error: undefined });
+    try {
+      await folderCreateGroup(name, parentId);
+      await get().loadFolders();
+    } catch (err) {
+      set({ error: String(err), loading: false });
+    }
+  },
+  moveFolder: async (id, parentId) => {
+    // Optimistic upate? Maybe risky. Let's just reloading for now.
+    try {
+      await folderMove(id, parentId);
+      await get().loadFolders();
+    } catch (err) {
+      set({ error: String(err) });
+    }
+  },
+  renameFolder: async (id, name) => {
+    set({ loading: true, error: undefined });
+    try {
+      await folderRename(id, name);
       await get().loadFolders();
     } catch (err) {
       set({ error: String(err), loading: false });

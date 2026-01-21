@@ -5,7 +5,8 @@ mod storage;
 mod utils;
 
 use commands::folders::{
-    folder_add, folder_list, folder_remove, folder_toggle, folder_update_settings,
+    folder_add, folder_create_group, folder_list, folder_move, folder_remove, folder_rename,
+    folder_toggle, folder_update_settings,
 };
 use commands::logs::{log_clear, log_list};
 use commands::presets::{preset_install, preset_read};
@@ -172,6 +173,9 @@ pub fn run() {
             folder_remove,
             folder_toggle,
             folder_update_settings,
+            folder_create_group,
+            folder_move,
+            folder_rename,
             rule_list,
             rule_get,
             rule_create,

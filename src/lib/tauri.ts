@@ -16,6 +16,13 @@ export interface FolderSettingsUpdate {
   incompleteTimeoutMinutes: number;
 }
 
+export const folderCreateGroup = (name: string, parentId?: string) =>
+  invoke<Folder>("folder_create_group", { name, parentId });
+export const folderMove = (id: string, parentId?: string) =>
+  invoke<void>("folder_move", { id, parentId });
+export const folderRename = (id: string, name: string) =>
+  invoke<void>("folder_rename", { id, name });
+
 export const folderUpdateSettings = (id: string, settings: FolderSettingsUpdate) =>
   invoke<void>("folder_update_settings", { id, ...settings });
 

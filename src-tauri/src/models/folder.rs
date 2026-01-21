@@ -30,6 +30,10 @@ pub struct Folder {
     pub trash_incomplete_downloads: bool,
     #[serde(default = "default_incomplete_timeout_minutes")]
     pub incomplete_timeout_minutes: u32,
+    #[serde(default)]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub is_group: bool,
 }
 
 impl Folder {

@@ -63,6 +63,11 @@ impl WatcherService {
     }
 
     pub fn watch_folder(&mut self, path: PathBuf, folder_id: String, scan_depth: i32) -> Result<()> {
+        // Skip groups (empty path)
+        if path.as_os_str().is_empty() {
+            return Ok(());
+        }
+
         self.watcher.watch(&path, RecursiveMode::Recursive)?;
         self.watched_folders
             .write()

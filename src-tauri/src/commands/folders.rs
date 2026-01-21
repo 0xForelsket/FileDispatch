@@ -97,4 +97,36 @@ pub fn folder_update_settings(
     }
 
     Ok(())
+    Ok(())
+}
+
+#[tauri::command]
+pub fn folder_create_group(
+    state: State<'_, AppState>,
+    name: String,
+    parent_id: Option<String>,
+) -> Result<Folder, String> {
+    let repo = FolderRepository::new(state.db.clone());
+    repo.create_group(&name, parent_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn folder_move(
+    state: State<'_, AppState>,
+    id: String,
+    parent_id: Option<String>,
+) -> Result<(), String> {
+    let repo = FolderRepository::new(state.db.clone());
+    repo.move_folder(&id, parent_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn folder_rename(
+    state: State<'_, AppState>,
+    id: String,
+    name: String,
+) -> Result<(), String> {
+    let repo = FolderRepository::new(state.db.clone());
+    repo.rename(&id, &name).map_err(|e| e.to_string())
 }
