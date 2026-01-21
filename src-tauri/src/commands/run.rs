@@ -1,7 +1,7 @@
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
-use crate::core::engine::{evaluate_conditions, log_outcomes};
+use crate::core::engine::{evaluate_conditions, log_outcomes, EvaluationOptions};
 use crate::core::executor::ActionExecutor;
 use crate::core::state::AppState;
 use crate::storage::folder_repo::FolderRepository;
@@ -124,8 +124,13 @@ pub async fn folder_run_now(
             // }
 
             // Evaluate conditions
-            let evaluation =
-                match evaluate_conditions(rule, &info, &settings_snapshot, &mut ocr_guard) {
+            let evaluation = match evaluate_conditions(
+                rule,
+                &info,
+                &settings_snapshot,
+                &mut ocr_guard,
+                EvaluationOptions::default(),
+            ) {
                     Ok(eval) => eval,
                     Err(e) => {
                         errors.push(format!("{}: {}", file_name, e));

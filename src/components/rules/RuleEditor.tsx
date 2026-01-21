@@ -149,6 +149,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
         const results = await previewRuleDraft(
           { ...draftRef.current, folderId },
           livePreviewMaxFiles,
+          true,
         );
         // Only update if this is still the latest request
         if (currentRequestId === previewRequestId.current) {

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use tauri::State;
 
 use crate::core::content::ContentCache;
-use crate::core::engine::{evaluate_condition, evaluate_conditions};
+use crate::core::engine::{evaluate_condition, evaluate_conditions, EvaluationOptions};
 use crate::core::patterns::PatternEngine;
 use crate::core::state::AppState;
 use crate::models::{Action, PreviewItem};
@@ -48,7 +48,9 @@ pub fn preview_rule(
             continue;
         }
         let path = entry.path().to_path_buf();
-        if let Ok(item) = preview_single(&rule, &path, &pattern_engine, &settings, &mut ocr) {
+        if let Ok(item) =
+            preview_single(&rule, &path, &pattern_engine, &settings, &mut ocr, false)
+        {
             results.push(item);
         }
     }
@@ -101,6 +103,7 @@ pub fn preview_rule_draft(
     state: State<'_, AppState>,
     rule: DraftRule,
     max_files: Option<usize>,
+    skip_content: Option<bool>,
 ) -> Result<Vec<PreviewItem>, String> {
     eprintln!("==== preview_rule_draft called ====");
     eprintln!("Rule folder_id: {}", rule.folder_id);
@@ -146,6 +149,7 @@ pub fn preview_rule_draft(
 
     let mut file_count = 0;
     let max_files = max_files.unwrap_or(100);
+    let skip_content = skip_content.unwrap_or(false);
 
     for entry in walker {
         // Check file count limit early
@@ -173,7 +177,14 @@ pub fn preview_rule_draft(
             eprintln!("Processing file #{}: {:?}", file_count, path);
         }
 
-        match preview_single(&rule, &path, &pattern_engine, &settings, &mut ocr) {
+        match preview_single(
+            &rule,
+            &path,
+            &pattern_engine,
+            &settings,
+            &mut ocr,
+            skip_content,
+        ) {
             Ok(item) => {
                 results.push(item);
             }
@@ -211,7 +222,7 @@ pub fn preview_file(
     let mut ocr = state.ocr.lock().unwrap();
     let path = PathBuf::from(file_path);
     let pattern_engine = PatternEngine::new();
-    preview_single(&rule, &path, &pattern_engine, &settings, &mut ocr)
+    preview_single(&rule, &path, &pattern_engine, &settings, &mut ocr, false)
         .map_err(|e| e.to_string())
 }
 
@@ -221,14 +232,31 @@ fn preview_single(
     pattern_engine: &PatternEngine,
     settings: &crate::models::Settings,
     ocr: &mut crate::core::ocr::OcrManager,
+    skip_content: bool,
 ) -> anyhow::Result<PreviewItem> {
     let info = FileInfo::from_path(path)?;
-    let evaluation = evaluate_conditions(rule, &info, settings, ocr)?;
+    let evaluation = evaluate_conditions(
+        rule,
+        &info,
+        settings,
+        ocr,
+        EvaluationOptions { skip_content },
+    )?;
 
     let mut condition_results = Vec::new();
     let mut cache = ContentCache::default();
     for condition in &rule.conditions.conditions {
-        condition_results.push(evaluate_condition(condition, &info, settings, ocr, &mut cache)?.matched);
+        condition_results.push(
+            evaluate_condition(
+                condition,
+                &info,
+                settings,
+                ocr,
+                &mut cache,
+                EvaluationOptions { skip_content },
+            )?
+            .matched,
+        );
     }
 
     let actions = if evaluation.matched {

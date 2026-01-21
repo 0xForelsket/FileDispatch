@@ -61,8 +61,8 @@ export const previewRule = (ruleId: string) =>
 export const previewFile = (ruleId: string, filePath: string) =>
   invoke<PreviewItem>("preview_file", { ruleId, filePath });
 
-export const previewRuleDraft = (rule: Rule, maxFiles?: number) =>
-  invoke<PreviewItem[]>("preview_rule_draft", { rule, maxFiles });
+export const previewRuleDraft = (rule: Rule, maxFiles?: number, skipContent?: boolean) =>
+  invoke<PreviewItem[]>("preview_rule_draft", { rule, maxFiles, skipContent });
 
 export const presetRead = (path: string) => invoke<Preset>("preset_read", { path });
 export const presetInstall = (
