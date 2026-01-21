@@ -127,7 +127,8 @@ impl RuleEngine {
                 continue;
             }
 
-            let evaluation = evaluate_conditions(&rule, &info, &settings, &mut ocr)?;
+            let evaluation =
+                evaluate_conditions(&rule, &info, &settings, &mut ocr, EvaluationOptions::default())?;
             if !evaluation.matched {
                 continue;
             }
@@ -157,14 +158,20 @@ pub(crate) struct EvaluationResult {
     pub captures: HashMap<String, String>,
 }
 
+#[derive(Clone, Copy, Default)]
+pub(crate) struct EvaluationOptions {
+    pub skip_content: bool,
+}
+
 pub(crate) fn evaluate_conditions(
     rule: &Rule,
     info: &FileInfo,
     settings: &crate::models::Settings,
     ocr: &mut crate::core::ocr::OcrManager,
+    options: EvaluationOptions,
 ) -> Result<EvaluationResult> {
     let mut cache = ContentCache::default();
-    evaluate_group(&rule.conditions, info, settings, ocr, &mut cache)
+    evaluate_group(&rule.conditions, info, settings, ocr, &mut cache, options)
 }
 
 pub(crate) fn evaluate_group(
@@ -173,12 +180,23 @@ pub(crate) fn evaluate_group(
     settings: &crate::models::Settings,
     ocr: &mut crate::core::ocr::OcrManager,
     cache: &mut ContentCache,
+    options: EvaluationOptions,
 ) -> Result<EvaluationResult> {
+    if options.skip_content
+        && matches!(group.match_type, MatchType::None)
+        && group_has_content_condition(group)
+    {
+        return Ok(EvaluationResult {
+            matched: false,
+            captures: HashMap::new(),
+        });
+    }
+
     match group.match_type {
         MatchType::All => {
             let mut captures = HashMap::new();
             for condition in &group.conditions {
-                let result = evaluate_condition(condition, info, settings, ocr, cache)?;
+                let result = evaluate_condition(condition, info, settings, ocr, cache, options)?;
                 if !result.matched {
                     return Ok(EvaluationResult {
                         matched: false,
@@ -194,7 +212,7 @@ pub(crate) fn evaluate_group(
         }
         MatchType::Any => {
             for condition in &group.conditions {
-                let result = evaluate_condition(condition, info, settings, ocr, cache)?;
+                let result = evaluate_condition(condition, info, settings, ocr, cache, options)?;
                 if result.matched {
                     return Ok(result);
                 }
@@ -206,7 +224,7 @@ pub(crate) fn evaluate_group(
         }
         MatchType::None => {
             for condition in &group.conditions {
-                let result = evaluate_condition(condition, info, settings, ocr, cache)?;
+                let result = evaluate_condition(condition, info, settings, ocr, cache, options)?;
                 if result.matched {
                     return Ok(EvaluationResult {
                         matched: false,
@@ -228,12 +246,19 @@ pub(crate) fn evaluate_condition(
     settings: &crate::models::Settings,
     ocr: &mut crate::core::ocr::OcrManager,
     cache: &mut ContentCache,
+    options: EvaluationOptions,
 ) -> Result<EvaluationResult> {
     match condition {
         Condition::Name(cond) => evaluate_string(&info.name, cond),
         Condition::Extension(cond) => evaluate_string(&info.extension, cond),
         Condition::FullName(cond) => evaluate_string(&info.full_name, cond),
         Condition::Contents(cond) => {
+            if options.skip_content {
+                return Ok(EvaluationResult {
+                    matched: false,
+                    captures: HashMap::new(),
+                });
+            }
             let text = resolve_contents(info, settings, ocr, &cond.source, cache)
                 .unwrap_or_else(|_| None)
                 .unwrap_or_default();
@@ -291,8 +316,16 @@ pub(crate) fn evaluate_condition(
             matched: evaluate_shell(&cond.command, &info.path),
             captures: HashMap::new(),
         }),
-        Condition::Nested(group) => evaluate_group(group, info, settings, ocr, cache),
+        Condition::Nested(group) => evaluate_group(group, info, settings, ocr, cache, options),
     }
+}
+
+fn group_has_content_condition(group: &ConditionGroup) -> bool {
+    group.conditions.iter().any(|condition| match condition {
+        Condition::Contents(_) => true,
+        Condition::Nested(nested) => group_has_content_condition(nested),
+        _ => false,
+    })
 }
 
 pub(crate) fn evaluate_string(
@@ -567,7 +600,14 @@ mod tests {
         let settings = crate::models::Settings::default();
         let mut ocr = crate::core::ocr::OcrManager::new_placeholder();
         let mut cache = crate::core::content::ContentCache::default();
-        super::evaluate_group(group, info, &settings, &mut ocr, &mut cache)
+        super::evaluate_group(
+            group,
+            info,
+            &settings,
+            &mut ocr,
+            &mut cache,
+            super::EvaluationOptions::default(),
+        )
     }
 
     // ==================== STRING CONDITION TESTS ====================
