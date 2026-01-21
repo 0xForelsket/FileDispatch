@@ -166,10 +166,10 @@ function App() {
       style={{ fontFamily: "var(--font-stack)" }}
     >
       {/* Hazel 6-style Unified Toolbar */}
-      <header className={`h-11 bg-[var(--bg-header)] flex items-center shrink-0 relative z-10 transition-all px-3 ${isLinear ? "border-b border-[var(--border-main)]" : "border-b-4 border-[var(--border-main)] shadow-[0_0_15px_var(--border-main)]"
+      <header className={`h-11 bg-[var(--bg-header)] flex items-center shrink-0 relative z-10 transition-all ${isLinear ? "border-b border-[var(--border-main)]" : "border-b-4 border-[var(--border-main)] shadow-[0_0_15px_var(--border-main)]"
         }`}>
-        {/* Left: Folder Management Group */}
-        <div className="flex items-center gap-1">
+        {/* Folder Management Group - aligned with Folders pane */}
+        <div className="w-[220px] flex items-center gap-1 px-3">
           <AddFolderDialog
             className={`flex items-center justify-center p-1.5 rounded transition-colors ${isLinear
               ? "text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
@@ -190,12 +190,6 @@ function App() {
                 title="New Group"
               >
                 <AddGroupIcon className="h-4 w-4" />
-                {/* Visual distinction for "Group" vs "Folder" - maybe add a small badge or use different icon if available? 
-                     FolderPlus is reused. Let's overlay a small 'G' or just use tooltip.
-                     Actually, Hazel uses a specific icon. I'll stick to FolderPlus but maybe add an identifier in the icon or use a different one if available.
-                     Lucide has `FolderPlus` and `Folder`. `Folder` + `Plus` maybe? 
-                     Let's use FolderPlus for both for now, tooltip distinguishes them.
-                  */}
                 <span className="sr-only">New Group</span>
               </button>
             }
@@ -231,11 +225,8 @@ function App() {
           )}
         </div>
 
-        {/* Separator */}
-        <div className="h-5 w-px bg-[var(--border-main)] mx-3" />
-
-        {/* Center: Rule Operations Group */}
-        <div className="flex items-center gap-1">
+        {/* Rule Operations Group - aligned with Rules pane */}
+        <div className="w-[280px] flex items-center gap-1 px-3 border-l border-[var(--border-main)]">
           <button
             onClick={() => setIsGalleryOpen(true)}
             disabled={!selectedFolderId}
@@ -296,11 +287,12 @@ function App() {
           </button>
         </div>
 
-        {/* Separator */}
-        <div className="h-5 w-px bg-[var(--border-main)] mx-3" />
+        {/* Spacer */}
+        <div className="flex-1" />
 
-        {/* Additional Tools Group - Search */}
-        <div className="flex items-center gap-1">
+        {/* Right: Global Controls (Search, Activity Log, Stats, Settings) */}
+        <div className="flex items-center gap-1 px-3">
+          {/* Search */}
           {isSearchOpen ? (
             <div className="flex items-center gap-1">
               <input
@@ -339,13 +331,8 @@ function App() {
               <Search className="h-4 w-4" strokeWidth={1.5} />
             </button>
           )}
-        </div>
 
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Right: Global Controls */}
-        <div className="flex items-center gap-1">
+          {/* Activity Log Toggle */}
           <button
             onClick={() => setIsLogExpanded(!isLogExpanded)}
             className={`flex items-center justify-center p-1.5 rounded transition-colors ${isLogExpanded ? "bg-[var(--bg-subtle)] text-[var(--fg-primary)]" : "text-[var(--fg-secondary)]"
