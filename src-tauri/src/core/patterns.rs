@@ -241,4 +241,257 @@ mod tests {
         assert_eq!(parts[1], "beta");
         assert_eq!(parts[2].len(), 8);
     }
+
+    // ==================== DATE/TIME TOKENS ====================
+
+    #[test]
+    fn resolves_date_components() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{year}-{month}-{day}", &info, &captures);
+        assert_eq!(result, "2024-01-03");
+    }
+
+    #[test]
+    fn resolves_time_components() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{hour}-{minute}-{second}", &info, &captures);
+        assert_eq!(result, "04-05-06");
+    }
+
+    #[test]
+    fn resolves_date_shorthand() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{date}_{time}", &info, &captures);
+        assert_eq!(result, "2024-01-03_04-05-06");
+    }
+
+    #[test]
+    fn resolves_week_number() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("week-{week}", &info, &captures);
+        assert_eq!(result, "week-01");
+    }
+
+    #[test]
+    fn resolves_weekday_short() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{weekday}", &info, &captures);
+        assert_eq!(result, "Wed");
+    }
+
+    #[test]
+    fn resolves_weekday_long() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{weekday:long}", &info, &captures);
+        assert_eq!(result, "Wednesday");
+    }
+
+    #[test]
+    fn resolves_monthname_short() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{monthname}", &info, &captures);
+        assert_eq!(result, "Jan");
+    }
+
+    #[test]
+    fn resolves_monthname_long() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{monthname:long}", &info, &captures);
+        assert_eq!(result, "January");
+    }
+
+    #[test]
+    fn resolves_created_date() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{created}", &info, &captures);
+        assert_eq!(result, "2024-01-02");
+    }
+
+    #[test]
+    fn resolves_created_custom_format() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{created:%Y%m%d}", &info, &captures);
+        assert_eq!(result, "20240102");
+    }
+
+    #[test]
+    fn resolves_modified_date() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{modified}", &info, &captures);
+        assert_eq!(result, "2024-01-03");
+    }
+
+    #[test]
+    fn resolves_added_date() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{added}", &info, &captures);
+        assert_eq!(result, "2024-01-04");
+    }
+
+    // ==================== SIZE TOKENS ====================
+
+    #[test]
+    fn resolves_size_human_readable() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{size}", &info, &captures);
+        assert_eq!(result, "2.0 KB");
+    }
+
+    #[test]
+    fn resolves_size_bytes() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{size:bytes}", &info, &captures);
+        assert_eq!(result, "2048");
+    }
+
+    // ==================== FULLNAME TOKEN ====================
+
+    #[test]
+    fn resolves_fullname() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{fullname}", &info, &captures);
+        assert_eq!(result, "example.txt");
+    }
+
+    // ==================== COUNTER TOKENS ====================
+
+    #[test]
+    fn counter_increments() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let first = engine.resolve("{counter}", &info, &captures);
+        let second = engine.resolve("{counter}", &info, &captures);
+        let third = engine.resolve("{counter}", &info, &captures);
+
+        assert_eq!(first, "1");
+        assert_eq!(second, "2");
+        assert_eq!(third, "3");
+    }
+
+    #[test]
+    fn counter_with_padding() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{counter:5}", &info, &captures);
+        assert_eq!(result, "00001");
+    }
+
+    // ==================== RANDOM TOKENS ====================
+
+    #[test]
+    fn random_default_length() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{random}", &info, &captures);
+        assert_eq!(result.len(), 32); // UUID without dashes
+    }
+
+    #[test]
+    fn random_custom_length() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("{random:4}", &info, &captures);
+        assert_eq!(result.len(), 4);
+    }
+
+    // ==================== UNKNOWN TOKENS ====================
+
+    #[test]
+    fn unknown_token_returns_empty() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("prefix-{unknown}-suffix", &info, &captures);
+        assert_eq!(result, "prefix--suffix");
+    }
+
+    // ==================== PLAIN TEXT ====================
+
+    #[test]
+    fn plain_text_passes_through() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("just_plain_text", &info, &captures);
+        assert_eq!(result, "just_plain_text");
+    }
+
+    // ==================== REGEX CAPTURES ====================
+
+    #[test]
+    fn numeric_capture_resolution() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let mut captures = HashMap::new();
+        captures.insert("1".to_string(), "2024".to_string());
+        captures.insert("2".to_string(), "report".to_string());
+
+        let result = engine.resolve("{name}_{1}_{2}.{ext}", &info, &captures);
+        assert_eq!(result, "example_2024_report.txt");
+    }
+
+    #[test]
+    fn missing_capture_returns_empty() {
+        let engine = PatternEngine::new();
+        let info = sample_info();
+        let captures = HashMap::new();
+
+        let result = engine.resolve("prefix-{1}-suffix", &info, &captures);
+        assert_eq!(result, "prefix--suffix");
+    }
 }

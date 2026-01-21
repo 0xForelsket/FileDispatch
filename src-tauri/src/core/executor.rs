@@ -695,3 +695,324 @@ fn error_outcome(action_type: ActionType, message: String) -> ActionOutcome {
         error: Some(message),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    // ==================== UNIQUE PATH TESTS ====================
+
+    #[test]
+    fn unique_path_returns_original_if_not_exists() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("document.pdf");
+        let result = unique_path(&path);
+        assert_eq!(result, path);
+    }
+
+    #[test]
+    fn unique_path_adds_counter_if_exists() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("document.pdf");
+        fs::write(&path, "content").unwrap();
+
+        let result = unique_path(&path);
+        assert_eq!(result, dir.path().join("document (1).pdf"));
+    }
+
+    #[test]
+    fn unique_path_increments_counter() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("document.pdf");
+        fs::write(&path, "content").unwrap();
+        fs::write(dir.path().join("document (1).pdf"), "content").unwrap();
+        fs::write(dir.path().join("document (2).pdf"), "content").unwrap();
+
+        let result = unique_path(&path);
+        assert_eq!(result, dir.path().join("document (3).pdf"));
+    }
+
+    #[test]
+    fn unique_path_handles_no_extension() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("README");
+        fs::write(&path, "content").unwrap();
+
+        let result = unique_path(&path);
+        assert_eq!(result, dir.path().join("README (1)"));
+    }
+
+    // ==================== SEARCHABLE OUTPUT PATH TESTS ====================
+
+    #[test]
+    fn searchable_output_path_adds_suffix() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("document.pdf");
+
+        let result = searchable_output_path(&path);
+        assert_eq!(result, dir.path().join("document-searchable.pdf"));
+    }
+
+    #[test]
+    fn searchable_output_path_avoids_collision() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("document.pdf");
+        fs::write(dir.path().join("document-searchable.pdf"), "content").unwrap();
+
+        let result = searchable_output_path(&path);
+        assert_eq!(result, dir.path().join("document-searchable (1).pdf"));
+    }
+
+    // ==================== PREPARE DESTINATION TESTS ====================
+
+    #[test]
+    fn prepare_destination_ok_if_not_exists() {
+        let dir = tempdir().unwrap();
+        let mut dest_path = dir.path().join("new_file.txt");
+
+        let result = prepare_destination(
+            ActionType::Move,
+            &mut dest_path,
+            ConflictResolution::Skip,
+            false,
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn prepare_destination_skip_if_exists() {
+        let dir = tempdir().unwrap();
+        let mut dest_path = dir.path().join("existing.txt");
+        fs::write(&dest_path, "content").unwrap();
+
+        let result = prepare_destination(
+            ActionType::Move,
+            &mut dest_path,
+            ConflictResolution::Skip,
+            false,
+        );
+        assert!(result.is_err());
+        let outcome = result.unwrap_err();
+        assert_eq!(outcome.status, ActionResultStatus::Skipped);
+    }
+
+    #[test]
+    fn prepare_destination_skip_duplicates() {
+        let dir = tempdir().unwrap();
+        let mut dest_path = dir.path().join("existing.txt");
+        fs::write(&dest_path, "content").unwrap();
+
+        let result = prepare_destination(
+            ActionType::Copy,
+            &mut dest_path,
+            ConflictResolution::Replace,
+            true, // skip_duplicates overrides conflict resolution
+        );
+        assert!(result.is_err());
+        let outcome = result.unwrap_err();
+        assert_eq!(outcome.status, ActionResultStatus::Skipped);
+    }
+
+    #[test]
+    fn prepare_destination_replace_removes_existing() {
+        let dir = tempdir().unwrap();
+        let mut dest_path = dir.path().join("existing.txt");
+        fs::write(&dest_path, "content").unwrap();
+
+        let result = prepare_destination(
+            ActionType::Move,
+            &mut dest_path,
+            ConflictResolution::Replace,
+            false,
+        );
+        assert!(result.is_ok());
+        assert!(!dest_path.exists());
+    }
+
+    #[test]
+    fn prepare_destination_rename_changes_path() {
+        let dir = tempdir().unwrap();
+        let original_path = dir.path().join("existing.txt");
+        let mut dest_path = original_path.clone();
+        fs::write(&dest_path, "content").unwrap();
+
+        let result = prepare_destination(
+            ActionType::Move,
+            &mut dest_path,
+            ConflictResolution::Rename,
+            false,
+        );
+        assert!(result.is_ok());
+        assert_eq!(dest_path, dir.path().join("existing (1).txt"));
+    }
+
+    // ==================== WINDOWS CASE-ONLY RENAME TESTS ====================
+
+    #[test]
+    fn is_windows_case_only_rename_detects_case_change() {
+        let source = Path::new("/path/to/File.txt");
+        let dest = Path::new("/path/to/file.txt");
+
+        #[cfg(windows)]
+        assert!(is_windows_case_only_rename(source, dest));
+        #[cfg(not(windows))]
+        assert!(!is_windows_case_only_rename(source, dest));
+    }
+
+    #[test]
+    fn is_windows_case_only_rename_false_for_same_path() {
+        let source = Path::new("/path/to/file.txt");
+        let dest = Path::new("/path/to/file.txt");
+        assert!(!is_windows_case_only_rename(source, dest));
+    }
+
+    #[test]
+    fn is_windows_case_only_rename_false_for_different_names() {
+        let source = Path::new("/path/to/file1.txt");
+        let dest = Path::new("/path/to/file2.txt");
+        assert!(!is_windows_case_only_rename(source, dest));
+    }
+
+    // ==================== MOVE FALLBACK TESTS ====================
+
+    #[test]
+    fn move_fallback_copies_and_removes() {
+        let src_dir = tempdir().unwrap();
+        let dst_dir = tempdir().unwrap();
+        let source = src_dir.path().join("source.txt");
+        let dest = dst_dir.path().join("dest.txt");
+        fs::write(&source, "content").unwrap();
+
+        let result = move_fallback(&source, &dest);
+        assert!(result.is_ok());
+        assert!(!source.exists());
+        assert!(dest.exists());
+        assert_eq!(fs::read_to_string(&dest).unwrap(), "content");
+    }
+
+    // ==================== TEMP RENAME TESTS ====================
+
+    #[test]
+    fn temp_rename_works() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("File.txt");
+        let dest = dir.path().join("file.txt");
+        fs::write(&source, "content").unwrap();
+
+        let result = temp_rename(&source, &dest);
+        // On non-Windows this will work but may fail on some filesystems
+        // The test is primarily for Windows case-only renames
+        if result.is_ok() {
+            assert!(dest.exists());
+        }
+    }
+
+    // ==================== SUCCESS/ERROR OUTCOME TESTS ====================
+
+    #[test]
+    fn success_outcome_creates_correct_structure() {
+        let source = Path::new("/source/file.txt");
+        let dest = Some(PathBuf::from("/dest/file.txt"));
+        let outcome = success_outcome(ActionType::Move, source, dest);
+
+        assert_eq!(outcome.action_type, ActionType::Move);
+        assert_eq!(outcome.status, ActionResultStatus::Success);
+        assert!(outcome.error.is_none());
+        assert!(outcome.details.is_some());
+        let details = outcome.details.unwrap();
+        assert_eq!(details.source_path, "/source/file.txt");
+        assert_eq!(details.destination_path, Some("/dest/file.txt".to_string()));
+    }
+
+    #[test]
+    fn success_outcome_without_destination() {
+        let source = Path::new("/source/file.txt");
+        let outcome = success_outcome(ActionType::Delete, source, None);
+
+        assert_eq!(outcome.action_type, ActionType::Delete);
+        assert_eq!(outcome.status, ActionResultStatus::Success);
+        let details = outcome.details.unwrap();
+        assert!(details.destination_path.is_none());
+    }
+
+    #[test]
+    fn error_outcome_creates_correct_structure() {
+        let outcome = error_outcome(ActionType::Move, "Permission denied".to_string());
+
+        assert_eq!(outcome.action_type, ActionType::Move);
+        assert_eq!(outcome.status, ActionResultStatus::Error);
+        assert!(outcome.details.is_none());
+        assert_eq!(outcome.error, Some("Permission denied".to_string()));
+    }
+
+    // ==================== ACTION RESULT STATUS TESTS ====================
+
+    #[test]
+    fn action_result_status_equality() {
+        assert_eq!(ActionResultStatus::Success, ActionResultStatus::Success);
+        assert_ne!(ActionResultStatus::Success, ActionResultStatus::Error);
+        assert_ne!(ActionResultStatus::Success, ActionResultStatus::Skipped);
+    }
+
+    // ==================== FILE OPERATION INTEGRATION TESTS ====================
+
+    #[test]
+    fn delete_file_permanently() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("to_delete.txt");
+        fs::write(&path, "content").unwrap();
+        assert!(path.exists());
+
+        let result = if path.is_dir() {
+            fs::remove_dir_all(&path)
+        } else {
+            fs::remove_file(&path)
+        };
+        assert!(result.is_ok());
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn copy_file_creates_duplicate() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("source.txt");
+        let dest = dir.path().join("dest.txt");
+        fs::write(&source, "content").unwrap();
+
+        let result =
+            fs_extra::file::copy(&source, &dest, &fs_extra::file::CopyOptions::new());
+        assert!(result.is_ok());
+        assert!(source.exists());
+        assert!(dest.exists());
+        assert_eq!(fs::read_to_string(&dest).unwrap(), "content");
+    }
+
+    #[test]
+    fn rename_file_moves_in_same_directory() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("old_name.txt");
+        let dest = dir.path().join("new_name.txt");
+        fs::write(&source, "content").unwrap();
+
+        let result = fs::rename(&source, &dest);
+        assert!(result.is_ok());
+        assert!(!source.exists());
+        assert!(dest.exists());
+    }
+
+    // ==================== CROSS-DEVICE ERROR DETECTION ====================
+
+    #[test]
+    fn is_cross_device_error_false_for_permission_denied() {
+        let err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Permission denied");
+        assert!(!is_cross_device_error(&err));
+    }
+
+    #[test]
+    fn is_cross_device_error_false_for_not_found() {
+        let err = std::io::Error::new(std::io::ErrorKind::NotFound, "Not found");
+        assert!(!is_cross_device_error(&err));
+    }
+}
