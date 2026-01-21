@@ -1,5 +1,6 @@
 pub mod folders;
 pub mod logs;
+pub mod ocr;
 pub mod preview;
 pub mod presets;
 pub mod rules;

@@ -1,15 +1,27 @@
+import { useEffect, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 import { MagiSelect } from "@/components/ui/MagiSelect";
+import { Slider } from "@/components/ui/Slider";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { SettingRow, SettingToggle } from "../SettingsShared";
+import { LanguageManager } from "./LanguageManager";
+import { ocrGetInstalledLanguages, type InstalledLanguage } from "@/lib/tauri";
 
 export function OCRPanel() {
     const settings = useSettingsStore((state) => state.settings);
     const setSettings = useSettingsStore((state) => state.setSettings);
     const saveSettings = useSettingsStore((state) => state.saveSettings);
     const mb = 1024 * 1024;
+
+    const [installedLanguages, setInstalledLanguages] = useState<InstalledLanguage[]>([]);
+
+    useEffect(() => {
+        ocrGetInstalledLanguages()
+            .then(setInstalledLanguages)
+            .catch(() => setInstalledLanguages([]));
+    }, []);
 
     const toMb = (bytes: number) => Math.max(1, Math.round(bytes / mb));
     const fromMb = (value: number) => Math.max(1, value) * mb;
@@ -27,6 +39,14 @@ export function OCRPanel() {
         setSettings({ [field]: String(selected) });
         void saveSettings();
     };
+
+    const languageOptions = [
+        { label: "Bundled (English)", value: "" },
+        ...installedLanguages.map((lang) => ({
+            label: lang.name,
+            value: lang.id,
+        })),
+    ];
 
     return (
         <div className="space-y-6">
@@ -144,6 +164,106 @@ export function OCRPanel() {
 
             <section>
                 <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
+                    Pre-processing
+                </h3>
+                <div className="space-y-3">
+                    <SettingToggle
+                        title="Auto-deskew images"
+                        description="Automatically rotate skewed scanned documents before OCR"
+                        checked={settings.ocrEnableDeskew}
+                        onChange={(checked) => {
+                            setSettings({ ocrEnableDeskew: checked });
+                            void saveSettings();
+                        }}
+                        disabled={!settings.contentEnableOcr}
+                    />
+                    <SettingToggle
+                        title="Binarization for scanned docs"
+                        description="Convert to high-contrast black/white for better accuracy on scanned documents"
+                        checked={settings.ocrEnableBinarization}
+                        onChange={(checked) => {
+                            setSettings({ ocrEnableBinarization: checked });
+                            void saveSettings();
+                        }}
+                        disabled={!settings.contentEnableOcr}
+                    />
+                </div>
+            </section>
+
+            <section>
+                <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
+                    Accuracy
+                </h3>
+                <div className="space-y-3">
+                    <SettingRow
+                        title="Minimum confidence score"
+                        description={`Text recognized below ${Math.round(settings.ocrConfidenceThreshold * 100)}% confidence will be ignored`}
+                    >
+                        <Slider
+                            value={settings.ocrConfidenceThreshold}
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            onChange={(value) => {
+                                setSettings({ ocrConfidenceThreshold: value });
+                                void saveSettings();
+                            }}
+                            disabled={!settings.contentEnableOcr}
+                            className="w-40"
+                        />
+                    </SettingRow>
+                </div>
+            </section>
+
+            <section>
+                <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
+                    Languages
+                </h3>
+                <div className="space-y-3">
+                    <SettingRow
+                        title="Primary language"
+                        description="Main language for OCR recognition"
+                    >
+                        <MagiSelect
+                            width="w-48"
+                            value={settings.ocrPrimaryLanguage}
+                            onChange={(val) => {
+                                setSettings({ ocrPrimaryLanguage: val });
+                                void saveSettings();
+                            }}
+                            options={languageOptions}
+                            disabled={!settings.contentEnableOcr || settings.ocrModelSource === "custom"}
+                        />
+                    </SettingRow>
+                    <SettingRow
+                        title="Secondary language"
+                        description="Fallback language (optional)"
+                    >
+                        <MagiSelect
+                            width="w-48"
+                            value={settings.ocrSecondaryLanguage ?? ""}
+                            onChange={(val) => {
+                                setSettings({ ocrSecondaryLanguage: val || null });
+                                void saveSettings();
+                            }}
+                            options={[{ label: "None", value: "" }, ...languageOptions.slice(1)]}
+                            disabled={!settings.contentEnableOcr || settings.ocrModelSource === "custom"}
+                        />
+                    </SettingRow>
+
+                    {settings.ocrModelSource !== "custom" && (
+                        <div className="mt-4">
+                            <p className="mb-2 text-xs text-[var(--fg-muted)]">
+                                Download additional languages for multi-language OCR support.
+                            </p>
+                            <LanguageManager disabled={!settings.contentEnableOcr} />
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            <section>
+                <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
                     OCR Models
                 </h3>
                 <div className="space-y-3">
@@ -159,7 +279,7 @@ export function OCRPanel() {
                                 void saveSettings();
                             }}
                             options={[
-                                { label: "Bundled (English)", value: "bundled" },
+                                { label: "Bundled / Downloaded", value: "bundled" },
                                 { label: "Custom models", value: "custom" },
                             ]}
                             disabled={!settings.contentEnableOcr}
@@ -227,7 +347,7 @@ export function OCRPanel() {
                                 <li>en_pp-ocrv5_mobile_rec.onnx (7.5 MB) — English recognition</li>
                                 <li>ppocrv5_en_dict.txt — dictionary</li>
                             </ul>
-                            <div>Choose custom models if you need higher accuracy or other languages.</div>
+                            <div>Download additional languages above, or choose custom models for other languages.</div>
                         </div>
                     )}
                 </div>

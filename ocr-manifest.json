@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "detection": {
+    "id": "pp-ocrv5_mobile_det",
+    "name": "PP-OCRv5 Detection (Mobile)",
+    "url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/pp-ocrv5_mobile_det.onnx",
+    "size_bytes": 4826518
+  },
+  "languages": [
+    {
+      "id": "en",
+      "name": "English",
+      "rec_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/en_pp-ocrv5_mobile_rec.onnx",
+      "rec_size_bytes": 7876014,
+      "dict_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/ppocrv5_en_dict.txt",
+      "dict_size_bytes": 1852
+    },
+    {
+      "id": "zh",
+      "name": "Chinese (Simplified)",
+      "rec_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/ch_pp-ocrv5_mobile_rec.onnx",
+      "rec_size_bytes": 10500000,
+      "dict_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/ppocrv5_keys_v1.txt",
+      "dict_size_bytes": 200000
+    },
+    {
+      "id": "ja",
+      "name": "Japanese",
+      "rec_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/japan_pp-ocrv5_mobile_rec.onnx",
+      "rec_size_bytes": 10200000,
+      "dict_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/ppocrv5_ja_dict.txt",
+      "dict_size_bytes": 150000
+    },
+    {
+      "id": "ko",
+      "name": "Korean",
+      "rec_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/korean_pp-ocrv5_mobile_rec.onnx",
+      "rec_size_bytes": 10100000,
+      "dict_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/ppocrv5_ko_dict.txt",
+      "dict_size_bytes": 120000
+    },
+    {
+      "id": "ar",
+      "name": "Arabic",
+      "rec_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/arabic_pp-ocrv5_mobile_rec.onnx",
+      "rec_size_bytes": 9800000,
+      "dict_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/ppocrv5_ar_dict.txt",
+      "dict_size_bytes": 80000
+    },
+    {
+      "id": "de",
+      "name": "German",
+      "rec_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/german_pp-ocrv5_mobile_rec.onnx",
+      "rec_size_bytes": 8200000,
+      "dict_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/ppocrv5_de_dict.txt",
+      "dict_size_bytes": 3500
+    },
+    {
+      "id": "fr",
+      "name": "French",
+      "rec_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/french_pp-ocrv5_mobile_rec.onnx",
+      "rec_size_bytes": 8100000,
+      "dict_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/ppocrv5_fr_dict.txt",
+      "dict_size_bytes": 3200
+    },
+    {
+      "id": "es",
+      "name": "Spanish",
+      "rec_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/spanish_pp-ocrv5_mobile_rec.onnx",
+      "rec_size_bytes": 8000000,
+      "dict_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/ppocrv5_es_dict.txt",
+      "dict_size_bytes": 3000
+    },
+    {
+      "id": "ru",
+      "name": "Russian (Cyrillic)",
+      "rec_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/cyrillic_pp-ocrv5_mobile_rec.onnx",
+      "rec_size_bytes": 8500000,
+      "dict_url": "https://github.com/GreatV/oar-ocr/releases/download/v0.5.2/ppocrv5_cyrillic_dict.txt",
+      "dict_size_bytes": 6000
+    }
+  ]
+}

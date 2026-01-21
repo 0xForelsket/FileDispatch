@@ -1,4 +1,5 @@
 pub mod duplicates;
+pub mod model_manager;
 pub mod ocr;
 pub mod content;
 pub mod engine;

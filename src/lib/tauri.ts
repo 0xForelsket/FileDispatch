@@ -77,3 +77,27 @@ export const presetInstall = (
   path: string,
   variables: Record<string, string>,
 ) => invoke<Rule[]>("preset_install", { folderId, path, variables });
+
+// OCR Language Management
+export interface LanguageInfo {
+  id: string;
+  name: string;
+  sizeBytes: number;
+  installed: boolean;
+}
+
+export interface InstalledLanguage {
+  id: string;
+  name: string;
+  recPath: string;
+  dictPath: string;
+}
+
+export const ocrFetchAvailableLanguages = () =>
+  invoke<LanguageInfo[]>("ocr_fetch_available_languages");
+export const ocrGetInstalledLanguages = () =>
+  invoke<InstalledLanguage[]>("ocr_get_installed_languages");
+export const ocrDownloadLanguage = (languageId: string) =>
+  invoke<void>("ocr_download_language", { languageId });
+export const ocrDeleteLanguage = (languageId: string) =>
+  invoke<void>("ocr_delete_language", { languageId });

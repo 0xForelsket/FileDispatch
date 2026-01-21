@@ -55,6 +55,9 @@ walkdir = "2"
 quick-xml = "0.39"
 lopdf = "0.39"
 image = "0.25"
+imageproc = "0.25"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+futures-util = "0.3"
 
 [profile.release]
 opt-level = "z"

@@ -2,17 +2,53 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
+use image::{GrayImage, Luma, RgbImage};
+use imageproc::contrast::otsu_level;
 use oar_ocr::prelude::*;
 use tauri::{AppHandle, Manager};
 
+use crate::core::model_manager::ModelManager;
 use crate::models::{OcrModelSource, Settings};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 struct ModelConfig {
     source: OcrModelSource,
     det_path: PathBuf,
     rec_path: PathBuf,
     dict_path: PathBuf,
+}
+
+#[derive(Clone, Debug)]
+pub struct OcrOptions {
+    pub enable_deskew: bool,
+    pub enable_binarization: bool,
+    pub confidence_threshold: f32,
+}
+
+impl Default for OcrOptions {
+    fn default() -> Self {
+        Self {
+            enable_deskew: false,
+            enable_binarization: false,
+            confidence_threshold: 0.6,
+        }
+    }
+}
+
+impl OcrOptions {
+    pub fn from_settings(settings: &Settings) -> Self {
+        Self {
+            enable_deskew: settings.ocr_enable_deskew,
+            enable_binarization: settings.ocr_enable_binarization,
+            confidence_threshold: settings.ocr_confidence_threshold,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct OcrResult {
+    pub text: String,
+    pub average_confidence: f32,
 }
 
 pub struct OcrManager {
@@ -51,17 +87,50 @@ impl OcrManager {
 
     pub fn recognize_path(&mut self, path: &Path, timeout: Duration) -> Result<String> {
         let image = load_image(path)?;
-        self.recognize_image(image, timeout)
+        let options = OcrOptions::from_settings(&self.settings);
+        let result = self.recognize_image_with_options(image, timeout, &options)?;
+        Ok(result.text)
     }
 
-    pub fn recognize_image(&mut self, image: image::RgbImage, timeout: Duration) -> Result<String> {
+    pub fn recognize_image(&mut self, image: RgbImage, timeout: Duration) -> Result<String> {
+        let options = OcrOptions::from_settings(&self.settings);
+        let result = self.recognize_image_with_options(image, timeout, &options)?;
+        Ok(result.text)
+    }
+
+    pub fn recognize_image_with_options(
+        &mut self,
+        image: RgbImage,
+        timeout: Duration,
+        options: &OcrOptions,
+    ) -> Result<OcrResult> {
         let start = Instant::now();
+
+        // Apply preprocessing
+        let processed_image = self.preprocess_image(image, options)?;
+
         let engine = self.ensure_engine()?;
-        let results = engine.predict(vec![image])?;
+        let results = engine.predict(vec![processed_image])?;
+
         if start.elapsed() > timeout {
             return Err(anyhow!("OCR timed out"));
         }
-        Ok(extract_text(&results))
+
+        Ok(extract_text_with_threshold(&results, options.confidence_threshold))
+    }
+
+    fn preprocess_image(&self, img: RgbImage, options: &OcrOptions) -> Result<RgbImage> {
+        let mut result = img;
+
+        if options.enable_binarization {
+            result = binarize_image(result);
+        }
+
+        if options.enable_deskew {
+            result = deskew_image(result)?;
+        }
+
+        Ok(result)
     }
 
     fn ensure_engine(&mut self) -> Result<&OAROCR> {
@@ -91,6 +160,28 @@ impl OcrManager {
         let source = self.settings.ocr_model_source.clone();
         match source {
             OcrModelSource::Bundled => {
+                // Check if a downloaded language is selected
+                let primary_lang = &self.settings.ocr_primary_language;
+                if !primary_lang.is_empty() {
+                    if let Ok(manager) = ModelManager::new() {
+                        if let Some((rec_path, dict_path)) = manager.get_language_paths(primary_lang)
+                        {
+                            // Use downloaded detection model if available, otherwise bundled
+                            let det_path = manager
+                                .get_detection_model_path()
+                                .unwrap_or_else(|| self.get_bundled_det_path().unwrap_or_default());
+
+                            return Ok(ModelConfig {
+                                source: OcrModelSource::Bundled,
+                                det_path,
+                                rec_path,
+                                dict_path,
+                            });
+                        }
+                    }
+                }
+
+                // Fall back to bundled English models
                 let app = self
                     .app_handle
                     .as_ref()
@@ -133,6 +224,18 @@ impl OcrManager {
             }
         }
     }
+
+    fn get_bundled_det_path(&self) -> Option<PathBuf> {
+        let app = self.app_handle.as_ref()?;
+        let base = app.path().resource_dir().ok()?;
+        let det_path = base.join("ocr").join("pp-ocrv5_mobile_det.onnx");
+        let det_path = resolve_dev_fallback(&det_path);
+        if det_path.exists() {
+            Some(det_path)
+        } else {
+            None
+        }
+    }
 }
 
 fn resolve_dev_fallback(path: &Path) -> PathBuf {
@@ -149,17 +252,160 @@ fn resolve_dev_fallback(path: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
-fn extract_text(results: &[OAROCRResult]) -> String {
+fn extract_text_with_threshold(results: &[OAROCRResult], min_confidence: f32) -> OcrResult {
     let mut lines = Vec::new();
+    let mut confidences = Vec::new();
+
     for result in results {
         for region in &result.text_regions {
-            if let Some((text, _confidence)) = region.text_with_confidence() {
-                let text = text.trim();
-                if !text.is_empty() {
-                    lines.push(text.to_string());
+            if let Some((text, confidence)) = region.text_with_confidence() {
+                if confidence >= min_confidence {
+                    let text = text.trim();
+                    if !text.is_empty() {
+                        lines.push(text.to_string());
+                        confidences.push(confidence);
+                    }
                 }
             }
         }
     }
-    lines.join("\n")
+
+    let average_confidence = if confidences.is_empty() {
+        0.0
+    } else {
+        confidences.iter().sum::<f32>() / confidences.len() as f32
+    };
+
+    OcrResult {
+        text: lines.join("\n"),
+        average_confidence,
+    }
+}
+
+/// Binarize image using Otsu's method for optimal threshold
+fn binarize_image(img: RgbImage) -> RgbImage {
+    let gray: GrayImage = image::DynamicImage::ImageRgb8(img).to_luma8();
+    let threshold = otsu_level(&gray);
+
+    let binary: GrayImage = GrayImage::from_fn(gray.width(), gray.height(), |x, y| {
+        let pixel = gray.get_pixel(x, y);
+        if pixel[0] > threshold {
+            Luma([255u8])
+        } else {
+            Luma([0u8])
+        }
+    });
+
+    image::DynamicImage::ImageLuma8(binary).to_rgb8()
+}
+
+/// Deskew image by detecting dominant line angle
+/// Uses a simplified approach - for production, consider using Hough transform
+fn deskew_image(img: RgbImage) -> Result<RgbImage> {
+    // For now, return the image as-is
+    // Full deskew implementation would use Hough transform to detect lines
+    // and rotate the image to correct the skew angle
+    // This is a placeholder that can be enhanced later
+    let gray: GrayImage = image::DynamicImage::ImageRgb8(img.clone()).to_luma8();
+
+    // Simple edge-based skew detection
+    // Detect horizontal edges and calculate average angle
+    let angle = detect_skew_angle(&gray);
+
+    if angle.abs() < 0.5 {
+        // Less than 0.5 degrees - don't bother rotating
+        return Ok(img);
+    }
+
+    // Rotate the image to correct skew
+    let rotated = rotate_image(&img, -angle);
+    Ok(rotated)
+}
+
+/// Detect skew angle from grayscale image
+/// Returns angle in degrees
+fn detect_skew_angle(gray: &GrayImage) -> f64 {
+    let (width, height) = gray.dimensions();
+
+    // Use projection profile method
+    // Count dark pixels in each row for different rotation angles
+    let mut best_angle = 0.0;
+    let mut best_variance = 0.0;
+
+    // Test angles from -5 to 5 degrees in 0.5 degree steps
+    for angle_steps in -10..=10 {
+        let angle = angle_steps as f64 * 0.5;
+        let angle_rad = angle.to_radians();
+
+        let mut row_counts = vec![0u32; height as usize];
+
+        for y in 0..height {
+            for x in 0..width {
+                let pixel = gray.get_pixel(x, y);
+                if pixel[0] < 128 {
+                    // Simulate rotation and project to row
+                    let cx = width as f64 / 2.0;
+                    let cy = height as f64 / 2.0;
+                    let dx = x as f64 - cx;
+                    let dy = y as f64 - cy;
+                    let new_y = (dy * angle_rad.cos() - dx * angle_rad.sin() + cy) as u32;
+                    if new_y < height {
+                        row_counts[new_y as usize] += 1;
+                    }
+                }
+            }
+        }
+
+        // Calculate variance of row counts
+        let mean: f64 = row_counts.iter().sum::<u32>() as f64 / row_counts.len() as f64;
+        let variance: f64 = row_counts
+            .iter()
+            .map(|&c| {
+                let diff = c as f64 - mean;
+                diff * diff
+            })
+            .sum::<f64>()
+            / row_counts.len() as f64;
+
+        if variance > best_variance {
+            best_variance = variance;
+            best_angle = angle;
+        }
+    }
+
+    best_angle
+}
+
+/// Rotate image by given angle (degrees)
+fn rotate_image(img: &RgbImage, angle_degrees: f64) -> RgbImage {
+    use image::Rgb;
+
+    let (width, height) = img.dimensions();
+    let angle_rad = angle_degrees.to_radians();
+    let cos_a = angle_rad.cos();
+    let sin_a = angle_rad.sin();
+    let cx = width as f64 / 2.0;
+    let cy = height as f64 / 2.0;
+
+    let mut result = RgbImage::new(width, height);
+
+    for y in 0..height {
+        for x in 0..width {
+            let dx = x as f64 - cx;
+            let dy = y as f64 - cy;
+
+            // Inverse rotation to find source pixel
+            let src_x = (dx * cos_a + dy * sin_a + cx) as i32;
+            let src_y = (-dx * sin_a + dy * cos_a + cy) as i32;
+
+            if src_x >= 0 && src_x < width as i32 && src_y >= 0 && src_y < height as i32 {
+                let pixel = img.get_pixel(src_x as u32, src_y as u32);
+                result.put_pixel(x, y, *pixel);
+            } else {
+                result.put_pixel(x, y, Rgb([255, 255, 255]));
+            }
+        }
+    }
+
+    result
 }

@@ -29,6 +29,11 @@ export interface AppSettings {
   ocrModelDetPath: string;
   ocrModelRecPath: string;
   ocrModelDictPath: string;
+  ocrPrimaryLanguage: string;
+  ocrSecondaryLanguage: string | null;
+  ocrConfidenceThreshold: number;
+  ocrEnableDeskew: boolean;
+  ocrEnableBinarization: boolean;
   previewMaxFiles: number;
 }
 
@@ -64,6 +69,11 @@ export const defaultSettings: AppSettings = {
   ocrModelDetPath: "",
   ocrModelRecPath: "",
   ocrModelDictPath: "",
+  ocrPrimaryLanguage: "",
+  ocrSecondaryLanguage: null,
+  ocrConfidenceThreshold: 0.6,
+  ocrEnableDeskew: false,
+  ocrEnableBinarization: false,
   previewMaxFiles: 100,
 };
 

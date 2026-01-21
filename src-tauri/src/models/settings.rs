@@ -43,6 +43,16 @@ pub struct Settings {
     pub ocr_model_rec_path: String,
     #[serde(default)]
     pub ocr_model_dict_path: String,
+    #[serde(default)]
+    pub ocr_primary_language: String,
+    #[serde(default)]
+    pub ocr_secondary_language: Option<String>,
+    #[serde(default = "default_ocr_confidence_threshold")]
+    pub ocr_confidence_threshold: f32,
+    #[serde(default)]
+    pub ocr_enable_deskew: bool,
+    #[serde(default)]
+    pub ocr_enable_binarization: bool,
 }
 
 fn default_date_format() -> String {
@@ -85,6 +95,10 @@ fn default_ocr_model_source() -> OcrModelSource {
     OcrModelSource::Bundled
 }
 
+fn default_ocr_confidence_threshold() -> f32 {
+    0.6
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -118,6 +132,11 @@ impl Default for Settings {
             ocr_model_det_path: String::new(),
             ocr_model_rec_path: String::new(),
             ocr_model_dict_path: String::new(),
+            ocr_primary_language: String::new(),
+            ocr_secondary_language: None,
+            ocr_confidence_threshold: default_ocr_confidence_threshold(),
+            ocr_enable_deskew: false,
+            ocr_enable_binarization: false,
         }
     }
 }

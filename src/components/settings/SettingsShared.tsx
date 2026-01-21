@@ -25,6 +25,7 @@ interface SettingToggleProps {
     checked: boolean;
     onChange: (checked: boolean) => void;
     highlight?: boolean;
+    disabled?: boolean;
 }
 
 export function SettingToggle({
@@ -33,20 +34,24 @@ export function SettingToggle({
     checked,
     onChange,
     highlight = false,
+    disabled = false,
 }: SettingToggleProps) {
     return (
         <div
-            onClick={() => onChange(!checked)}
-            className={`flex w-full cursor-pointer items-center justify-between rounded-[var(--radius)] border p-3 text-left transition-all ${highlight
-                ? "border-[var(--accent)] bg-[var(--accent-muted)]"
-                : "border-transparent hover:border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
-                }`}
+            onClick={() => !disabled && onChange(!checked)}
+            className={`flex w-full items-center justify-between rounded-[var(--radius)] border p-3 text-left transition-all ${
+                disabled
+                    ? "cursor-not-allowed opacity-50"
+                    : highlight
+                        ? "cursor-pointer border-[var(--accent)] bg-[var(--accent-muted)]"
+                        : "cursor-pointer border-transparent hover:border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
+            }`}
         >
             <div>
                 <div className="font-medium text-[var(--fg-primary)]">{title}</div>
                 <div className="text-xs text-[var(--fg-muted)]">{description}</div>
             </div>
-            <Switch checked={checked} onCheckedChange={onChange} />
+            <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} />
         </div>
     );
 }
