@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GripVertical, Plus, X } from "lucide-react";
+import { GripVertical, LayersPlus, Plus, X } from "lucide-react";
 import { MagiSelect } from "@/components/ui/MagiSelect";
 
 
@@ -108,10 +108,17 @@ const fieldClass =
   "rounded-[var(--radius)] bg-[var(--bg-panel)] border border-[var(--border-main)] px-2 py-1 text-sm text-[var(--fg-primary)] shadow-none outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]";
 const smallFieldClass = `${fieldClass} w-20`;
 const longFieldClass = `${fieldClass} min-w-[220px]`;
+const addConditionButtonClass =
+  "flex items-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-xs font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]";
+const addGroupButtonClass =
+  "flex items-center gap-2 rounded-[var(--radius)] border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-contrast)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--accent-hover)]";
+const addControlsWrapperClass =
+  "flex flex-wrap items-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-subtle)]/60 px-2.5 py-2";
 
 export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilderProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const isNested = depth > 0;
 
   const updateGroup = (updates: Partial<ConditionGroup>) =>
     onChange({ ...group, ...updates });
@@ -166,9 +173,21 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
   };
 
   return (
-    <div className="space-y-3">
+    <div
+      className={`space-y-3 ${
+        isNested
+          ? "relative pl-4 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-px before:bg-[var(--border-main)]/70 before:content-['']"
+          : ""
+      }`}
+    >
       {/* Natural language header: "If [all] of the following conditions are met" */}
-      <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-[var(--fg-secondary)]">
+      <div
+        className={`flex flex-wrap items-center gap-1.5 text-[13px] text-[var(--fg-secondary)] ${
+          isNested
+            ? "relative before:absolute before:-left-4 before:top-1/2 before:h-px before:w-3 before:bg-[var(--border-main)]/70 before:content-['']"
+            : ""
+        }`}
+      >
         <span>If</span>
         <MagiSelect
           width="w-20"
@@ -279,9 +298,12 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
           </div>
         );
       })}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className={addControlsWrapperClass}>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)]">
+          Add
+        </span>
         <button
-          className="flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-xs font-semibold text-[var(--fg-primary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)]"
+          className={addConditionButtonClass}
           type="button"
           onClick={() => addCondition()}
         >
@@ -289,11 +311,11 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
           Add condition
         </button>
         <button
-          className="flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-xs font-semibold text-[var(--fg-primary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)]"
+          className={addGroupButtonClass}
           type="button"
           onClick={addGroup}
         >
-          <Plus className="h-3 w-3" />
+          <LayersPlus className="h-3 w-3" />
           Add rule group
         </button>
       </div>
