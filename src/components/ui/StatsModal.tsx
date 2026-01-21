@@ -28,47 +28,48 @@ export function StatsModal({
 }: StatsModalProps) {
   const [open, setOpen] = useState(false);
 
-  const statusCounts = useMemo(() => {
+  // Combined single-pass calculation for status counts and throughput
+  const { statusCounts, throughput } = useMemo(() => {
+    // Status counts
     let success = 0;
     let error = 0;
     let skipped = 0;
     let deleted = 0;
 
+    // Throughput calculation
+    const buckets = Array.from({ length: WINDOW_HOURS }, () => 0);
+    let latest = 0;
+
+    // First pass: collect status counts and find latest timestamp
     for (const entry of logs) {
+      // Status counts
       if (entry.status === "success") success += 1;
-      if (entry.status === "error") error += 1;
-      if (entry.status === "skipped") skipped += 1;
+      else if (entry.status === "error") error += 1;
+      else if (entry.status === "skipped") skipped += 1;
+
       if (entry.actionType === "delete" || entry.actionType === "deletePermanently") {
         deleted += 1;
       }
-    }
 
-    return { success, error, skipped, deleted };
-  }, [logs]);
-
-  const throughput = useMemo(() => {
-    const buckets = Array.from({ length: WINDOW_HOURS }, () => 0);
-    const timestamps: number[] = [];
-    let latest = 0;
-
-    for (const entry of logs) {
+      // Find latest timestamp
       const timestamp = Date.parse(entry.createdAt);
-      if (!Number.isFinite(timestamp)) continue;
-      timestamps.push(timestamp);
-      if (timestamp > latest) latest = timestamp;
+      if (Number.isFinite(timestamp) && timestamp > latest) {
+        latest = timestamp;
+      }
     }
 
-    if (!latest) {
-      return { heights: buckets, recent: 0 };
-    }
-
-    const windowMs = WINDOW_HOURS * BUCKET_MS;
-    for (const timestamp of timestamps) {
-      const diff = latest - timestamp;
-      if (diff < 0 || diff > windowMs) continue;
-      const bucketIndex = WINDOW_HOURS - 1 - Math.floor(diff / BUCKET_MS);
-      if (bucketIndex >= 0 && bucketIndex < buckets.length) {
-        buckets[bucketIndex] += 1;
+    // Second pass: bucket timestamps (only if we have a latest timestamp)
+    if (latest) {
+      const windowMs = WINDOW_HOURS * BUCKET_MS;
+      for (const entry of logs) {
+        const timestamp = Date.parse(entry.createdAt);
+        if (!Number.isFinite(timestamp)) continue;
+        const diff = latest - timestamp;
+        if (diff < 0 || diff > windowMs) continue;
+        const bucketIndex = WINDOW_HOURS - 1 - Math.floor(diff / BUCKET_MS);
+        if (bucketIndex >= 0 && bucketIndex < buckets.length) {
+          buckets[bucketIndex] += 1;
+        }
       }
     }
 
@@ -76,7 +77,10 @@ export function StatsModal({
     const heights = buckets.map((count) => Math.round((count / max) * 100));
     const recent = buckets.reduce((sum, count) => sum + count, 0);
 
-    return { heights, recent };
+    return {
+      statusCounts: { success, error, skipped, deleted },
+      throughput: { heights, recent },
+    };
   }, [logs]);
 
   const efficiencyValue = Number.isFinite(efficiency) ? Math.min(Math.max(efficiency, 0), 100) : 0;

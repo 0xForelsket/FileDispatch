@@ -100,6 +100,7 @@ impl DraftRule {
 pub fn preview_rule_draft(
     state: State<'_, AppState>,
     rule: DraftRule,
+    max_files: Option<usize>,
 ) -> Result<Vec<PreviewItem>, String> {
     eprintln!("==== preview_rule_draft called ====");
     eprintln!("Rule folder_id: {}", rule.folder_id);
@@ -144,7 +145,7 @@ pub fn preview_rule_draft(
         .into_iter();
 
     let mut file_count = 0;
-    let max_files = 50; // Reduced limit for faster preview
+    let max_files = max_files.unwrap_or(100);
 
     for entry in walker {
         // Check file count limit early

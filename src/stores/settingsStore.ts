@@ -29,6 +29,7 @@ export interface AppSettings {
   ocrModelDetPath: string;
   ocrModelRecPath: string;
   ocrModelDictPath: string;
+  previewMaxFiles: number;
 }
 
 interface SettingsState {
@@ -63,6 +64,7 @@ export const defaultSettings: AppSettings = {
   ocrModelDetPath: "",
   ocrModelRecPath: "",
   ocrModelDictPath: "",
+  previewMaxFiles: 100,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({

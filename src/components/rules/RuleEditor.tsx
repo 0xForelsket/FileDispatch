@@ -46,6 +46,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   const updateRule = useRuleStore((state) => state.updateRule);
   const deleteRule = useRuleStore((state) => state.deleteRule);
   const theme = useSettingsStore((state) => state.settings.theme);
+  const previewMaxFiles = useSettingsStore((state) => state.settings.previewMaxFiles);
   const isMagi = theme === "magi";
 
   const [draft, setDraft] = useState<Rule>(() => rule ?? createEmptyRule(folderId));
@@ -60,6 +61,9 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   const [livePreviewLoading, setLivePreviewLoading] = useState(false);
   const [livePreviewExpanded, setLivePreviewExpanded] = useState(false);
   const livePreviewTimeout = useRef<number | null>(null);
+
+  // Request ID for race condition prevention
+  const previewRequestId = useRef(0);
 
   const isOpen = mode !== "empty" && Boolean(folderId);
   const isNew = mode === "new";
@@ -88,23 +92,30 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   }, [draft, updateRule, createRule, folderId, onClose]);
 
   const handlePreview = useCallback(async () => {
+    // Increment request ID to invalidate any pending requests
+    const currentRequestId = ++previewRequestId.current;
+
     setShowPreview(true);
     setLoadingPreview(true);
     setPreviewError(null);
     setPreviewResults([]);
     try {
-      console.log("Calling previewRuleDraft with:", { ...draft, folderId });
-      const results = await previewRuleDraft({ ...draft, folderId });
-      console.log("Preview results:", results);
-      setPreviewResults(results);
+      const results = await previewRuleDraft({ ...draft, folderId }, previewMaxFiles);
+      // Only update if this is still the latest request
+      if (currentRequestId === previewRequestId.current) {
+        setPreviewResults(results);
+      }
     } catch (error) {
-      console.error("Preview failed:", error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setPreviewError(errorMessage);
+      if (currentRequestId === previewRequestId.current) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        setPreviewError(errorMessage);
+      }
     } finally {
-      setLoadingPreview(false);
+      if (currentRequestId === previewRequestId.current) {
+        setLoadingPreview(false);
+      }
     }
-  }, [draft, folderId]);
+  }, [draft, folderId, previewMaxFiles]);
 
   // Live preview: debounced update when conditions change
   useEffect(() => {
@@ -118,17 +129,27 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
       window.clearTimeout(livePreviewTimeout.current);
     }
 
+    // Increment request ID to invalidate any pending requests
+    const currentRequestId = ++previewRequestId.current;
+
     // Debounce the preview request
     setLivePreviewLoading(true);
     livePreviewTimeout.current = window.setTimeout(async () => {
       try {
-        const results = await previewRuleDraft({ ...draft, folderId });
-        setLivePreviewResults(results);
+        const results = await previewRuleDraft({ ...draft, folderId }, previewMaxFiles);
+        // Only update if this is still the latest request
+        if (currentRequestId === previewRequestId.current) {
+          setLivePreviewResults(results);
+        }
       } catch {
         // Silently fail for live preview - don't show errors
-        setLivePreviewResults([]);
+        if (currentRequestId === previewRequestId.current) {
+          setLivePreviewResults([]);
+        }
       } finally {
-        setLivePreviewLoading(false);
+        if (currentRequestId === previewRequestId.current) {
+          setLivePreviewLoading(false);
+        }
       }
     }, 500);
 
@@ -137,7 +158,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
         window.clearTimeout(livePreviewTimeout.current);
       }
     };
-  }, [draft, folderId, isOpen]);
+  }, [draft, folderId, isOpen, previewMaxFiles]);
 
 
 
