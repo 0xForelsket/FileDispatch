@@ -78,7 +78,6 @@ impl FolderRepository {
                     folder.scan_depth,
                     bool_to_i64(folder.remove_duplicates),
                     bool_to_i64(folder.trash_incomplete_downloads),
-                    bool_to_i64(folder.trash_incomplete_downloads),
                     folder.incomplete_timeout_minutes as i64,
                     folder.parent_id,
                     bool_to_i64(folder.is_group),

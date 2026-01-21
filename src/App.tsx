@@ -5,6 +5,7 @@ import {
   FileUp,
   LayoutGrid,
   Settings,
+  FolderCog,
   Activity,
   Eye,
   Search,
@@ -17,6 +18,7 @@ import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { ActivityLog } from "@/components/logs/ActivityLog";
 import { AddFolderDialog } from "@/components/folders/AddFolderDialog";
 import { AddGroupDialog } from "@/components/folders/AddGroupDialog";
+import { FolderOptionsDialog } from "@/components/folders/FolderOptionsDialog";
 import { FolderList } from "@/components/folders/FolderList";
 import { RuleList } from "@/components/rules/RuleList";
 import { RuleEditor } from "@/components/rules/RuleEditor";
@@ -198,6 +200,35 @@ function App() {
               </button>
             }
           />
+
+          {/* Folder Settings - opens options for selected folder */}
+          {activeFolder && !activeFolder.isGroup ? (
+            <FolderOptionsDialog
+              folder={activeFolder}
+              trigger={
+                <button
+                  className={`flex items-center justify-center p-1.5 rounded transition-colors ${isLinear
+                    ? "text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                    : "text-[var(--fg-primary)] border border-transparent hover:border-[var(--fg-primary)] hover:bg-[var(--bg-panel)]"
+                    }`}
+                  title="Folder Settings"
+                >
+                  <FolderCog className="h-4 w-4" />
+                </button>
+              }
+            />
+          ) : (
+            <button
+              className={`flex items-center justify-center p-1.5 rounded transition-colors opacity-40 cursor-not-allowed ${isLinear
+                ? "text-[var(--fg-secondary)]"
+                : "text-[var(--fg-primary)]"
+                }`}
+              title={activeFolder?.isGroup ? "Settings not available for groups" : "Select a folder"}
+              disabled
+            >
+              <FolderCog className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Separator */}

@@ -51,6 +51,7 @@ impl Database {
             M::up(include_str!("migrations/003_folder_settings.sql")),
             M::up(include_str!("migrations/004_folder_duplicates.sql")),
             M::up(include_str!("migrations/005_incomplete_downloads.sql")),
+            M::up(include_str!("migrations/006_folder_groups.sql")),
         ]);
         migrations.to_latest(&mut conn)?;
         Ok(())

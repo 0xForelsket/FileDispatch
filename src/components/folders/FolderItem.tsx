@@ -4,7 +4,6 @@ import { Folder, Play, Loader2 } from "lucide-react";
 import type { Folder as FolderType } from "@/types";
 import { folderRunNow, type RunResult } from "@/lib/tauri";
 import { Switch } from "@/components/ui/Switch";
-import { FolderOptionsDialog } from "@/components/folders/FolderOptionsDialog";
 import { cn } from "@/lib/utils";
 
 interface FolderItemProps {
@@ -66,11 +65,6 @@ export function FolderItem({
                 {ruleCount}
               </span>
             ) : null}
-
-            {/* Folder Options button - only visible on hover */}
-            <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity", selected && "opacity-100")}>
-              <FolderOptionsDialog folder={folder} />
-            </div>
 
             {/* Run Now button - only visible on hover or when running */}
             <button
