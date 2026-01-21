@@ -1,17 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Bell, Calendar, Settings, Shield, User, X } from "lucide-react";
+import { Bell, Calendar, FileText, Gauge, Settings, Sliders, X } from "lucide-react";
 
-import { SettingsPanel } from "@/components/settings/SettingsPanel";
+import { GeneralPanel } from "@/components/settings/panels/GeneralPanel";
+import { NotificationsPanel } from "@/components/settings/panels/NotificationsPanel";
+import { PerformancePanel } from "@/components/settings/panels/PerformancePanel";
+import { OCRPanel } from "@/components/settings/panels/OCRPanel";
+import { AdvancedPanel } from "@/components/settings/panels/AdvancedPanel";
 import { FormattingPanel } from "@/components/settings/FormattingPanel";
 import { formatShortcut, matchesShortcut } from "@/lib/shortcuts";
 
 const tabs = [
   { id: "general", label: "General", icon: Settings },
+  { id: "performance", label: "Performance", icon: Gauge },
+  { id: "ocr", label: "OCR & Content", icon: FileText },
   { id: "formatting", label: "Formatting", icon: Calendar },
   { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "account", label: "Account", icon: User },
-  { id: "security", label: "Security", icon: Shield },
+  { id: "advanced", label: "Advanced", icon: Sliders },
 ];
 
 interface SettingsDialogProps {
@@ -34,6 +39,25 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "general":
+        return <GeneralPanel />;
+      case "performance":
+        return <PerformancePanel />;
+      case "ocr":
+        return <OCRPanel />;
+      case "formatting":
+        return <FormattingPanel />;
+      case "notifications":
+        return <NotificationsPanel />;
+      case "advanced":
+        return <AdvancedPanel />;
+      default:
+        return null;
+    }
+  };
 
   const modal =
     open && typeof document !== "undefined"
@@ -99,15 +123,7 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
                 </button>
               </div>
               <div className="custom-scrollbar flex-1 overflow-y-auto p-6">
-                {activeTab === "general" ? (
-                  <SettingsPanel showTitle={false} />
-                ) : activeTab === "formatting" ? (
-                  <FormattingPanel />
-                ) : (
-                  <div className="rounded-[var(--radius)] border border-dashed border-[var(--border-main)] p-6 text-sm text-[var(--fg-muted)]">
-                    This section is coming soon.
-                  </div>
-                )}
+                {renderContent()}
               </div>
               <div className="flex justify-end gap-3 border-t border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
                 <button
@@ -115,14 +131,7 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
                   className="text-sm font-medium text-[var(--fg-secondary)] transition-colors hover:text-[var(--fg-primary)]"
                   type="button"
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="rounded-[var(--radius)] bg-[var(--accent)] px-6 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-[var(--shadow-sm)] transition-all hover:opacity-90"
-                  type="button"
-                >
-                  Save Changes
+                  Close
                 </button>
               </div>
             </div>
