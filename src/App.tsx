@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FolderPlus,
   FilePlus,
@@ -26,6 +26,7 @@ import { TemplateGallery } from "@/components/templates/TemplateGallery";
 import { useFolders } from "@/hooks/useFolders";
 import { useLogs } from "@/hooks/useLogs";
 import { useRules } from "@/hooks/useRules";
+import { useSettings } from "@/hooks/useSettings";
 import { ruleExport, ruleImport } from "@/lib/tauri";
 import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
@@ -38,6 +39,7 @@ function App() {
   useFolders();
   useRules();
   useLogs();
+  useSettings();
 
   const folders = useFolderStore((state) => state.folders);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
@@ -95,21 +97,21 @@ function App() {
     return { total, efficiency, savedBytes };
   }, [activeLogs]);
 
-  const handleNewRule = () => {
+  const handleNewRule = useCallback(() => {
     if (!selectedFolderId) return;
     setEditingRule(null);
     setEditorMode("new");
-  };
+  }, [selectedFolderId]);
 
-  const handleSelectRule = (rule: Rule) => {
+  const handleSelectRule = useCallback((rule: Rule) => {
     setEditingRule(rule);
     setEditorMode("edit");
-  };
+  }, []);
 
-  const handleCloseEditor = () => {
+  const handleCloseEditor = useCallback(() => {
     setEditingRule(null);
     setEditorMode("empty");
-  };
+  }, []);
 
   const handleExportRules = async () => {
     if (!selectedFolderId) return;

@@ -68,7 +68,7 @@ export function ConfirmDialog({
   const styles = variantStyles[variant];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
       <div
         ref={dialogRef}
         className="w-full max-w-sm mx-4 bg-[var(--bg-panel)] border border-[var(--border-main)] rounded-lg shadow-xl animate-in fade-in zoom-in-95 duration-150"

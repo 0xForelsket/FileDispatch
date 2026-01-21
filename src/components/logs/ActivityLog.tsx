@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
@@ -12,6 +12,7 @@ import {
   Terminal,
   Trash2,
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
@@ -65,6 +66,22 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
   const undoByLog = useMemo(() => {
     return new Map(undoEntries.map((entry) => [entry.logId, entry]));
   }, [undoEntries]);
+
+  // Virtualization
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: filteredEntries.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 48, // Estimated row height in pixels
+    overscan: 5, // Render 5 extra items above/below viewport
+  });
+
+  const handleUndo = useCallback((entryId: string) => {
+    const undoEntry = undoByLog.get(entryId);
+    if (undoEntry) {
+      void undoAction(undoEntry.id);
+    }
+  }, [undoByLog, undoAction]);
 
   return (
     <section className="flex h-full flex-col">
@@ -127,64 +144,77 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
           <div className="w-20 text-right">Size</div>
           <div className="w-20 text-right">Undo</div>
         </div>
-        <div className="custom-scrollbar flex-1 overflow-y-auto">
+        <div ref={scrollContainerRef} className="custom-scrollbar flex-1 overflow-y-auto">
           {filteredEntries.length === 0 ? (
             <div className="px-4 py-6 text-center text-xs text-[var(--fg-muted)]">
               No events yet.
             </div>
           ) : (
-            filteredEntries.map((entry) => {
-              const visual = getActionVisual(entry.actionType);
-              const Icon = visual.icon;
-              return (
-                <div
-                  key={entry.id}
-                  className="group flex items-center border-b border-[var(--border-main)] px-4 py-2 text-xs text-[var(--fg-primary)] transition-colors hover:bg-[var(--bg-subtle)]"
-                >
-                  <div className="w-24 font-semibold text-[var(--fg-secondary)]">{formatTime(entry.createdAt)}</div>
-                  <div className="w-24">
-                    <StatusPill status={entry.status} label={humanizeAction(entry.actionType)} />
-                  </div>
-                  <div className="flex-1 pr-4">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`inline-flex h-6 w-6 items-center justify-center rounded-[var(--radius)] border border-[var(--border-main)] ${visual.className}`}
-                      >
-                        <Icon className="h-3.5 w-3.5" />
-                      </span>
-                      <div className="min-w-0 flex flex-col justify-center">
-                        <div className="truncate font-semibold">{formatOperation(entry)}</div>
-                        <div className="mt-0.5 text-[10px] text-[var(--fg-muted)]">
-                          {formatRuleLabel(entry)}
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const entry = filteredEntries[virtualRow.index];
+                const visual = getActionVisual(entry.actionType);
+                const Icon = visual.icon;
+                return (
+                  <div
+                    key={entry.id}
+                    data-index={virtualRow.index}
+                    ref={virtualizer.measureElement}
+                    className="group flex items-center border-b border-[var(--border-main)] px-4 py-2 text-xs text-[var(--fg-primary)] transition-colors hover:bg-[var(--bg-subtle)]"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    <div className="w-24 font-semibold text-[var(--fg-secondary)]">{formatTime(entry.createdAt)}</div>
+                    <div className="w-24">
+                      <StatusPill status={entry.status} label={humanizeAction(entry.actionType)} />
+                    </div>
+                    <div className="flex-1 pr-4">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`inline-flex h-6 w-6 items-center justify-center rounded-[var(--radius)] border border-[var(--border-main)] ${visual.className}`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        <div className="min-w-0 flex flex-col justify-center">
+                          <div className="truncate font-semibold">{formatOperation(entry)}</div>
+                          <div className="mt-0.5 text-[10px] text-[var(--fg-muted)]">
+                            {formatRuleLabel(entry)}
+                          </div>
                         </div>
                       </div>
                     </div>
+                    <div className="w-20 text-right text-[var(--fg-secondary)] font-semibold">
+                      {formatBytes(getSizeBytes(entry))}
+                    </div>
+                    <div className="w-20 text-right">
+                      {undoByLog.has(entry.id) ? (
+                        <button
+                          className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-[var(--border-main)] px-2 py-0.5 text-[10px] font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                          onClick={() => handleUndo(entry.id)}
+                          type="button"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          Undo
+                        </button>
+                      ) : (
+                        <span className="text-[10px] opacity-30">—</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="w-20 text-right text-[var(--fg-secondary)] font-semibold">
-                    {formatBytes(getSizeBytes(entry))}
-                  </div>
-                  <div className="w-20 text-right">
-                    {undoByLog.has(entry.id) ? (
-                      <button
-                        className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-[var(--border-main)] px-2 py-0.5 text-[10px] font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
-                        onClick={() => {
-                          const undoEntry = undoByLog.get(entry.id);
-                          if (undoEntry) {
-                            void undoAction(undoEntry.id);
-                          }
-                        }}
-                        type="button"
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                        Undo
-                      </button>
-                    ) : (
-                      <span className="text-[10px] opacity-30">—</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
         </div>
       </div>

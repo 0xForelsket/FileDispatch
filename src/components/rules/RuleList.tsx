@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 // import { Plus, Terminal } from "lucide-react";
 
 import { useFolderStore } from "@/stores/folderStore";
+
+// Stable empty function reference to avoid creating new functions on each render
+const noop = () => {};
 import { useRuleStore } from "@/stores/ruleStore";
 import type { Rule } from "@/types";
 import { RuleItem } from "@/components/rules/RuleItem";
@@ -22,9 +25,39 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery 
   const deleteRule = useRuleStore((state) => state.deleteRule);
   const duplicateRule = useRuleStore((state) => state.duplicateRule);
   const reorderRules = useRuleStore((state) => state.reorderRules);
+
+  // Create a map of rules by ID for efficient lookup
+  const rulesById = useMemo(() => new Map(rules.map((r) => [r.id, r])), [rules]);
+
   const handleCreate = useCallback(() => {
     onNewRule();
   }, [onNewRule]);
+
+  // Stable callbacks for RuleItem
+  const handleToggle = useCallback((ruleId: string, enabled: boolean) => {
+    if (selectedFolderId) {
+      toggleRule(ruleId, enabled, selectedFolderId);
+    }
+  }, [toggleRule, selectedFolderId]);
+
+  const handleEdit = useCallback((ruleId: string) => {
+    const rule = rulesById.get(ruleId);
+    if (rule) {
+      onSelectRule(rule);
+    }
+  }, [rulesById, onSelectRule]);
+
+  const handleDelete = useCallback((ruleId: string) => {
+    if (selectedFolderId) {
+      deleteRule(ruleId, selectedFolderId);
+    }
+  }, [deleteRule, selectedFolderId]);
+
+  const handleDuplicate = useCallback((ruleId: string) => {
+    if (selectedFolderId) {
+      duplicateRule(ruleId, selectedFolderId);
+    }
+  }, [duplicateRule, selectedFolderId]);
 
   useEffect(() => {
     if (!selectedFolderId) return;
@@ -110,13 +143,13 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery 
               rule={rule}
               index={index}
               selected={rule.id === selectedRuleId}
-              onToggle={(enabled) => toggleRule(rule.id, enabled, selectedFolderId)}
-              onEdit={() => onSelectRule(rule)}
-              onDelete={() => deleteRule(rule.id, selectedFolderId)}
-              onDuplicate={() => duplicateRule(rule.id, selectedFolderId)}
-              onDragStart={isDraggingEnabled ? handleDragStart : () => {}}
-              onDragOver={isDraggingEnabled ? handleDragOver : () => {}}
-              onDragEnd={isDraggingEnabled ? handleDragEnd : () => {}}
+              onToggle={handleToggle}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onDuplicate={handleDuplicate}
+              onDragStart={isDraggingEnabled ? handleDragStart : noop}
+              onDragOver={isDraggingEnabled ? handleDragOver : noop}
+              onDragEnd={isDraggingEnabled ? handleDragEnd : noop}
               isDragging={isDraggingEnabled && dragIndex === index}
               isDragOver={isDraggingEnabled && dragOverIndex === index}
             />

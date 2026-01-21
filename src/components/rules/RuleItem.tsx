@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { GripVertical, Trash2 } from "lucide-react";
 
 import type { Condition, Rule } from "@/types";
@@ -9,10 +9,10 @@ interface RuleItemProps {
   rule: Rule;
   selected: boolean;
   index: number;
-  onToggle: (enabled: boolean) => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onDuplicate: () => void;
+  onToggle: (ruleId: string, enabled: boolean) => void;
+  onEdit: (ruleId: string) => void;
+  onDelete: (ruleId: string) => void;
+  onDuplicate: (ruleId: string) => void;
   onDragStart: (index: number) => void;
   onDragOver: (index: number) => void;
   onDragEnd: () => void;
@@ -20,7 +20,7 @@ interface RuleItemProps {
   isDragOver: boolean;
 }
 
-export function RuleItem({
+export const RuleItem = memo(function RuleItem({
   rule,
   selected,
   index,
@@ -63,7 +63,7 @@ export function RuleItem({
         onDragOver(index);
       }}
       onDragEnd={onDragEnd}
-      onClick={onEdit}
+      onClick={() => onEdit(rule.id)}
       className={`group flex items-start gap-1 rounded px-1 py-1.5 text-xs cursor-pointer select-none transition-all ${
         selected
           ? "bg-[var(--accent-muted)] text-[var(--fg-primary)]"
@@ -79,7 +79,7 @@ export function RuleItem({
       <div
         onClick={(e) => {
             e.stopPropagation();
-            onToggle(!rule.enabled);
+            onToggle(rule.id, !rule.enabled);
         }}
         className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border transition-colors ${
             rule.enabled ? "bg-[var(--accent)] border-[var(--accent)]" : "bg-[var(--bg-panel)] border-[var(--border-strong)]"
@@ -109,7 +109,7 @@ export function RuleItem({
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={onDelete}
+        onConfirm={() => onDelete(rule.id)}
         title="Delete Rule"
         message={`Are you sure you want to delete "${rule.name}"? This action cannot be undone.`}
         confirmLabel="Delete"
@@ -117,7 +117,7 @@ export function RuleItem({
       />
     </div>
   );
-}
+});
 
 function summarizeConditions(conditions: Condition[]) {
   if (conditions.length === 0) return "any file";

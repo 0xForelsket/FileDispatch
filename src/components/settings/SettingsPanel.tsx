@@ -14,13 +14,8 @@ interface SettingsPanelProps {
 export function SettingsPanel({ showTitle = true }: SettingsPanelProps) {
   const settings = useSettingsStore((state) => state.settings);
   const setSettings = useSettingsStore((state) => state.setSettings);
-  const loadSettings = useSettingsStore((state) => state.loadSettings);
   const saveSettings = useSettingsStore((state) => state.saveSettings);
   const mb = 1024 * 1024;
-
-  useEffect(() => {
-    void loadSettings();
-  }, [loadSettings]);
 
   useEffect(() => {
     if (settings.startAtLogin) {

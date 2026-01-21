@@ -30,8 +30,9 @@ export function MagiSelect({
 
   const selectedOption = options.find((opt) => opt.value === value);
 
-  // Close on click outside
+  // Close on click outside - only listen when open
   useEffect(() => {
+    if (!isOpen) return;
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -39,7 +40,7 @@ export function MagiSelect({
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   return (
     <div
