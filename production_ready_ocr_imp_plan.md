@@ -955,11 +955,11 @@ Lock sign conventions here so they never regress.
 - Basic unit tests for width table building + font subsetting
 - Best-effort subset outline validation (outline-based)
 - Basic observability logs (page counts, overlay bytes, elapsed time)
+- CIDSet stream emission (optional, now included)
 
 ### Not Done / Partial
 - Full composite glyph integrity validation (component-level)
 - `UserUnit != 1` handling (still unverified vs PDFium)
 - Integration tests/fixtures and extraction validation (Poppler/PDFium)
-- CIDSet stream (optional)
 - `bfrange` optimization for ToUnicode (future)
 - Multi-column reading order improvements (out of scope)

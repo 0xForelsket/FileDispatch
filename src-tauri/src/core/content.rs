@@ -582,7 +582,7 @@ fn add_cid_font(doc: &mut lopdf::Document, subset: &SubsetFont) -> Result<Object
     );
     let font_file_id = doc.add_object(font_file_stream);
 
-    let font_descriptor = dictionary! {
+    let mut font_descriptor = dictionary! {
         "Type" => "FontDescriptor",
         "FontName" => font_name.as_str(),
         "Flags" => 4,
@@ -599,6 +599,15 @@ fn add_cid_font(doc: &mut lopdf::Document, subset: &SubsetFont) -> Result<Object
         "StemV" => 80,
         "FontFile2" => Object::Reference(font_file_id),
     };
+    let cid_set_bytes = build_cid_set_bytes(&subset.used_gids);
+    if !cid_set_bytes.is_empty() {
+        let cid_set_stream = Stream::new(
+            dictionary! {"Filter" => "FlateDecode"},
+            flate_compress(&cid_set_bytes)?,
+        );
+        let cid_set_id = doc.add_object(cid_set_stream);
+        font_descriptor.set("CIDSet", Object::Reference(cid_set_id));
+    }
     let font_descriptor_id = doc.add_object(font_descriptor);
 
     let cid_system_info = dictionary! {
@@ -1001,6 +1010,23 @@ fn flate_compress(data: &[u8]) -> Result<Vec<u8>> {
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
     encoder.write_all(data)?;
     encoder.finish().map_err(Into::into)
+}
+
+fn build_cid_set_bytes(used_gids: &BTreeSet<u16>) -> Vec<u8> {
+    let max_gid = used_gids.iter().copied().max().unwrap_or(0);
+    if max_gid == 0 {
+        return Vec::new();
+    }
+    let len = (max_gid as usize / 8) + 1;
+    let mut bytes = vec![0u8; len];
+    for gid in used_gids {
+        let idx = (*gid as usize) / 8;
+        let bit = 7 - ((*gid as usize) % 8);
+        if let Some(byte) = bytes.get_mut(idx) {
+            *byte |= 1u8 << bit;
+        }
+    }
+    bytes
 }
 
 fn ensure_pdf_version(doc: &mut lopdf::Document, major: u8, minor: u8) {
