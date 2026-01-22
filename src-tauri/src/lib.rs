@@ -47,7 +47,7 @@ fn greet(name: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db = Database::new().expect("failed to initialize database");
-    let (event_tx, event_rx) = crossbeam_channel::unbounded();
+    let (event_tx, event_rx) = crossbeam_channel::bounded(1000);
     let watcher = WatcherService::new(event_tx, vec![]).expect("failed to initialize watcher");
     let state = AppState {
         db: db.clone(),
@@ -110,20 +110,29 @@ pub fn run() {
             let repo = FolderRepository::new(db.clone());
             let log_repo = LogRepository::new(db.clone());
             let _ = log_repo.cleanup(settings.log_retention_days);
-            if let Ok(folders) = repo.list() {
-                if let Ok(mut stored) = state.settings.lock() {
-                    *stored = settings.clone();
-                }
-                if let Ok(mut ocr) = state.ocr.lock() {
-                    ocr.update(app.handle().clone(), settings.clone());
-                }
-                let mut watcher = state.watcher.lock().unwrap();
-                watcher.set_ignore_patterns(settings.ignore_patterns.clone());
-                for folder in folders.into_iter().filter(|f| f.enabled) {
-                    let normalized = normalize_user_path(&folder.path);
-                    let _ = watcher.watch_folder(normalized, folder.id.clone(), folder.scan_depth);
-                }
+
+            // Store settings synchronously (fast operation)
+            if let Ok(mut stored) = state.settings.lock() {
+                *stored = settings.clone();
             }
+            if let Ok(mut ocr) = state.ocr.lock() {
+                ocr.update(app.handle().clone(), settings.clone());
+            }
+
+            // Defer folder watching to a background thread to avoid blocking startup
+            let watcher_state = state.watcher.clone();
+            let ignore_patterns = settings.ignore_patterns.clone();
+            std::thread::spawn(move || {
+                if let Ok(folders) = repo.list() {
+                    if let Ok(mut watcher) = watcher_state.lock() {
+                        watcher.set_ignore_patterns(ignore_patterns);
+                        for folder in folders.into_iter().filter(|f| f.enabled) {
+                            let normalized = normalize_user_path(&folder.path);
+                            let _ = watcher.watch_folder(normalized, folder.id.clone(), folder.scan_depth);
+                        }
+                    }
+                }
+            });
 
             let incomplete_cleaner = IncompleteCleaner::new(db.clone());
             std::thread::spawn(move || loop {

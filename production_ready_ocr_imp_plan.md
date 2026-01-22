@@ -964,3 +964,11 @@ Lock sign conventions here so they never regress.
 
 ### Not Done / Partial
 - Multi-column reading order improvements (out of scope)
+
+---
+
+## 13. Summary (2026-01-22)
+
+**Done:** Production CIDFont text layer with Type0/CIDFontType2 embedding, subsetting, widths, ToUnicode (with `bfrange`), CIDSet, line-aggregated `TJ`, font metrics sizing, resource bundling + settings gates, fallbacks, and broad generated-PDF extraction tests (EN/CJK/rotate/crop/mixed/UserUnit) with conditional PDFium/Poppler checks.
+
+**Not done:** Multi-column reading order improvements (explicitly out of scope for this phase).

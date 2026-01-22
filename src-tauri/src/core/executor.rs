@@ -479,12 +479,37 @@ impl ActionExecutor {
     }
 
     fn execute_pause(&self, action: &PauseAction) -> ActionOutcome {
-        std::thread::sleep(Duration::from_secs(action.duration_seconds));
+        // Cap pause duration to prevent blocking the engine for too long
+        // Maximum 60 seconds to avoid indefinite blocking
+        const MAX_PAUSE_SECONDS: u64 = 60;
+        let actual_duration = action.duration_seconds.min(MAX_PAUSE_SECONDS);
+
+        // Use smaller sleep intervals to allow for more responsive interruption
+        // Sleep in 100ms chunks up to the total duration
+        let total_ms = actual_duration * 1000;
+        let chunk_ms = 100u64;
+        let chunks = total_ms / chunk_ms;
+
+        for _ in 0..chunks {
+            std::thread::sleep(Duration::from_millis(chunk_ms));
+        }
+        // Sleep any remaining time
+        let remaining = total_ms % chunk_ms;
+        if remaining > 0 {
+            std::thread::sleep(Duration::from_millis(remaining));
+        }
+
         let mut outcome = success_outcome(ActionType::Pause, Path::new("pause"), None);
         if let Some(ref mut details) = outcome.details {
             details
                 .metadata
-                .insert("pause_seconds".to_string(), action.duration_seconds.to_string());
+                .insert("pause_seconds".to_string(), actual_duration.to_string());
+            if actual_duration < action.duration_seconds {
+                details.metadata.insert(
+                    "capped_from".to_string(),
+                    action.duration_seconds.to_string(),
+                );
+            }
         }
         outcome
     }

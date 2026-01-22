@@ -1,10 +1,19 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 use std::process::Command;
 use std::thread;
 
 use anyhow::Result;
 use chrono::{Duration, Utc};
-use regex::RegexBuilder;
+use lru::LruCache;
+use regex::{Regex, RegexBuilder};
+
+/// Thread-local cache for compiled regexes to avoid recompilation
+thread_local! {
+    static REGEX_CACHE: RefCell<LruCache<(String, bool), Regex>> =
+        RefCell::new(LruCache::new(NonZeroUsize::new(100).unwrap()));
+}
 
 use crate::core::content::{resolve_contents, ContentCache};
 use crate::core::duplicates::DuplicateDetector;
@@ -22,13 +31,16 @@ use crate::storage::rule_repo::RuleRepository;
 use crate::storage::undo_repo::UndoRepository;
 use crate::utils::file_info::FileInfo;
 
+/// Maximum entries in the debounce cache before LRU eviction
+const DEBOUNCE_CACHE_CAPACITY: usize = 10_000;
+
 pub struct RuleEngine {
     event_rx: crossbeam_channel::Receiver<FileEvent>,
     db: Database,
     executor: ActionExecutor,
     _settings: std::sync::Arc<std::sync::Mutex<crate::models::Settings>>,
     ocr: std::sync::Arc<std::sync::Mutex<crate::core::ocr::OcrManager>>,
-    last_seen: std::sync::Mutex<std::collections::HashMap<std::path::PathBuf, std::time::Instant>>,
+    last_seen: std::sync::Mutex<LruCache<std::path::PathBuf, std::time::Instant>>,
     paused: std::sync::Arc<std::sync::atomic::AtomicBool>,
     duplicate_detector: DuplicateDetector,
 }
@@ -48,7 +60,9 @@ impl RuleEngine {
             executor: ActionExecutor::new(app_handle, settings.clone(), ocr.clone()),
             _settings: settings,
             ocr,
-            last_seen: std::sync::Mutex::new(std::collections::HashMap::new()),
+            last_seen: std::sync::Mutex::new(LruCache::new(
+                NonZeroUsize::new(DEBOUNCE_CACHE_CAPACITY).unwrap(),
+            )),
             paused,
             duplicate_detector: DuplicateDetector::new(db.clone()),
         }
@@ -71,12 +85,12 @@ impl RuleEngine {
         let debounce_ms = self._settings.lock().map(|s| s.debounce_ms).unwrap_or(500);
         let now = std::time::Instant::now();
         if let Ok(mut last_seen) = self.last_seen.lock() {
-            if let Some(prev) = last_seen.get(&event.path) {
+            if let Some(prev) = last_seen.peek(&event.path) {
                 if now.duration_since(*prev).as_millis() < debounce_ms as u128 {
                     return Ok(());
                 }
             }
-            last_seen.insert(event.path.clone(), now);
+            last_seen.put(event.path.clone(), now);
         }
         let mut info = match FileInfo::from_path(&event.path) {
             Ok(info) => info,
@@ -113,8 +127,14 @@ impl RuleEngine {
         let undo_repo = UndoRepository::new(self.db.clone());
 
         let rules = rule_repo.list_by_folder(&event.folder_id)?;
+
+        // Pre-fetch all rule IDs that have already matched this file's hash
+        // This avoids N+1 queries in the rule loop
+        let rule_ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        let matched_rule_ids = match_repo.get_hash_matched_rules(&rule_ids, &info.hash)?;
+
+        // Clone settings once per event, not per rule
         let settings = self._settings.lock().map(|s| s.clone()).unwrap_or_default();
-        let mut ocr = self.ocr.lock().unwrap();
 
         for rule in rules {
             if !rule.enabled {
@@ -123,12 +143,16 @@ impl RuleEngine {
 
             // Skip if this file (by hash) was already processed by this rule
             // This prevents re-processing after renames or moves
-            if match_repo.has_hash_match(&rule.id, &info.hash)? {
+            // Now uses pre-fetched set instead of per-rule query
+            if matched_rule_ids.contains(&rule.id) {
                 continue;
             }
 
-            let evaluation =
-                evaluate_conditions(&rule, &info, &settings, &mut ocr, EvaluationOptions::default())?;
+            // Acquire OCR lock only when evaluating conditions, release after
+            let evaluation = {
+                let mut ocr = self.ocr.lock().unwrap();
+                evaluate_conditions(&rule, &info, &settings, &mut ocr, EvaluationOptions::default())?
+            };
             if !evaluation.matched {
                 continue;
             }
@@ -333,24 +357,56 @@ pub(crate) fn evaluate_string(
     cond: &crate::models::StringCondition,
 ) -> Result<EvaluationResult> {
     let mut captures = HashMap::new();
-    let mut t = target.to_string();
-    let mut v = cond.value.clone();
-    if !cond.case_sensitive {
-        t = t.to_lowercase();
-        v = v.to_lowercase();
-    }
 
     let matched = match cond.operator {
-        StringOperator::Is => t == v,
-        StringOperator::IsNot => t != v,
-        StringOperator::Contains => t.contains(&v),
-        StringOperator::DoesNotContain => !t.contains(&v),
-        StringOperator::StartsWith => t.starts_with(&v),
-        StringOperator::EndsWith => t.ends_with(&v),
+        // Use eq_ignore_ascii_case to avoid allocations for equality checks
+        StringOperator::Is => {
+            if cond.case_sensitive {
+                target == cond.value
+            } else {
+                target.eq_ignore_ascii_case(&cond.value)
+            }
+        }
+        StringOperator::IsNot => {
+            if cond.case_sensitive {
+                target != cond.value
+            } else {
+                !target.eq_ignore_ascii_case(&cond.value)
+            }
+        }
+        // For contains/starts_with/ends_with, only allocate when case-insensitive
+        StringOperator::Contains => {
+            if cond.case_sensitive {
+                target.contains(&cond.value)
+            } else {
+                target.to_lowercase().contains(&cond.value.to_lowercase())
+            }
+        }
+        StringOperator::DoesNotContain => {
+            if cond.case_sensitive {
+                !target.contains(&cond.value)
+            } else {
+                !target.to_lowercase().contains(&cond.value.to_lowercase())
+            }
+        }
+        StringOperator::StartsWith => {
+            if cond.case_sensitive {
+                target.starts_with(&cond.value)
+            } else {
+                target.to_lowercase().starts_with(&cond.value.to_lowercase())
+            }
+        }
+        StringOperator::EndsWith => {
+            if cond.case_sensitive {
+                target.ends_with(&cond.value)
+            } else {
+                target.to_lowercase().ends_with(&cond.value.to_lowercase())
+            }
+        }
+        // Regex handles case-insensitivity internally, no pre-allocation needed
+        // Use cached compiled regex to avoid recompilation per file
         StringOperator::Matches | StringOperator::DoesNotMatch => {
-            let mut builder = RegexBuilder::new(&cond.value);
-            builder.case_insensitive(!cond.case_sensitive);
-            let regex = builder.build()?;
+            let regex = get_or_compile_regex(&cond.value, !cond.case_sensitive)?;
             let matches = regex.captures(target);
             if let Some(caps) = matches {
                 for (i, cap) in caps.iter().enumerate().skip(1) {
@@ -366,6 +422,31 @@ pub(crate) fn evaluate_string(
     };
 
     Ok(EvaluationResult { matched, captures })
+}
+
+/// Get a compiled regex from cache or compile and cache it
+fn get_or_compile_regex(pattern: &str, case_insensitive: bool) -> Result<Regex> {
+    let key = (pattern.to_string(), case_insensitive);
+
+    // Try to get from cache first
+    let cached = REGEX_CACHE.with(|cache| {
+        cache.borrow_mut().get(&key).cloned()
+    });
+
+    if let Some(regex) = cached {
+        return Ok(regex);
+    }
+
+    // Compile and cache
+    let mut builder = RegexBuilder::new(pattern);
+    builder.case_insensitive(case_insensitive);
+    let regex = builder.build()?;
+
+    REGEX_CACHE.with(|cache| {
+        cache.borrow_mut().put(key, regex.clone());
+    });
+
+    Ok(regex)
 }
 
 pub(crate) fn evaluate_size(size: u64, cond: &crate::models::SizeCondition) -> bool {
