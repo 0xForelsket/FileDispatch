@@ -3,6 +3,7 @@ pub mod model_manager;
 pub mod ocr;
 pub mod ocr_grouping;
 pub mod ocr_geometry;
+pub mod pdf_font;
 pub mod pdf_coords;
 pub mod pdf_page_geometry;
 pub mod content;

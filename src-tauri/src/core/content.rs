@@ -1,18 +1,26 @@
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::io::Read;
-use std::path::Path;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
+use flate2::{write::ZlibEncoder, Compression};
 use lopdf::dictionary;
+use lopdf::content::Operation;
+use lopdf::{Object, ObjectId, Stream};
 use pdfium_render::prelude::{PdfDocument, PdfRenderConfig, Pdfium};
 use quick_xml::events::Event;
 use quick_xml::Reader;
+use tracing::{info, warn};
 
 use crate::core::ocr_geometry::{PageOcrResult, Rect};
 use crate::core::ocr_grouping::group_words_into_lines;
 use crate::core::ocr::OcrManager;
 use crate::core::pdf_coords::{ocr_pixel_to_pdf_point, PageGeometry, PdfBox};
+use crate::core::pdf_font::{
+    build_tounicode_cmap, load_font_data, subset_font_for_codepoints, SubsetFont, OCR_FONT_NAME,
+};
 use crate::core::pdf_page_geometry::extract_page_geometry;
 use crate::models::{ContentSource, FileKind, Settings};
 use crate::utils::file_info::FileInfo;
@@ -83,6 +91,7 @@ pub fn make_pdf_searchable(
     output_path: &Path,
     settings: &Settings,
     ocr: &mut OcrManager,
+    resource_dir: Option<PathBuf>,
     skip_if_text: bool,
 ) -> Result<MakePdfSearchableStatus> {
     if !source_path
@@ -116,7 +125,7 @@ pub fn make_pdf_searchable(
     if pages.is_empty() {
         return Err(anyhow!("No OCR text extracted"));
     }
-    add_text_layer_to_pdf(source_path, output_path, &pages, settings)?;
+    add_text_layer_to_pdf(source_path, output_path, &pages, settings, resource_dir.as_deref())?;
     Ok(MakePdfSearchableStatus::Completed)
 }
 
@@ -338,100 +347,132 @@ fn page_to_plain_text(page: &PageOcrResult) -> String {
         .join("\n")
 }
 
+struct CidFontResources {
+    font_id: ObjectId,
+    subset: SubsetFont,
+}
+
 fn add_text_layer_to_pdf(
     source_path: &Path,
     output_path: &Path,
     pages: &[PageOcrResult],
     settings: &Settings,
+    resource_dir: Option<&Path>,
 ) -> Result<()> {
     let mut doc = lopdf::Document::load(source_path)?;
     let page_map = doc.get_pages();
 
-    let font_id = add_font(&mut doc);
-    for (idx, (_page_number, page_id)) in page_map.iter().enumerate() {
-        let page = match pages.get(idx) {
-            Some(page) => page,
-            None => break,
-        };
-        let use_mapped = settings.content_enable_pdf_ocr_text_layer_dev;
-        if !use_mapped {
+    let use_mapped = settings.content_enable_pdf_ocr_text_layer_dev;
+    if !use_mapped {
+        let font_id = add_font(&mut doc);
+        for (idx, (_page_number, page_id)) in page_map.iter().enumerate() {
+            let page = match pages.get(idx) {
+                Some(page) => page,
+                None => break,
+            };
             let text = page_to_plain_text(page);
             if text.trim().is_empty() {
                 continue;
             }
             let geometry = extract_page_geometry(&doc, *page_id)?;
             let stream = build_text_stream(&text, geometry.crop_box.height() as f64);
-            let stream_id = doc.add_object(stream);
-            let page_obj = doc.get_object_mut(*page_id)?;
-            if let lopdf::Object::Dictionary(ref mut dict) = page_obj {
-                let contents = dict.get(b"Contents").map(|obj| obj.clone()).ok();
-                let new_contents = match contents {
-                    Some(lopdf::Object::Array(mut arr)) => {
-                        arr.push(lopdf::Object::Reference(stream_id));
-                        lopdf::Object::Array(arr)
-                    }
-                    Some(existing) => {
-                        lopdf::Object::Array(vec![existing, lopdf::Object::Reference(stream_id)])
-                    }
-                    None => lopdf::Object::Reference(stream_id),
-                };
-                dict.set("Contents", new_contents);
+            append_stream_to_page(&mut doc, *page_id, stream, "F1", font_id)?;
+        }
+        return save_pdf(doc, source_path, output_path);
+    }
 
-                let resources = dict.get(b"Resources").map(|obj| obj.clone()).ok();
-                let mut resources_dict = match resources {
-                    Some(lopdf::Object::Dictionary(dict)) => dict,
-                    _ => lopdf::Dictionary::new(),
-                };
-                let font_dict = match resources_dict.get(b"Font").map(|obj| obj.clone()).ok() {
-                    Some(lopdf::Object::Dictionary(dict)) => dict,
-                    _ => lopdf::Dictionary::new(),
-                };
-                let mut font_dict = font_dict;
-                font_dict.set("F1", font_id);
-                resources_dict.set("Font", font_dict);
-                dict.set("Resources", resources_dict);
+    let mut cid_font: Option<CidFontResources> = None;
+    if settings.content_use_cidfont_ocr {
+        match build_cid_font_resources(&mut doc, pages, resource_dir) {
+            Ok(resources) => {
+                cid_font = Some(resources);
             }
-            continue;
-        }
-
-        if page.lines.is_empty() {
-            continue;
-        }
-        let geometry = extract_page_geometry(&doc, *page_id)?;
-        let stream = build_text_stream_from_ocr(page, geometry);
-
-        let stream_id = doc.add_object(stream);
-        let page_obj = doc.get_object_mut(*page_id)?;
-        if let lopdf::Object::Dictionary(ref mut dict) = page_obj {
-            let contents = dict.get(b"Contents").map(|obj| obj.clone()).ok();
-            let new_contents = match contents {
-                Some(lopdf::Object::Array(mut arr)) => {
-                    arr.push(lopdf::Object::Reference(stream_id));
-                    lopdf::Object::Array(arr)
-                }
-                Some(existing) => {
-                    lopdf::Object::Array(vec![existing, lopdf::Object::Reference(stream_id)])
-                }
-                None => lopdf::Object::Reference(stream_id),
-            };
-            dict.set("Contents", new_contents);
-
-            let resources = dict.get(b"Resources").map(|obj| obj.clone()).ok();
-            let mut resources_dict = match resources {
-                Some(lopdf::Object::Dictionary(dict)) => dict,
-                _ => lopdf::Dictionary::new(),
-            };
-            let font_dict = match resources_dict.get(b"Font").map(|obj| obj.clone()).ok() {
-                Some(lopdf::Object::Dictionary(dict)) => dict,
-                _ => lopdf::Dictionary::new(),
-            };
-            let mut font_dict = font_dict;
-            font_dict.set("F1", font_id);
-            resources_dict.set("Font", font_dict);
-            dict.set("Resources", resources_dict);
+            Err(err) => {
+                warn!("CID OCR font unavailable; falling back to Type1 overlay: {err}");
+            }
         }
     }
 
+    let mut fallback_font_id: Option<ObjectId> = None;
+
+    for (idx, (_page_number, page_id)) in page_map.iter().enumerate() {
+        let page = match pages.get(idx) {
+            Some(page) => page,
+            None => break,
+        };
+        if page.lines.is_empty() {
+            continue;
+        }
+
+        let geometry = extract_page_geometry(&doc, *page_id)?;
+        if (geometry.user_unit - 1.0).abs() > f32::EPSILON {
+            warn!(
+                "UserUnit {} on page {} not yet supported; using plain text fallback.",
+                geometry.user_unit,
+                idx + 1
+            );
+            let text = page_to_plain_text(page);
+            if text.trim().is_empty() {
+                continue;
+            }
+            let font_id = match fallback_font_id {
+                Some(id) => id,
+                None => {
+                    let id = add_font(&mut doc);
+                    fallback_font_id = Some(id);
+                    id
+                }
+            };
+            let stream = build_text_stream(&text, geometry.crop_box.height() as f64);
+            append_stream_to_page(&mut doc, *page_id, stream, "F1", font_id)?;
+            continue;
+        }
+        let mut used_cid = false;
+
+        if let Some(ref cid) = cid_font {
+            let font_key = select_font_key(&doc, *page_id, "Focr")?;
+            match build_text_stream_from_ocr_cidfont(
+                page,
+                geometry,
+                &font_key,
+                &cid.subset,
+                settings,
+            ) {
+                Ok(Some(stream)) => {
+                    append_stream_to_page(&mut doc, *page_id, stream, &font_key, cid.font_id)?;
+                    used_cid = true;
+                }
+                Ok(None) => {}
+                Err(err) => {
+                    warn!(
+                        "Failed to build CID OCR stream for page {}: {err}",
+                        idx + 1
+                    );
+                }
+            }
+        }
+
+        if !used_cid {
+            let stream = build_text_stream_from_ocr(page, geometry);
+            if stream.content.is_empty() {
+                continue;
+            }
+            let font_id = match fallback_font_id {
+                Some(id) => id,
+                None => {
+                    let id = add_font(&mut doc);
+                    fallback_font_id = Some(id);
+                    id
+                }
+            };
+            append_stream_to_page(&mut doc, *page_id, stream, "F1", font_id)?;
+        }
+    }
+
+    save_pdf(doc, source_path, output_path)
+}
+
+fn save_pdf(mut doc: lopdf::Document, source_path: &Path, output_path: &Path) -> Result<()> {
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -444,6 +485,546 @@ fn add_text_layer_to_pdf(
         doc.save(output_path)?;
     }
     Ok(())
+}
+
+fn append_stream_to_page(
+    doc: &mut lopdf::Document,
+    page_id: ObjectId,
+    stream: Stream,
+    font_key: &str,
+    font_id: ObjectId,
+) -> Result<()> {
+    let stream_id = doc.add_object(stream);
+    let page_obj = doc.get_object_mut(page_id)?;
+    if let lopdf::Object::Dictionary(ref mut dict) = page_obj {
+        let contents = dict.get(b"Contents").map(|obj| obj.clone()).ok();
+        let new_contents = match contents {
+            Some(lopdf::Object::Array(mut arr)) => {
+                arr.push(lopdf::Object::Reference(stream_id));
+                lopdf::Object::Array(arr)
+            }
+            Some(existing) => {
+                lopdf::Object::Array(vec![existing, lopdf::Object::Reference(stream_id)])
+            }
+            None => lopdf::Object::Reference(stream_id),
+        };
+        dict.set("Contents", new_contents);
+
+        let resources = dict.get(b"Resources").map(|obj| obj.clone()).ok();
+        let mut resources_dict = match resources {
+            Some(lopdf::Object::Dictionary(dict)) => dict,
+            _ => lopdf::Dictionary::new(),
+        };
+        let font_dict = match resources_dict.get(b"Font").map(|obj| obj.clone()).ok() {
+            Some(lopdf::Object::Dictionary(dict)) => dict,
+            _ => lopdf::Dictionary::new(),
+        };
+        let mut font_dict = font_dict;
+        font_dict.set(font_key, font_id);
+        resources_dict.set("Font", font_dict);
+        dict.set("Resources", resources_dict);
+    }
+    Ok(())
+}
+
+fn build_cid_font_resources(
+    doc: &mut lopdf::Document,
+    pages: &[PageOcrResult],
+    resource_dir: Option<&Path>,
+) -> Result<CidFontResources> {
+    let codepoints = collect_ocr_codepoints(pages);
+    if codepoints.is_empty() {
+        return Err(anyhow!("No OCR codepoints available for embedding"));
+    }
+
+    let font_data = load_font_data(resource_dir)?;
+    let subset = subset_font_for_codepoints(&font_data, &codepoints)?;
+
+    if !subset.missing_codepoints.is_empty() {
+        warn!(
+            "OCR font missing {} codepoints; using .notdef.",
+            subset.missing_codepoints.len()
+        );
+    }
+
+    let font_id = add_cid_font(doc, &subset)?;
+    ensure_pdf_version(doc, 1, 2);
+
+    info!(
+        "Embedded OCR CID font: {} glyphs, {} bytes",
+        subset.used_gids.len(),
+        subset.subset_bytes.len()
+    );
+
+    Ok(CidFontResources { font_id, subset })
+}
+
+fn add_cid_font(doc: &mut lopdf::Document, subset: &SubsetFont) -> Result<ObjectId> {
+    let font_name = format!("{}+{}", subset.subset_tag, OCR_FONT_NAME);
+    let (dw, w_array) = build_widths_array(&subset.gid_widths_1000, &subset.used_gids);
+
+    let font_file_bytes = flate_compress(&subset.subset_bytes)?;
+    let font_file_stream = Stream::new(
+        dictionary! {"Filter" => "FlateDecode"},
+        font_file_bytes,
+    );
+    let font_file_id = doc.add_object(font_file_stream);
+
+    let font_descriptor = dictionary! {
+        "Type" => "FontDescriptor",
+        "FontName" => font_name.as_str(),
+        "Flags" => 4,
+        "FontBBox" => vec![
+            Object::Integer(subset.metrics_1000.bbox[0] as i64),
+            Object::Integer(subset.metrics_1000.bbox[1] as i64),
+            Object::Integer(subset.metrics_1000.bbox[2] as i64),
+            Object::Integer(subset.metrics_1000.bbox[3] as i64),
+        ],
+        "ItalicAngle" => 0,
+        "Ascent" => subset.metrics_1000.ascent as i64,
+        "Descent" => subset.metrics_1000.descent as i64,
+        "CapHeight" => subset.metrics_1000.cap_height as i64,
+        "StemV" => 80,
+        "FontFile2" => Object::Reference(font_file_id),
+    };
+    let font_descriptor_id = doc.add_object(font_descriptor);
+
+    let cid_system_info = dictionary! {
+        "Registry" => Object::string_literal("Adobe"),
+        "Ordering" => Object::string_literal("Identity"),
+        "Supplement" => 0,
+    };
+
+    let cid_font = dictionary! {
+        "Type" => "Font",
+        "Subtype" => "CIDFontType2",
+        "BaseFont" => font_name.as_str(),
+        "CIDSystemInfo" => cid_system_info,
+        "DW" => dw as i64,
+        "W" => Object::Array(w_array),
+        "FontDescriptor" => Object::Reference(font_descriptor_id),
+        "CIDToGIDMap" => "Identity",
+    };
+    let cid_font_id = doc.add_object(cid_font);
+
+    let mut gid_to_char: BTreeMap<u16, char> = BTreeMap::new();
+    let mut duplicate_gids = 0usize;
+    for (ch, gid) in subset.unicode_to_gid.iter() {
+        if *gid == 0 {
+            continue;
+        }
+        if gid_to_char.contains_key(gid) {
+            duplicate_gids += 1;
+            continue;
+        }
+        gid_to_char.insert(*gid, *ch);
+    }
+    if duplicate_gids > 0 {
+        warn!(
+            "OCR CID font has {} duplicate gid mappings; using first occurrence.",
+            duplicate_gids
+        );
+    }
+
+    let mapping: Vec<(u16, char)> = gid_to_char.into_iter().collect();
+    let tounicode_bytes = build_tounicode_cmap(&mapping);
+    let tounicode_stream = Stream::new(
+        dictionary! {"Filter" => "FlateDecode"},
+        flate_compress(&tounicode_bytes)?,
+    );
+    let tounicode_id = doc.add_object(tounicode_stream);
+
+    let type0_font = dictionary! {
+        "Type" => "Font",
+        "Subtype" => "Type0",
+        "BaseFont" => font_name.as_str(),
+        "Encoding" => "Identity-H",
+        "DescendantFonts" => vec![Object::Reference(cid_font_id)],
+        "ToUnicode" => Object::Reference(tounicode_id),
+    };
+
+    Ok(doc.add_object(type0_font))
+}
+
+fn build_widths_array(widths: &[u16], used_gids: &BTreeSet<u16>) -> (u16, Vec<Object>) {
+    let mut counts: BTreeMap<u16, usize> = BTreeMap::new();
+    for gid in used_gids {
+        if *gid == 0 {
+            continue;
+        }
+        let width = widths.get(*gid as usize).copied().unwrap_or(0);
+        *counts.entry(width).or_insert(0) += 1;
+    }
+    let dw = counts
+        .iter()
+        .max_by_key(|(_, count)| *count)
+        .map(|(w, _)| *w)
+        .unwrap_or_else(|| widths.get(0).copied().unwrap_or(500));
+
+    let mut entries: Vec<(u16, u16)> = used_gids
+        .iter()
+        .filter_map(|gid| {
+            let width = widths.get(*gid as usize).copied().unwrap_or(dw);
+            if width == dw {
+                None
+            } else {
+                Some((*gid, width))
+            }
+        })
+        .collect();
+    entries.sort_by_key(|(gid, _)| *gid);
+
+    let mut w_array = Vec::new();
+    let mut i = 0;
+    while i < entries.len() {
+        let (start_cid, start_width) = entries[i];
+        let mut end_cid = start_cid;
+        let mut widths_run = vec![start_width];
+        let mut all_same = true;
+
+        let mut j = i;
+        while j + 1 < entries.len() && entries[j + 1].0 == end_cid + 1 {
+            j += 1;
+            end_cid = entries[j].0;
+            let w = entries[j].1;
+            if w != start_width {
+                all_same = false;
+            }
+            widths_run.push(w);
+        }
+
+        if all_same {
+            w_array.push(Object::Integer(start_cid as i64));
+            w_array.push(Object::Integer(end_cid as i64));
+            w_array.push(Object::Integer(start_width as i64));
+        } else {
+            w_array.push(Object::Integer(start_cid as i64));
+            w_array.push(Object::Array(
+                widths_run
+                    .iter()
+                    .map(|w| Object::Integer(*w as i64))
+                    .collect(),
+            ));
+        }
+
+        i = j + 1;
+    }
+
+    (dw, w_array)
+}
+
+fn build_text_stream_from_ocr_cidfont(
+    page: &PageOcrResult,
+    geometry: PageGeometry,
+    font_key: &str,
+    subset: &SubsetFont,
+    settings: &Settings,
+) -> Result<Option<Stream>> {
+    let render_width = page.render_width as f32;
+    let render_height = page.render_height as f32;
+    if render_width <= 0.0 || render_height <= 0.0 {
+        return Ok(None);
+    }
+
+    let em_height = (subset.metrics_1000.ascent - subset.metrics_1000.descent) as f32;
+    if em_height <= 0.0 {
+        return Ok(None);
+    }
+
+    let mut ops: Vec<Operation> = Vec::new();
+    ops.push(Operation::new("q", vec![]));
+    ops.push(Operation::new("BT", vec![]));
+    let diagnostic = ocr_diagnostic_mode(settings);
+    ops.push(Operation::new(
+        "Tr",
+        vec![Object::Integer(if diagnostic { 0 } else { 3 })],
+    ));
+
+    let mut has_text = false;
+
+    let mut line_entries: Vec<(f32, f32, &crate::core::ocr_geometry::TextLine)> =
+        Vec::with_capacity(page.lines.len());
+    for line in &page.lines {
+        let line_box = map_ocr_rect_to_pdf(&line.bbox, render_width, render_height, geometry);
+        let y_top = line_box.y0.max(line_box.y1);
+        let x_left = line_box.x0.min(line_box.x1);
+        if !y_top.is_finite() || !x_left.is_finite() {
+            continue;
+        }
+        line_entries.push((y_top, x_left, line));
+    }
+
+    line_entries.sort_by(|a, b| {
+        b.0.partial_cmp(&a.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| {
+                a.1.partial_cmp(&b.1)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+    });
+
+    for (_, _, line) in line_entries {
+        let mut word_layouts = Vec::new();
+        for word in &line.words {
+            let text = sanitize_ocr_text(&word.text);
+            if text.trim().is_empty() {
+                continue;
+            }
+            let word_box = map_ocr_rect_to_pdf(&word.bbox, render_width, render_height, geometry);
+            let x0 = word_box.x0.min(word_box.x1);
+            let x1 = word_box.x0.max(word_box.x1);
+            let y0 = word_box.y0.min(word_box.y1);
+            let y1 = word_box.y0.max(word_box.y1);
+            if !(x0.is_finite() && x1.is_finite() && y0.is_finite() && y1.is_finite()) {
+                continue;
+            }
+            if (x1 - x0) <= 0.0 || (y1 - y0) <= 0.0 {
+                continue;
+            }
+            word_layouts.push(WordLayout {
+                text,
+                x0,
+                x1,
+                y0,
+                y1,
+            });
+        }
+
+        if word_layouts.is_empty() {
+            continue;
+        }
+
+        word_layouts.sort_by(|a, b| {
+            a.x0.partial_cmp(&b.x0)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        let line_top = word_layouts
+            .iter()
+            .map(|w| w.y1)
+            .fold(f32::NEG_INFINITY, f32::max);
+        let line_bottom = word_layouts
+            .iter()
+            .map(|w| w.y0)
+            .fold(f32::INFINITY, f32::min);
+        let line_height = (line_top - line_bottom).abs();
+        if line_height <= 0.0 || !line_height.is_finite() {
+            continue;
+        }
+
+        let font_size = (line_height * 1000.0 / em_height).max(1.0);
+        if !font_size.is_finite() {
+            continue;
+        }
+        let baseline_y =
+            line_top - (subset.metrics_1000.ascent as f32 / 1000.0) * font_size;
+        let line_start_x = word_layouts.first().map(|w| w.x0).unwrap_or(0.0);
+        if !baseline_y.is_finite() || !line_start_x.is_finite() {
+            continue;
+        }
+
+        ops.push(Operation::new(
+            "Tf",
+            vec![
+                Object::Name(font_key.as_bytes().to_vec()),
+                Object::Real(round_2(font_size)),
+            ],
+        ));
+        ops.push(Operation::new(
+            "Tm",
+            vec![
+                Object::Real(1.0),
+                Object::Real(0.0),
+                Object::Real(0.0),
+                Object::Real(1.0),
+                Object::Real(round_2(line_start_x)),
+                Object::Real(round_2(baseline_y)),
+            ],
+        ));
+
+        let mut tj_items: Vec<Object> = Vec::new();
+
+        for idx in 0..word_layouts.len() {
+            let word = &word_layouts[idx];
+            let next = word_layouts.get(idx + 1);
+            let insert_space = next
+                .map(|next_word| should_insert_space(word.text.as_str(), next_word.text.as_str()))
+                .unwrap_or(false);
+
+            let mut word_text = word.text.clone();
+            if insert_space {
+                word_text.push(' ');
+            }
+
+            let (bytes, advance_1000, missing) =
+                encode_text_to_cid_bytes(&word_text, subset);
+            if missing > 0 {
+                // Avoid spamming logs; count at line-level instead if needed.
+            }
+            if bytes.is_empty() {
+                continue;
+            }
+            tj_items.push(Object::String(bytes, lopdf::StringFormat::Hexadecimal));
+
+            if let Some(next_word) = next {
+                let expected_next = word.x0 + (advance_1000 as f32 / 1000.0) * font_size;
+                let actual_next = next_word.x0;
+                let mut adj = (expected_next - actual_next) * 1000.0 / font_size;
+                if adj.is_finite() {
+                    adj = adj.round().clamp(-5000.0, 5000.0);
+                    tj_items.push(Object::Integer(adj as i64));
+                }
+            }
+        }
+
+        if !tj_items.is_empty() {
+            ops.push(Operation::new("TJ", vec![Object::Array(tj_items)]));
+            has_text = true;
+        }
+    }
+
+    ops.push(Operation::new("ET", vec![]));
+    ops.push(Operation::new("Q", vec![]));
+
+    if !has_text {
+        return Ok(None);
+    }
+
+    let content = lopdf::content::Content { operations: ops };
+    let encoded = content.encode().unwrap_or_default();
+    let compressed = flate_compress(&encoded)?;
+    Ok(Some(Stream::new(
+        dictionary! {"Filter" => "FlateDecode"},
+        compressed,
+    )))
+}
+
+fn select_font_key(doc: &lopdf::Document, page_id: ObjectId, base: &str) -> Result<String> {
+    let page_obj = doc.get_object(page_id)?;
+    let dict = page_obj.as_dict().map_err(|_| anyhow!("Invalid page dictionary"))?;
+    let resources = dict.get(b"Resources").ok().and_then(|obj| obj.as_dict().ok());
+    let fonts = resources.and_then(|res| res.get(b"Font").ok()).and_then(|obj| obj.as_dict().ok());
+
+    if let Some(fonts) = fonts {
+        if fonts.get(base.as_bytes()).is_err() {
+            return Ok(base.to_string());
+        }
+        for i in 1..=99 {
+            let candidate = format!("{}{}", base, i);
+            if fonts.get(candidate.as_bytes()).is_err() {
+                return Ok(candidate);
+            }
+        }
+    }
+    Ok(format!("{}{}", base, "X"))
+}
+
+fn collect_ocr_codepoints(pages: &[PageOcrResult]) -> BTreeSet<char> {
+    let mut set = BTreeSet::new();
+    set.insert(' ');
+    for page in pages {
+        for line in &page.lines {
+            for word in &line.words {
+                for ch in word.text.chars() {
+                    if !ch.is_control() {
+                        set.insert(ch);
+                    }
+                }
+            }
+        }
+    }
+    set
+}
+
+fn sanitize_ocr_text(text: &str) -> String {
+    text.chars()
+        .filter(|ch| {
+            if *ch == '\t' || *ch == '\n' || *ch == '\r' {
+                false
+            } else {
+                !ch.is_control()
+            }
+        })
+        .collect()
+}
+
+fn encode_text_to_cid_bytes(text: &str, subset: &SubsetFont) -> (Vec<u8>, u32, usize) {
+    let mut bytes = Vec::with_capacity(text.chars().count() * 2);
+    let mut advance_1000: u32 = 0;
+    let mut missing = 0;
+
+    for ch in text.chars() {
+        if ch.is_control() {
+            continue;
+        }
+        let gid = subset.unicode_to_gid.get(&ch).copied().unwrap_or(0);
+        if gid == 0 {
+            missing += 1;
+        }
+        bytes.push((gid >> 8) as u8);
+        bytes.push((gid & 0xFF) as u8);
+        if let Some(width) = subset.gid_widths_1000.get(gid as usize) {
+            advance_1000 += *width as u32;
+        }
+    }
+
+    (bytes, advance_1000, missing)
+}
+
+fn should_insert_space(prev: &str, next: &str) -> bool {
+    if contains_cjk(prev) || contains_cjk(next) {
+        return false;
+    }
+    true
+}
+
+fn round_2(value: f32) -> f32 {
+    (value * 100.0).round() / 100.0
+}
+
+fn flate_compress(data: &[u8]) -> Result<Vec<u8>> {
+    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(data)?;
+    encoder.finish().map_err(Into::into)
+}
+
+fn ensure_pdf_version(doc: &mut lopdf::Document, major: u8, minor: u8) {
+    let target = (major as i32, minor as i32);
+    let current = doc
+        .version
+        .split('.')
+        .collect::<Vec<_>>();
+    let parsed = if current.len() == 2 {
+        let major = current[0].parse::<i32>().ok();
+        let minor = current[1].parse::<i32>().ok();
+        match (major, minor) {
+            (Some(maj), Some(min)) => Some((maj, min)),
+            _ => None,
+        }
+    } else {
+        None
+    };
+
+    let should_bump = parsed.map(|v| v < target).unwrap_or(true);
+    if should_bump {
+        doc.version = format!("{}.{}", major, minor);
+    }
+}
+
+fn ocr_diagnostic_mode(settings: &Settings) -> bool {
+    if settings.content_ocr_diagnostic_mode {
+        return true;
+    }
+    matches!(std::env::var("FILEDISPATCH_OCR_DEBUG"), Ok(v) if v == "1")
+}
+
+#[derive(Clone)]
+struct WordLayout {
+    text: String,
+    x0: f32,
+    x1: f32,
+    y0: f32,
+    y1: f32,
 }
 
 fn add_font(doc: &mut lopdf::Document) -> lopdf::ObjectId {

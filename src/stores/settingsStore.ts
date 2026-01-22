@@ -26,6 +26,8 @@ export interface AppSettings {
   contentOcrTimeoutImageMs: number;
   contentOcrTimeoutPdfMs: number;
   contentEnablePdfOcrTextLayerDev: boolean;
+  contentUseCidfontOcr: boolean;
+  contentOcrDiagnosticMode: boolean;
   ocrModelSource: "bundled" | "custom";
   ocrModelDetPath: string;
   ocrModelRecPath: string;
@@ -69,6 +71,8 @@ export const defaultSettings: AppSettings = {
   contentOcrTimeoutImageMs: 15_000,
   contentOcrTimeoutPdfMs: 120_000,
   contentEnablePdfOcrTextLayerDev: false,
+  contentUseCidfontOcr: false,
+  contentOcrDiagnosticMode: false,
   ocrModelSource: "bundled",
   ocrModelDetPath: "",
   ocrModelRecPath: "",

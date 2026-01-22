@@ -24,6 +24,8 @@ pub struct PageGeometry {
     pub crop_box: PdfBox,
     /// Page rotation in degrees (typically 0/90/180/270). Treated as clockwise.
     pub rotate_cw_degrees: u32,
+    /// User unit scaling factor (default 1.0).
+    pub user_unit: f32,
 }
 
 /// Map a point from OCR pixel coordinates (top-left origin) into PDF user-space points
@@ -108,6 +110,7 @@ mod tests {
                 y1: 792.0,
             },
             rotate_cw_degrees: 0,
+            user_unit: 1.0,
         };
 
         // Match the CropBox aspect ratio (612x792 points).
@@ -126,6 +129,7 @@ mod tests {
                 y1: 792.0,
             },
             rotate_cw_degrees: 90,
+            user_unit: 1.0,
         };
 
         // For /Rotate 90, PDFium reports swapped page width/height, and the rendered bitmap is
@@ -145,6 +149,7 @@ mod tests {
                 y1: 420.0,
             },
             rotate_cw_degrees: 90,
+            user_unit: 1.0,
         };
 
         // top-left in rotated view -> bottom-left base
@@ -174,6 +179,7 @@ mod tests {
                 y1: 600.0,
             },
             rotate_cw_degrees: 0,
+            user_unit: 1.0,
         };
 
         let (x, y) = ocr_pixel_to_pdf_point(50.0, 50.0, 100.0, 100.0, geom);

@@ -12,10 +12,15 @@ pub fn extract_page_geometry(doc: &Document, page_id: ObjectId) -> Result<PageGe
 
     let rotate = resolve_inherited_number(doc, page_id, b"Rotate")?.unwrap_or(0.0);
     let rotate_cw_degrees = normalize_rotate_cw_degrees(rotate)?;
+    let mut user_unit = resolve_inherited_number(doc, page_id, b"UserUnit")?.unwrap_or(1.0);
+    if user_unit <= 0.0 {
+        user_unit = 1.0;
+    }
 
     Ok(PageGeometry {
         crop_box,
         rotate_cw_degrees,
+        user_unit: user_unit as f32,
     })
 }
 
@@ -185,6 +190,7 @@ mod tests {
         assert_eq!(geom.crop_box.x1, 200.0);
         assert_eq!(geom.crop_box.y1, 100.0);
         assert_eq!(geom.rotate_cw_degrees, 0);
+        assert_eq!(geom.user_unit, 1.0);
     }
 
     #[test]
@@ -212,6 +218,7 @@ mod tests {
         assert_eq!(geom.crop_box.y0, 20.0);
         assert_eq!(geom.crop_box.x1, 110.0);
         assert_eq!(geom.crop_box.y1, 220.0);
+        assert_eq!(geom.user_unit, 1.0);
     }
 
     #[test]
@@ -231,6 +238,7 @@ mod tests {
 
         let geom = extract_page_geometry(&doc, page_id).unwrap();
         assert_eq!(geom.rotate_cw_degrees, 90);
+        assert_eq!(geom.user_unit, 1.0);
     }
 
     #[test]
@@ -252,5 +260,6 @@ mod tests {
         assert_eq!(geom.crop_box.x1, 612.0);
         assert_eq!(geom.crop_box.y1, 792.0);
         assert_eq!(geom.rotate_cw_degrees, 270);
+        assert_eq!(geom.user_unit, 1.0);
     }
 }

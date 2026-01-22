@@ -450,12 +450,14 @@ impl ActionExecutor {
         } else {
             searchable_output_path(source_path)
         };
+        let resource_dir = self.app_handle.path().resource_dir().ok();
 
         match make_pdf_searchable(
             source_path,
             &output_path,
             &settings,
             &mut ocr,
+            resource_dir,
             action.skip_if_text,
         ) {
             Ok(crate::core::content::MakePdfSearchableStatus::Completed) => {
