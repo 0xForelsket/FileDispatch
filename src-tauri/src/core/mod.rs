@@ -1,6 +1,8 @@
 pub mod duplicates;
 pub mod model_manager;
 pub mod ocr;
+pub mod ocr_geometry;
+pub mod pdf_coords;
 pub mod content;
 pub mod engine;
 pub mod executor;

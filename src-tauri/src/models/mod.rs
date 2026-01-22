@@ -7,6 +7,7 @@ pub mod rule;
 pub mod settings;
 pub mod preset;
 pub mod undo;
+pub mod ocr_job;
 
 pub use action::*;
 pub use condition::*;
