@@ -938,3 +938,26 @@ Lock sign conventions here so they never regress.
 * subsetter crate docs: [https://docs.rs/subsetter](https://docs.rs/subsetter)
 * ttf-parser crate docs: [https://docs.rs/ttf-parser](https://docs.rs/ttf-parser)
 * Noto Sans SC: [https://fonts.google.com/noto/specimen/Noto+Sans+SC](https://fonts.google.com/noto/specimen/Noto+Sans+SC)
+
+---
+
+## 12. Implementation Status (2026-01-22)
+
+### Done
+- Type0 + CIDFontType2 embedding with `/ToUnicode` and `/CIDToGIDMap /Identity`
+- TrueType subsetting with widths (`DW`/`W`) and deterministic subset tag
+- Line-aggregated `TJ` streams (single `BT/ET` per page), invisible by default (`Tr 3`)
+- Baseline + font size derived from ascent/descent metrics
+- Resource bundling for OCR font (Noto Sans SC) + OFL license
+- Settings gates for dev overlay, CID font usage, and diagnostic visibility
+- PDF version bumped to 1.2 when needed
+- Fallbacks to Type1/plain overlay when CID path fails
+
+### Not Done / Partial
+- Composite glyph integrity validation for subsets
+- `UserUnit != 1` handling (currently falls back)
+- Tests/fixtures and extraction validation (Poppler/PDFium)
+- Observability metrics/timings
+- CIDSet stream (optional)
+- `bfrange` optimization for ToUnicode (future)
+- Multi-column reading order improvements (out of scope)
