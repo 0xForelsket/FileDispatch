@@ -12,6 +12,7 @@ use quick_xml::Reader;
 use crate::core::ocr_geometry::PageOcrResult;
 use crate::core::ocr_grouping::group_words_into_lines;
 use crate::core::ocr::OcrManager;
+use crate::core::pdf_page_geometry::extract_page_geometry;
 use crate::models::{ContentSource, FileKind, Settings};
 use crate::utils::file_info::FileInfo;
 
@@ -414,29 +415,8 @@ fn add_font(doc: &mut lopdf::Document) -> lopdf::ObjectId {
 }
 
 fn page_dimensions(doc: &lopdf::Document, page_id: lopdf::ObjectId) -> Result<(f64, f64)> {
-    let page = doc.get_object(page_id)?;
-    let dict = page.as_dict().map_err(|_| anyhow!("Invalid page object"))?;
-    let media_box = dict
-        .get(b"MediaBox")
-        .ok()
-        .and_then(|obj| obj.as_array().ok())
-        .ok_or_else(|| anyhow!("Missing MediaBox"))?;
-    if media_box.len() < 4 {
-        return Err(anyhow!("Invalid MediaBox"));
-    }
-    let x0 = obj_to_f64(&media_box[0])?;
-    let y0 = obj_to_f64(&media_box[1])?;
-    let x1 = obj_to_f64(&media_box[2])?;
-    let y1 = obj_to_f64(&media_box[3])?;
-    Ok((x1 - x0, y1 - y0))
-}
-
-fn obj_to_f64(obj: &lopdf::Object) -> Result<f64> {
-    match obj {
-        lopdf::Object::Integer(val) => Ok(*val as f64),
-        lopdf::Object::Real(val) => Ok(f64::from(*val)),
-        _ => Err(anyhow!("Invalid numeric value")),
-    }
+    let geom = extract_page_geometry(doc, page_id)?;
+    Ok((geom.crop_box.width() as f64, geom.crop_box.height() as f64))
 }
 
 fn build_text_stream(text: &str, page_height: f64) -> lopdf::Stream {
