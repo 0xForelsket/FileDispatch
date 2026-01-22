@@ -164,6 +164,44 @@ export function OCRPanel() {
 
             <section>
                 <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
+                    PDF OCR Layer
+                </h3>
+                <div className="space-y-3">
+                    <SettingToggle
+                        title="Enable word-level OCR overlay (experimental)"
+                        description="Generate positioned, invisible text for scanned PDFs"
+                        checked={settings.contentEnablePdfOcrTextLayerDev}
+                        onChange={(checked) => {
+                            setSettings({ contentEnablePdfOcrTextLayerDev: checked });
+                            void saveSettings();
+                        }}
+                        disabled={!settings.contentEnableOcr}
+                    />
+                    <SettingToggle
+                        title="Embed CID font for multilingual text"
+                        description="Use a subset TrueType font with ToUnicode for better CJK search/copy"
+                        checked={settings.contentUseCidfontOcr}
+                        onChange={(checked) => {
+                            setSettings({ contentUseCidfontOcr: checked });
+                            void saveSettings();
+                        }}
+                        disabled={!settings.contentEnableOcr || !settings.contentEnablePdfOcrTextLayerDev}
+                    />
+                    <SettingToggle
+                        title="Show OCR overlay (diagnostic)"
+                        description="Render the OCR text visibly for debugging"
+                        checked={settings.contentOcrDiagnosticMode}
+                        onChange={(checked) => {
+                            setSettings({ contentOcrDiagnosticMode: checked });
+                            void saveSettings();
+                        }}
+                        disabled={!settings.contentEnableOcr || !settings.contentEnablePdfOcrTextLayerDev}
+                    />
+                </div>
+            </section>
+
+            <section>
+                <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
                     Pre-processing
                 </h3>
                 <div className="space-y-3">
