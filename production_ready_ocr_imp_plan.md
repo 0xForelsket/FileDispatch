@@ -956,10 +956,11 @@ Lock sign conventions here so they never regress.
 - Best-effort subset outline validation (outline-based)
 - Basic observability logs (page counts, overlay bytes, elapsed time)
 - CIDSet stream emission (optional, now included)
+- Generated-PDF integration tests (EN/CJK/rotate/crop) with conditional Poppler/PDFium extraction
 
 ### Not Done / Partial
 - Full composite glyph integrity validation (component-level)
 - `UserUnit != 1` handling (still unverified vs PDFium)
-- Integration tests/fixtures and extraction validation (Poppler/PDFium)
+- Broader fixture coverage + strict extraction validation (requires external tools on CI)
 - `bfrange` optimization for ToUnicode (future)
 - Multi-column reading order improvements (out of scope)

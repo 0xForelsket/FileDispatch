@@ -1071,9 +1071,14 @@ struct WordLayout {
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
+    use std::fs;
+    use std::path::Path;
+    use std::process::Command;
 
-    use super::build_widths_array;
-    use lopdf::Object;
+    use super::{add_text_layer_to_pdf, build_widths_array, load_pdfium, PdfBox, Settings};
+    use crate::core::ocr_geometry::{PageOcrResult, Rect, TextLine, WordBox};
+    use lopdf::{dictionary, Document, Object};
+    use tempfile::TempDir;
 
     #[test]
     fn builds_dw_and_w_array() {
@@ -1095,6 +1100,363 @@ mod tests {
                 Object::Integer(700)
             ]
         );
+    }
+
+    #[test]
+    fn embeds_cid_font_and_tounicode() {
+        let temp = TempDir::new().unwrap();
+        let input_path = temp.path().join("input.pdf");
+        let output_path = temp.path().join("output.pdf");
+
+        let mut doc = make_doc(612.0, 792.0, None, None, None);
+        doc.save(&input_path).unwrap();
+
+        let page = make_page_ocr_result(
+            0,
+            612,
+            792,
+            vec![
+                ("HELLO", Rect { x: 100.0, y: 100.0, width: 60.0, height: 12.0 }),
+                ("WORLD", Rect { x: 200.0, y: 100.0, width: 60.0, height: 12.0 }),
+            ],
+        );
+
+        let mut settings = Settings::default();
+        settings.content_enable_pdf_ocr_text_layer_dev = true;
+        settings.content_use_cidfont_ocr = true;
+
+        add_text_layer_to_pdf(
+            &input_path,
+            &output_path,
+            &[page],
+            &settings,
+            Some(Path::new("resources")),
+        )
+        .unwrap();
+
+        let out_doc = Document::load(&output_path).unwrap();
+        assert!(has_type0_font(&out_doc));
+        assert!(has_cid_font(&out_doc));
+        assert!(has_tounicode(&out_doc));
+        assert!(has_cidset(&out_doc));
+
+        let page_id = *out_doc.get_pages().values().next().unwrap();
+        let content = out_doc.get_and_decode_page_content(page_id).unwrap();
+        assert!(content.operations.iter().any(|op| op.operator == "TJ"));
+
+        if let Some(text) = extract_with_pdfium(&output_path) {
+            assert!(text.contains("HELLO WORLD"));
+        }
+        if let Some(text) = extract_with_pdftotext(&output_path) {
+            assert!(text.contains("HELLO WORLD"));
+        }
+    }
+
+    #[test]
+    fn extracts_cjk_text_when_available() {
+        let temp = TempDir::new().unwrap();
+        let input_path = temp.path().join("input.pdf");
+        let output_path = temp.path().join("output.pdf");
+
+        let mut doc = make_doc(612.0, 792.0, None, None, None);
+        doc.save(&input_path).unwrap();
+
+        let page = make_page_ocr_result(
+            0,
+            612,
+            792,
+            vec![("你好", Rect { x: 100.0, y: 120.0, width: 40.0, height: 14.0 })],
+        );
+
+        let mut settings = Settings::default();
+        settings.content_enable_pdf_ocr_text_layer_dev = true;
+        settings.content_use_cidfont_ocr = true;
+
+        add_text_layer_to_pdf(
+            &input_path,
+            &output_path,
+            &[page],
+            &settings,
+            Some(Path::new("resources")),
+        )
+        .unwrap();
+
+        if let Some(text) = extract_with_pdfium(&output_path) {
+            assert!(text.contains("你好"));
+        }
+        if let Some(text) = extract_with_pdftotext(&output_path) {
+            assert!(text.contains("你好"));
+        }
+    }
+
+    #[test]
+    fn handles_rotated_page() {
+        let temp = TempDir::new().unwrap();
+        let input_path = temp.path().join("input.pdf");
+        let output_path = temp.path().join("output.pdf");
+
+        let mut doc = make_doc(612.0, 792.0, None, Some(90), None);
+        doc.save(&input_path).unwrap();
+
+        let page = make_page_ocr_result(
+            0,
+            792,
+            612,
+            vec![("ROTATED", Rect { x: 120.0, y: 100.0, width: 80.0, height: 14.0 })],
+        );
+
+        let mut settings = Settings::default();
+        settings.content_enable_pdf_ocr_text_layer_dev = true;
+        settings.content_use_cidfont_ocr = true;
+
+        add_text_layer_to_pdf(
+            &input_path,
+            &output_path,
+            &[page],
+            &settings,
+            Some(Path::new("resources")),
+        )
+        .unwrap();
+
+        if let Some(text) = extract_with_pdfium(&output_path) {
+            assert!(text.contains("ROTATED"));
+        }
+        if let Some(text) = extract_with_pdftotext(&output_path) {
+            assert!(text.contains("ROTATED"));
+        }
+    }
+
+    #[test]
+    fn handles_negative_crop_box() {
+        let temp = TempDir::new().unwrap();
+        let input_path = temp.path().join("input.pdf");
+        let output_path = temp.path().join("output.pdf");
+
+        let crop = PdfBox {
+            x0: -20.0,
+            y0: -10.0,
+            x1: 592.0,
+            y1: 782.0,
+        };
+        let mut doc = make_doc(612.0, 792.0, Some(crop), None, None);
+        doc.save(&input_path).unwrap();
+
+        let page = make_page_ocr_result(
+            0,
+            612,
+            792,
+            vec![("CROP", Rect { x: 80.0, y: 140.0, width: 50.0, height: 12.0 })],
+        );
+
+        let mut settings = Settings::default();
+        settings.content_enable_pdf_ocr_text_layer_dev = true;
+        settings.content_use_cidfont_ocr = true;
+
+        add_text_layer_to_pdf(
+            &input_path,
+            &output_path,
+            &[page],
+            &settings,
+            Some(Path::new("resources")),
+        )
+        .unwrap();
+
+        if let Some(text) = extract_with_pdfium(&output_path) {
+            assert!(text.contains("CROP"));
+        }
+        if let Some(text) = extract_with_pdftotext(&output_path) {
+            assert!(text.contains("CROP"));
+        }
+    }
+
+    fn make_doc(
+        width: f32,
+        height: f32,
+        crop_box: Option<PdfBox>,
+        rotate: Option<i64>,
+        user_unit: Option<f64>,
+    ) -> Document {
+        let mut doc = Document::with_version("1.4");
+        let pages_id = doc.new_object_id();
+        let page_id = doc.new_object_id();
+
+        let mut page_dict = dictionary! {
+            "Type" => "Page",
+            "Parent" => Object::Reference(pages_id),
+            "MediaBox" => vec![
+                Object::Integer(0),
+                Object::Integer(0),
+                Object::Real(width),
+                Object::Real(height),
+            ],
+        };
+        if let Some(crop) = crop_box {
+            page_dict.set(
+                "CropBox",
+                vec![
+                    Object::Real(crop.x0),
+                    Object::Real(crop.y0),
+                    Object::Real(crop.x1),
+                    Object::Real(crop.y1),
+                ],
+            );
+        }
+        if let Some(rotate) = rotate {
+            page_dict.set("Rotate", Object::Integer(rotate));
+        }
+        if let Some(unit) = user_unit {
+            page_dict.set("UserUnit", Object::Real(unit as f32));
+        }
+
+        doc.objects.insert(page_id, Object::Dictionary(page_dict));
+        let pages_dict = dictionary! {
+            "Type" => "Pages",
+            "Kids" => vec![Object::Reference(page_id)],
+            "Count" => 1,
+        };
+        doc.objects.insert(pages_id, Object::Dictionary(pages_dict));
+
+        let catalog_id = doc.new_object_id();
+        let catalog_dict = dictionary! {
+            "Type" => "Catalog",
+            "Pages" => Object::Reference(pages_id),
+        };
+        doc.objects
+            .insert(catalog_id, Object::Dictionary(catalog_dict));
+        doc.trailer.set("Root", Object::Reference(catalog_id));
+        doc
+    }
+
+    fn make_page_ocr_result(
+        page_index: u32,
+        render_width: u32,
+        render_height: u32,
+        words: Vec<(&str, Rect)>,
+    ) -> PageOcrResult {
+        let word_boxes: Vec<WordBox> = words
+            .into_iter()
+            .map(|(text, bbox)| WordBox {
+                text: text.to_string(),
+                confidence: 0.95,
+                bbox,
+            })
+            .collect();
+
+        let bbox = union_rects(word_boxes.iter().map(|w| w.bbox));
+        let line_text = word_boxes
+            .iter()
+            .map(|w| w.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        let line = TextLine {
+            text: line_text,
+            bbox,
+            words: word_boxes,
+        };
+
+        PageOcrResult {
+            page_index,
+            render_width,
+            render_height,
+            lines: vec![line],
+        }
+    }
+
+    fn union_rects(rects: impl Iterator<Item = Rect>) -> Rect {
+        let mut min_x = f32::INFINITY;
+        let mut min_y = f32::INFINITY;
+        let mut max_x = f32::NEG_INFINITY;
+        let mut max_y = f32::NEG_INFINITY;
+
+        for r in rects {
+            min_x = min_x.min(r.x);
+            min_y = min_y.min(r.y);
+            max_x = max_x.max(r.x + r.width);
+            max_y = max_y.max(r.y + r.height);
+        }
+
+        Rect {
+            x: min_x,
+            y: min_y,
+            width: (max_x - min_x).max(0.0),
+            height: (max_y - min_y).max(0.0),
+        }
+    }
+
+    fn has_type0_font(doc: &Document) -> bool {
+        doc.objects.values().any(|obj| {
+            obj.as_dict()
+                .ok()
+                .and_then(|dict| dict.get(b"Subtype").ok())
+                .and_then(|subtype| subtype.as_name().ok())
+                .map(|name| name == b"Type0")
+                .unwrap_or(false)
+        })
+    }
+
+    fn has_cid_font(doc: &Document) -> bool {
+        doc.objects.values().any(|obj| {
+            obj.as_dict()
+                .ok()
+                .and_then(|dict| dict.get(b"Subtype").ok())
+                .and_then(|subtype| subtype.as_name().ok())
+                .map(|name| name == b"CIDFontType2")
+                .unwrap_or(false)
+        })
+    }
+
+    fn has_tounicode(doc: &Document) -> bool {
+        doc.objects.values().any(|obj| {
+            obj.as_dict()
+                .ok()
+                .and_then(|dict| dict.get(b"ToUnicode").ok())
+                .is_some()
+        })
+    }
+
+    fn has_cidset(doc: &Document) -> bool {
+        doc.objects.values().any(|obj| {
+            obj.as_dict()
+                .ok()
+                .and_then(|dict| dict.get(b"CIDSet").ok())
+                .is_some()
+        })
+    }
+
+    fn extract_with_pdfium(path: &Path) -> Option<String> {
+        let pdfium = load_pdfium().ok()?;
+        let document = pdfium.load_pdf_from_file(path, None).ok()?;
+        let page = document.pages().get(0).ok()?;
+        let text = page.text().ok()?.all();
+        Some(text)
+    }
+
+    fn extract_with_pdftotext(path: &Path) -> Option<String> {
+        if !pdftotext_available() {
+            return None;
+        }
+        let temp = TempDir::new().ok()?;
+        let out_path = temp.path().join("out.txt");
+        let status = Command::new("pdftotext")
+            .arg("-layout")
+            .arg("-nopgbrk")
+            .arg(path)
+            .arg(&out_path)
+            .status()
+            .ok()?;
+        if !status.success() {
+            return None;
+        }
+        fs::read_to_string(out_path).ok()
+    }
+
+    fn pdftotext_available() -> bool {
+        Command::new("pdftotext")
+            .arg("-v")
+            .output()
+            .map(|output| output.status.success())
+            .unwrap_or(false)
     }
 }
 
