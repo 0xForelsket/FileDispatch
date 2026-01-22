@@ -1269,6 +1269,91 @@ mod tests {
         }
     }
 
+    #[test]
+    fn extracts_mixed_language_in_order() {
+        let temp = TempDir::new().unwrap();
+        let input_path = temp.path().join("input.pdf");
+        let output_path = temp.path().join("output.pdf");
+
+        let mut doc = make_doc(612.0, 792.0, None, None, None);
+        doc.save(&input_path).unwrap();
+
+        let line1 = make_line(vec![
+            ("HELLO", Rect { x: 80.0, y: 80.0, width: 60.0, height: 12.0 }),
+            ("世界", Rect { x: 150.0, y: 80.0, width: 36.0, height: 12.0 }),
+        ]);
+        let line2 = make_line(vec![
+            ("SECOND", Rect { x: 80.0, y: 140.0, width: 70.0, height: 12.0 }),
+            ("LINE", Rect { x: 160.0, y: 140.0, width: 40.0, height: 12.0 }),
+        ]);
+
+        let page = PageOcrResult {
+            page_index: 0,
+            render_width: 612,
+            render_height: 792,
+            lines: vec![line1, line2],
+        };
+
+        let mut settings = Settings::default();
+        settings.content_enable_pdf_ocr_text_layer_dev = true;
+        settings.content_use_cidfont_ocr = true;
+
+        add_text_layer_to_pdf(
+            &input_path,
+            &output_path,
+            &[page],
+            &settings,
+            Some(Path::new("resources")),
+        )
+        .unwrap();
+
+        let expected = "HELLO世界 SECOND LINE";
+        if let Some(text) = extract_with_pdfium(&output_path) {
+            assert_eq!(normalize_text(&text), expected);
+        }
+        if let Some(text) = extract_with_pdftotext(&output_path) {
+            assert_eq!(normalize_text(&text), expected);
+        }
+    }
+
+    #[test]
+    fn handles_user_unit_scale() {
+        let temp = TempDir::new().unwrap();
+        let input_path = temp.path().join("input.pdf");
+        let output_path = temp.path().join("output.pdf");
+
+        let mut doc = make_doc(612.0, 792.0, None, None, Some(2.0));
+        doc.save(&input_path).unwrap();
+
+        let page = make_page_ocr_result(
+            0,
+            612,
+            792,
+            vec![("UNIT", Rect { x: 120.0, y: 100.0, width: 50.0, height: 12.0 })],
+        );
+
+        let mut settings = Settings::default();
+        settings.content_enable_pdf_ocr_text_layer_dev = true;
+        settings.content_use_cidfont_ocr = true;
+
+        add_text_layer_to_pdf(
+            &input_path,
+            &output_path,
+            &[page],
+            &settings,
+            Some(Path::new("resources")),
+        )
+        .unwrap();
+
+        let expected = "UNIT";
+        if let Some(text) = extract_with_pdfium(&output_path) {
+            assert_eq!(normalize_text(&text), expected);
+        }
+        if let Some(text) = extract_with_pdftotext(&output_path) {
+            assert_eq!(normalize_text(&text), expected);
+        }
+    }
+
     fn make_doc(
         width: f32,
         height: f32,
@@ -1363,6 +1448,30 @@ mod tests {
         }
     }
 
+    fn make_line(words: Vec<(&str, Rect)>) -> TextLine {
+        let word_boxes: Vec<WordBox> = words
+            .into_iter()
+            .map(|(text, bbox)| WordBox {
+                text: text.to_string(),
+                confidence: 0.95,
+                bbox,
+            })
+            .collect();
+
+        let bbox = union_rects(word_boxes.iter().map(|w| w.bbox));
+        let line_text = word_boxes
+            .iter()
+            .map(|w| w.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        TextLine {
+            text: line_text,
+            bbox,
+            words: word_boxes,
+        }
+    }
+
     fn union_rects(rects: impl Iterator<Item = Rect>) -> Rect {
         let mut min_x = f32::INFINITY;
         let mut min_y = f32::INFINITY;
@@ -1449,6 +1558,10 @@ mod tests {
             return None;
         }
         fs::read_to_string(out_path).ok()
+    }
+
+    fn normalize_text(text: &str) -> String {
+        text.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 
     fn pdftotext_available() -> bool {

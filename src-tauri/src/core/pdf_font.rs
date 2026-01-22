@@ -133,6 +133,7 @@ pub fn subset_font_for_codepoints(
 }
 
 pub fn build_tounicode_cmap(mapping: &[(u16, char)]) -> Vec<u8> {
+    let (bfranges, bfchars) = split_tounicode_entries(mapping);
     let mut out = String::new();
     out.push_str("/CIDInit /ProcSet findresource begin\n");
     out.push_str("12 dict begin\n");
@@ -144,19 +145,37 @@ pub fn build_tounicode_cmap(mapping: &[(u16, char)]) -> Vec<u8> {
     out.push_str("<0000> <FFFF>\n");
     out.push_str("endcodespacerange\n");
 
-    let mut idx = 0;
-    while idx < mapping.len() {
-        let end = (idx + 100).min(mapping.len());
-        out.push_str(&format!("{} beginbfchar\n", end - idx));
-        for (cid, ch) in &mapping[idx..end] {
-            out.push_str(&format!(
-                "<{:04X}> <{}>\n",
-                cid,
-                encode_utf16be(*ch)
-            ));
+    if !bfranges.is_empty() {
+        let mut idx = 0;
+        while idx < bfranges.len() {
+            let end = (idx + 100).min(bfranges.len());
+            out.push_str(&format!("{} beginbfrange\n", end - idx));
+            for (cid_start, cid_end, unicode_start) in &bfranges[idx..end] {
+                out.push_str(&format!(
+                    "<{:04X}> <{:04X}> <{:04X}>\n",
+                    cid_start, cid_end, unicode_start
+                ));
+            }
+            out.push_str("endbfrange\n");
+            idx = end;
         }
-        out.push_str("endbfchar\n");
-        idx = end;
+    }
+
+    if !bfchars.is_empty() {
+        let mut idx = 0;
+        while idx < bfchars.len() {
+            let end = (idx + 100).min(bfchars.len());
+            out.push_str(&format!("{} beginbfchar\n", end - idx));
+            for (cid, ch) in &bfchars[idx..end] {
+                out.push_str(&format!(
+                    "<{:04X}> <{}>\n",
+                    cid,
+                    encode_utf16be(*ch)
+                ));
+            }
+            out.push_str("endbfchar\n");
+            idx = end;
+        }
     }
 
     out.push_str("endcmap\n");
@@ -257,6 +276,54 @@ fn encode_utf16be(ch: char) -> String {
     bytes.iter().map(|b| format!("{:02X}", b)).collect()
 }
 
+fn split_tounicode_entries(mapping: &[(u16, char)]) -> (Vec<(u16, u16, u16)>, Vec<(u16, char)>) {
+    let mut entries: Vec<(u16, u32, char)> = mapping
+        .iter()
+        .map(|(cid, ch)| (*cid, *ch as u32, *ch))
+        .collect();
+    entries.sort_by_key(|(cid, _, _)| *cid);
+
+    let mut bfranges = Vec::new();
+    let mut bfchars = Vec::new();
+
+    let mut i = 0;
+    while i < entries.len() {
+        let (start_cid, start_code, start_char) = entries[i];
+        if start_code > 0xFFFF {
+            bfchars.push((start_cid, start_char));
+            i += 1;
+            continue;
+        }
+
+        let mut end_cid = start_cid;
+        let mut end_code = start_code;
+        let mut j = i + 1;
+        while j < entries.len() {
+            let (next_cid, next_code, _next_char) = entries[j];
+            if next_code > 0xFFFF {
+                break;
+            }
+            if next_cid == end_cid + 1 && next_code == end_code + 1 {
+                end_cid = next_cid;
+                end_code = next_code;
+                j += 1;
+            } else {
+                break;
+            }
+        }
+
+        if end_cid > start_cid {
+            bfranges.push((start_cid, end_cid, start_code as u16));
+            i = j;
+        } else {
+            bfchars.push((start_cid, start_char));
+            i += 1;
+        }
+    }
+
+    (bfranges, bfchars)
+}
+
 fn validate_subset_glyphs(face: &Face, used_gids: &BTreeSet<u16>) -> Result<()> {
     let mut builder = NullOutlineBuilder;
     for gid in used_gids {
@@ -343,5 +410,14 @@ mod tests {
         assert!(!subset.subset_bytes.is_empty());
         assert_ne!(*subset.unicode_to_gid.get(&'A').unwrap_or(&0), 0);
         assert_ne!(*subset.unicode_to_gid.get(&'你').unwrap_or(&0), 0);
+    }
+
+    #[test]
+    fn tounicode_uses_bfrange_for_sequences() {
+        let mapping = vec![(1u16, 'A'), (2u16, 'B'), (4u16, 'D')];
+        let cmap = String::from_utf8(build_tounicode_cmap(&mapping)).unwrap();
+        assert!(cmap.contains("beginbfrange"));
+        assert!(cmap.contains("<0001> <0002> <0041>"));
+        assert!(cmap.contains("beginbfchar"));
     }
 }

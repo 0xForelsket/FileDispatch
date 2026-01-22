@@ -958,9 +958,9 @@ Lock sign conventions here so they never regress.
 - CIDSet stream emission (optional, now included)
 - Generated-PDF integration tests (EN/CJK/rotate/crop) with conditional Poppler/PDFium extraction
 - Composite glyph integrity validation (component-level)
+- ToUnicode `bfrange` emission for contiguous BMP sequences (fallback `bfchar` for non-BMP)
+- Broader extraction fixtures (mixed language + multi-line) with normalized strict assertions
+- `UserUnit` coverage via extraction tests (PDFium/Poppler when available)
 
 ### Not Done / Partial
-- `UserUnit != 1` handling (still unverified vs PDFium)
-- Broader fixture coverage + strict extraction validation (requires external tools on CI)
-- `bfrange` optimization for ToUnicode (future)
 - Multi-column reading order improvements (out of scope)
