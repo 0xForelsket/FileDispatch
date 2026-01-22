@@ -952,12 +952,14 @@ Lock sign conventions here so they never regress.
 - Settings gates for dev overlay, CID font usage, and diagnostic visibility
 - PDF version bumped to 1.2 when needed
 - Fallbacks to Type1/plain overlay when CID path fails
+- Basic unit tests for width table building + font subsetting
+- Best-effort subset outline validation (outline-based)
+- Basic observability logs (page counts, overlay bytes, elapsed time)
 
 ### Not Done / Partial
-- Composite glyph integrity validation for subsets
-- `UserUnit != 1` handling (currently falls back)
-- Tests/fixtures and extraction validation (Poppler/PDFium)
-- Observability metrics/timings
+- Full composite glyph integrity validation (component-level)
+- `UserUnit != 1` handling (still unverified vs PDFium)
+- Integration tests/fixtures and extraction validation (Poppler/PDFium)
 - CIDSet stream (optional)
 - `bfrange` optimization for ToUnicode (future)
 - Multi-column reading order improvements (out of scope)

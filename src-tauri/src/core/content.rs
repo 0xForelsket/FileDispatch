@@ -361,6 +361,11 @@ fn add_text_layer_to_pdf(
 ) -> Result<()> {
     let mut doc = lopdf::Document::load(source_path)?;
     let page_map = doc.get_pages();
+    let started_at = Instant::now();
+    let mut total_stream_bytes: usize = 0;
+    let mut pages_with_overlay: usize = 0;
+    let mut cid_pages: usize = 0;
+    let mut type1_pages: usize = 0;
 
     let use_mapped = settings.content_enable_pdf_ocr_text_layer_dev;
     if !use_mapped {
@@ -376,9 +381,22 @@ fn add_text_layer_to_pdf(
             }
             let geometry = extract_page_geometry(&doc, *page_id)?;
             let stream = build_text_stream(&text, geometry.crop_box.height() as f64);
+            total_stream_bytes += stream.content.len();
+            pages_with_overlay += 1;
+            type1_pages += 1;
             append_stream_to_page(&mut doc, *page_id, stream, "F1", font_id)?;
         }
-        return save_pdf(doc, source_path, output_path);
+        let result = save_pdf(doc, source_path, output_path);
+        info!(
+            "OCR overlay complete: pages={}, overlays={}, cid_pages={}, type1_pages={}, bytes={}, elapsed_ms={}",
+            page_map.len(),
+            pages_with_overlay,
+            cid_pages,
+            type1_pages,
+            total_stream_bytes,
+            started_at.elapsed().as_millis()
+        );
+        return result;
     }
 
     let mut cid_font: Option<CidFontResources> = None;
@@ -405,43 +423,24 @@ fn add_text_layer_to_pdf(
         }
 
         let geometry = extract_page_geometry(&doc, *page_id)?;
-        if (geometry.user_unit - 1.0).abs() > f32::EPSILON {
-            warn!(
-                "UserUnit {} on page {} not yet supported; using plain text fallback.",
-                geometry.user_unit,
-                idx + 1
-            );
-            let text = page_to_plain_text(page);
-            if text.trim().is_empty() {
-                continue;
-            }
-            let font_id = match fallback_font_id {
-                Some(id) => id,
-                None => {
-                    let id = add_font(&mut doc);
-                    fallback_font_id = Some(id);
-                    id
-                }
-            };
-            let stream = build_text_stream(&text, geometry.crop_box.height() as f64);
-            append_stream_to_page(&mut doc, *page_id, stream, "F1", font_id)?;
-            continue;
-        }
         let mut used_cid = false;
 
         if let Some(ref cid) = cid_font {
             let font_key = select_font_key(&doc, *page_id, "Focr")?;
-            match build_text_stream_from_ocr_cidfont(
-                page,
-                geometry,
-                &font_key,
-                &cid.subset,
-                settings,
-            ) {
-                Ok(Some(stream)) => {
-                    append_stream_to_page(&mut doc, *page_id, stream, &font_key, cid.font_id)?;
-                    used_cid = true;
-                }
+                match build_text_stream_from_ocr_cidfont(
+                    page,
+                    geometry,
+                    &font_key,
+                    &cid.subset,
+                    settings,
+                ) {
+                    Ok(Some(stream)) => {
+                        total_stream_bytes += stream.content.len();
+                        pages_with_overlay += 1;
+                        cid_pages += 1;
+                        append_stream_to_page(&mut doc, *page_id, stream, &font_key, cid.font_id)?;
+                        used_cid = true;
+                    }
                 Ok(None) => {}
                 Err(err) => {
                     warn!(
@@ -465,11 +464,24 @@ fn add_text_layer_to_pdf(
                     id
                 }
             };
+            total_stream_bytes += stream.content.len();
+            pages_with_overlay += 1;
+            type1_pages += 1;
             append_stream_to_page(&mut doc, *page_id, stream, "F1", font_id)?;
         }
     }
 
-    save_pdf(doc, source_path, output_path)
+    let result = save_pdf(doc, source_path, output_path);
+    info!(
+        "OCR overlay complete: pages={}, overlays={}, cid_pages={}, type1_pages={}, bytes={}, elapsed_ms={}",
+        page_map.len(),
+        pages_with_overlay,
+        cid_pages,
+        type1_pages,
+        total_stream_bytes,
+        started_at.elapsed().as_millis()
+    );
+    result
 }
 
 fn save_pdf(mut doc: lopdf::Document, source_path: &Path, output_path: &Path) -> Result<()> {
@@ -664,6 +676,9 @@ fn build_widths_array(widths: &[u16], used_gids: &BTreeSet<u16>) -> (u16, Vec<Ob
     let mut entries: Vec<(u16, u16)> = used_gids
         .iter()
         .filter_map(|gid| {
+            if *gid == 0 {
+                return None;
+            }
             let width = widths.get(*gid as usize).copied().unwrap_or(dw);
             if width == dw {
                 None
@@ -1025,6 +1040,36 @@ struct WordLayout {
     x1: f32,
     y0: f32,
     y1: f32,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use super::build_widths_array;
+    use lopdf::Object;
+
+    #[test]
+    fn builds_dw_and_w_array() {
+        let widths = vec![500u16, 600u16, 600u16, 600u16, 700u16];
+        let mut used = BTreeSet::new();
+        used.insert(0);
+        used.insert(1);
+        used.insert(2);
+        used.insert(3);
+        used.insert(4);
+
+        let (dw, w_array) = build_widths_array(&widths, &used);
+        assert_eq!(dw, 600);
+        assert_eq!(
+            w_array,
+            vec![
+                Object::Integer(4),
+                Object::Integer(4),
+                Object::Integer(700)
+            ]
+        );
+    }
 }
 
 fn add_font(doc: &mut lopdf::Document) -> lopdf::ObjectId {

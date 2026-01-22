@@ -7,7 +7,7 @@ use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
 use sha2::{Digest, Sha256};
 use subsetter::{subset, GlyphRemapper};
-use ttf_parser::{Face, GlyphId};
+use ttf_parser::{Face, GlyphId, OutlineBuilder};
 
 pub const OCR_FONT_FILENAME: &str = "NotoSansSC-Regular.ttf";
 pub const OCR_FONT_NAME: &str = "NotoSansSC-Regular";
@@ -90,7 +90,7 @@ pub fn subset_font_for_codepoints(
     let remapper = GlyphRemapper::new_from_glyphs_sorted(&glyphs);
     let subset_bytes = subset(font.bytes.as_ref(), 0, &remapper)
         .map_err(|e| anyhow!("Failed to subset OCR font: {e}"))?;
-    Face::parse(&subset_bytes, 0)
+    let subset_face = Face::parse(&subset_bytes, 0)
         .map_err(|_| anyhow!("Subset font failed to parse"))?;
 
     let mut unicode_to_gid = HashMap::new();
@@ -114,6 +114,8 @@ pub fn subset_font_for_codepoints(
     for gid in unicode_to_gid.values() {
         used_gids.insert(*gid);
     }
+
+    validate_subset_glyphs(&subset_face, &used_gids)?;
 
     Ok(SubsetFont {
         subset_bytes,
@@ -165,6 +167,11 @@ fn resolve_font_path(resource_dir: Option<&Path>) -> Result<PathBuf> {
     if let Some(base) = resource_dir {
         candidates.push(base.join("fonts").join(OCR_FONT_FILENAME));
     }
+    candidates.push(
+        PathBuf::from("resources")
+            .join("fonts")
+            .join(OCR_FONT_FILENAME),
+    );
     candidates.push(
         PathBuf::from("src-tauri")
             .join("resources")
@@ -244,4 +251,52 @@ fn encode_utf16be(ch: char) -> String {
         bytes.push((*unit & 0xFF) as u8);
     }
     bytes.iter().map(|b| format!("{:02X}", b)).collect()
+}
+
+fn validate_subset_glyphs(face: &Face, used_gids: &BTreeSet<u16>) -> Result<()> {
+    let mut builder = NullOutlineBuilder;
+    for gid in used_gids {
+        if *gid == 0 {
+            continue;
+        }
+        let bbox = face.glyph_bounding_box(GlyphId(*gid));
+        if bbox.is_some() && face.outline_glyph(GlyphId(*gid), &mut builder).is_none() {
+            return Err(anyhow!("Subset glyph {gid} failed outline validation"));
+        }
+    }
+    Ok(())
+}
+
+struct NullOutlineBuilder;
+
+impl OutlineBuilder for NullOutlineBuilder {
+    fn move_to(&mut self, _x: f32, _y: f32) {}
+    fn line_to(&mut self, _x: f32, _y: f32) {}
+    fn quad_to(&mut self, _x1: f32, _y1: f32, _x: f32, _y: f32) {}
+    fn curve_to(&mut self, _x1: f32, _y1: f32, _x2: f32, _y2: f32, _x: f32, _y: f32) {}
+    fn close(&mut self) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encode_utf16be_handles_surrogates() {
+        assert_eq!(encode_utf16be('A'), "0041");
+        assert_eq!(encode_utf16be('😀'), "D83DDE00");
+    }
+
+    #[test]
+    fn subsets_font_for_basic_codepoints() {
+        let font = load_font_data(Some(Path::new("resources"))).expect("font load");
+        let mut codepoints = BTreeSet::new();
+        codepoints.insert('A');
+        codepoints.insert('你');
+        codepoints.insert(' ');
+        let subset = subset_font_for_codepoints(&font, &codepoints).expect("subset");
+        assert!(!subset.subset_bytes.is_empty());
+        assert_ne!(*subset.unicode_to_gid.get(&'A').unwrap_or(&0), 0);
+        assert_ne!(*subset.unicode_to_gid.get(&'你').unwrap_or(&0), 0);
+    }
 }
