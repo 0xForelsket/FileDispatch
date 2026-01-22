@@ -8,6 +8,9 @@ use once_cell::sync::OnceCell;
 use sha2::{Digest, Sha256};
 use subsetter::{subset, GlyphRemapper};
 use ttf_parser::{Face, GlyphId, OutlineBuilder};
+use read_fonts::{FontRef, TableProvider};
+use read_fonts::tables::glyf::Glyph as GlyfGlyph;
+use read_fonts::types::GlyphId as ReadGlyphId;
 
 pub const OCR_FONT_FILENAME: &str = "NotoSansSC-Regular.ttf";
 pub const OCR_FONT_NAME: &str = "NotoSansSC-Regular";
@@ -116,6 +119,7 @@ pub fn subset_font_for_codepoints(
     }
 
     validate_subset_glyphs(&subset_face, &used_gids)?;
+    validate_composite_components(&subset_bytes, &used_gids)?;
 
     Ok(SubsetFont {
         subset_bytes,
@@ -262,6 +266,47 @@ fn validate_subset_glyphs(face: &Face, used_gids: &BTreeSet<u16>) -> Result<()> 
         let bbox = face.glyph_bounding_box(GlyphId(*gid));
         if bbox.is_some() && face.outline_glyph(GlyphId(*gid), &mut builder).is_none() {
             return Err(anyhow!("Subset glyph {gid} failed outline validation"));
+        }
+    }
+    Ok(())
+}
+
+fn validate_composite_components(subset_bytes: &[u8], used_gids: &BTreeSet<u16>) -> Result<()> {
+    let font = FontRef::new(subset_bytes)
+        .map_err(|_| anyhow!("Failed to parse subset font for composite validation"))?;
+    let maxp = font
+        .maxp()
+        .map_err(|_| anyhow!("Subset font missing maxp table"))?;
+    let glyph_count = maxp.num_glyphs() as u32;
+    let glyf = match font.glyf() {
+        Ok(glyf) => glyf,
+        Err(_) => return Ok(()),
+    };
+    let loca = match font.loca(None) {
+        Ok(loca) => loca,
+        Err(_) => return Ok(()),
+    };
+
+    for gid in used_gids {
+        let gid_u32 = *gid as u32;
+        if gid_u32 >= glyph_count {
+            return Err(anyhow!(
+                "Subset glyph id {gid} exceeds glyph count {glyph_count}"
+            ));
+        }
+        let glyph = loca
+            .get_glyf(ReadGlyphId::new(gid_u32), &glyf)
+            .map_err(|_| anyhow!("Failed to read glyph {gid} in subset font"))?;
+        let Some(GlyfGlyph::Composite(composite)) = glyph else {
+            continue;
+        };
+        for component in composite.components() {
+            let comp_gid = component.glyph.to_u16();
+            if (comp_gid as u32) >= glyph_count {
+                return Err(anyhow!(
+                    "Composite glyph {gid} references missing component {comp_gid}"
+                ));
+            }
         }
     }
     Ok(())

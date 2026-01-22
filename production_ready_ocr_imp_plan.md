@@ -957,9 +957,9 @@ Lock sign conventions here so they never regress.
 - Basic observability logs (page counts, overlay bytes, elapsed time)
 - CIDSet stream emission (optional, now included)
 - Generated-PDF integration tests (EN/CJK/rotate/crop) with conditional Poppler/PDFium extraction
+- Composite glyph integrity validation (component-level)
 
 ### Not Done / Partial
-- Full composite glyph integrity validation (component-level)
 - `UserUnit != 1` handling (still unverified vs PDFium)
 - Broader fixture coverage + strict extraction validation (requires external tools on CI)
 - `bfrange` optimization for ToUnicode (future)

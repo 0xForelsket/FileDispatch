@@ -58,6 +58,7 @@ quick-xml = "0.39"
 lopdf = "0.39"
 image = "0.25"
 imageproc = "0.25"
+read-fonts = "0.35"
 subsetter = "0.2"
 ttf-parser = "0.25"
 reqwest = { version = "0.12", features = ["json", "stream"] }

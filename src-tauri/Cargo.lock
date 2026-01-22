@@ -1713,6 +1713,7 @@ dependencies = [
  "quick-xml 0.39.0",
  "r2d2",
  "r2d2_sqlite",
+ "read-fonts",
  "regex",
  "reqwest",
  "rusqlite",
