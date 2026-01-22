@@ -27,6 +27,8 @@ Upgrade “Make PDF Searchable” from a single invisible text block to an Acrob
 - **No “fast mode” fallback** (ship one high-quality mode).
 - **First-class languages:** English + Chinese (Simplified).
 - **Background OCR persists** across restarts (jobs resume automatically).
+- **Default background OCR concurrency:** 1 job at a time (configurable later).
+- **Resume behavior:** auto-resume silently, but surface status via toast/banner and a Jobs UI.
 
 ## Current state (baseline)
 
@@ -53,6 +55,9 @@ For each page:
 - Implement a mapping function:
   - Input: word bbox in bitmap coordinates (pixels)
   - Output: PDF user-space coordinates (points), plus rotation if needed
+- Normalize coordinate origin:
+  - Treat OCR bboxes as **top-left origin** inputs by default.
+  - Convert to PDF’s **bottom-left origin** during transform (centralize this normalization so OCR engine quirks don’t leak into the PDF writer).
 - Validate transform with fixture PDFs that vary:
   - CropBox vs MediaBox differences
   - Rotated pages (`/Rotate 90/180/270`)
@@ -67,14 +72,21 @@ Replace the current “fixed-position text dump” with per-word placement:
   - Use `Tr 3` (invisible text) for searchability without visible artifacts
   - Set font and size
   - Position with `Tm` (or `Td` as appropriate)
-  - Apply horizontal scaling / font size heuristics so the glyph run fits the bbox width
+- Optimize for **selection fidelity**:
+  - Prefer **word spacing (`Tw`) / character spacing (`Tc`)** adjustments to fit bboxes.
+  - Avoid heavy horizontal scaling that causes “stretched highlight boxes” in viewers.
 - Preserve reading order as much as possible:
   - Sort by line (y), then by x within line (with tolerance)
   - Keep spaces between words where appropriate
-- Ensure encoding is correct for Unicode text:
-  - Use Type0/CIDFontType2 with bundled fonts suitable for **English + Simplified Chinese**
-  - Generate/attach `ToUnicode` CMap
-  - Prefer **font subsetting** to keep output size reasonable
+- Prevent PDF bloat (mandatory for large pages):
+  - Implement **line aggregation**: group words into a line and emit fewer text operators:
+    - One `BT/ET` per line (or small set of chunks) instead of per word.
+    - Use relative moves (`Td`) between words.
+  - Keep the operator count and stream size bounded even on dense pages.
+- Ensure encoding is correct for Unicode text (mandatory for CJK):
+  - Use a Type0/CIDFontType2 font that covers **English + Simplified Chinese**.
+  - Generate/attach `ToUnicode` CMap.
+  - Implement **font subsetting as mandatory** (embedding a full CJK font is unacceptable).
 
 ### 4) Wire this into `make_pdf_searchable`
 
@@ -103,7 +115,11 @@ Implement a lightweight job system in the Rust backend:
 - Store OCR job state in SQLite (job id, source path, output path, status, progress, timestamps, error).
 - On app startup:
   - Load incomplete jobs and resume them (with backoff and cancellation support).
-  - Ensure idempotency for output paths (don’t corrupt/duplicate files).
+  - **Guardrails:**
+    - Verify `source_path` still exists before resuming; if missing, mark job as **Failed (missing input)**.
+    - Write output to a `*.partial` temp file and **rename atomically** on completion to avoid corrupt outputs.
+    - If a stale/corrupt partial exists, delete and restart the job deterministically.
+    - Add retry limits to avoid infinite resume-fail loops.
 - Emit “resumed” progress events so UI can reattach to in-flight work.
 
 ### 6) Tests + validation workflow
@@ -131,6 +147,6 @@ Add targeted tests that maximize confidence without requiring full OCR determini
 
 ## Open questions
 
-- Do we embed one large CJK-capable font, or ship separate fonts + select per-word/script (affects size/perf)?
-- Should jobs resume automatically, or require an explicit “Resume” action in the UI (even though state persists)?
-- What is the desired max concurrency for background OCR by default (1 vs configurable)?
+- Do you want to bundle a single high-quality font (recommended: Noto Sans SC) and subset it, or also bundle a Latin font for aesthetics?
+- Should “resume on startup” emit a system notification or only an in-app toast?
+- Do you want an advanced setting for concurrency later, or keep it fixed at 1 permanently?
