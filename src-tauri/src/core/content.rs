@@ -9,9 +9,10 @@ use pdfium_render::prelude::{PdfDocument, PdfRenderConfig, Pdfium};
 use quick_xml::events::Event;
 use quick_xml::Reader;
 
-use crate::core::ocr_geometry::PageOcrResult;
+use crate::core::ocr_geometry::{PageOcrResult, Rect};
 use crate::core::ocr_grouping::group_words_into_lines;
 use crate::core::ocr::OcrManager;
+use crate::core::pdf_coords::{ocr_pixel_to_pdf_point, PageGeometry, PdfBox};
 use crate::core::pdf_page_geometry::extract_page_geometry;
 use crate::models::{ContentSource, FileKind, Settings};
 use crate::utils::file_info::FileInfo;
@@ -115,9 +116,7 @@ pub fn make_pdf_searchable(
     if pages.is_empty() {
         return Err(anyhow!("No OCR text extracted"));
     }
-
-    let page_text: Vec<String> = pages.iter().map(page_to_plain_text).collect();
-    add_text_layer_to_pdf(source_path, output_path, &page_text)?;
+    add_text_layer_to_pdf(source_path, output_path, &pages, settings)?;
     Ok(MakePdfSearchableStatus::Completed)
 }
 
@@ -342,22 +341,64 @@ fn page_to_plain_text(page: &PageOcrResult) -> String {
 fn add_text_layer_to_pdf(
     source_path: &Path,
     output_path: &Path,
-    page_text: &[String],
+    pages: &[PageOcrResult],
+    settings: &Settings,
 ) -> Result<()> {
     let mut doc = lopdf::Document::load(source_path)?;
-    let pages = doc.get_pages();
+    let page_map = doc.get_pages();
 
     let font_id = add_font(&mut doc);
-    for (idx, (_page_number, page_id)) in pages.iter().enumerate() {
-        if idx >= page_text.len() {
-            break;
-        }
-        let text = page_text.get(idx).cloned().unwrap_or_default();
-        if text.trim().is_empty() {
+    for (idx, (_page_number, page_id)) in page_map.iter().enumerate() {
+        let page = match pages.get(idx) {
+            Some(page) => page,
+            None => break,
+        };
+        let use_mapped = settings.content_enable_pdf_ocr_text_layer_dev;
+        if !use_mapped {
+            let text = page_to_plain_text(page);
+            if text.trim().is_empty() {
+                continue;
+            }
+            let geometry = extract_page_geometry(&doc, *page_id)?;
+            let stream = build_text_stream(&text, geometry.crop_box.height() as f64);
+            let stream_id = doc.add_object(stream);
+            let page_obj = doc.get_object_mut(*page_id)?;
+            if let lopdf::Object::Dictionary(ref mut dict) = page_obj {
+                let contents = dict.get(b"Contents").map(|obj| obj.clone()).ok();
+                let new_contents = match contents {
+                    Some(lopdf::Object::Array(mut arr)) => {
+                        arr.push(lopdf::Object::Reference(stream_id));
+                        lopdf::Object::Array(arr)
+                    }
+                    Some(existing) => {
+                        lopdf::Object::Array(vec![existing, lopdf::Object::Reference(stream_id)])
+                    }
+                    None => lopdf::Object::Reference(stream_id),
+                };
+                dict.set("Contents", new_contents);
+
+                let resources = dict.get(b"Resources").map(|obj| obj.clone()).ok();
+                let mut resources_dict = match resources {
+                    Some(lopdf::Object::Dictionary(dict)) => dict,
+                    _ => lopdf::Dictionary::new(),
+                };
+                let font_dict = match resources_dict.get(b"Font").map(|obj| obj.clone()).ok() {
+                    Some(lopdf::Object::Dictionary(dict)) => dict,
+                    _ => lopdf::Dictionary::new(),
+                };
+                let mut font_dict = font_dict;
+                font_dict.set("F1", font_id);
+                resources_dict.set("Font", font_dict);
+                dict.set("Resources", resources_dict);
+            }
             continue;
         }
-        let (_width, height) = page_dimensions(&doc, *page_id)?;
-        let stream = build_text_stream(&text, height);
+
+        if page.lines.is_empty() {
+            continue;
+        }
+        let geometry = extract_page_geometry(&doc, *page_id)?;
+        let stream = build_text_stream_from_ocr(page, geometry);
 
         let stream_id = doc.add_object(stream);
         let page_obj = doc.get_object_mut(*page_id)?;
@@ -412,11 +453,6 @@ fn add_font(doc: &mut lopdf::Document) -> lopdf::ObjectId {
         "BaseFont" => "Helvetica",
     };
     doc.add_object(font)
-}
-
-fn page_dimensions(doc: &lopdf::Document, page_id: lopdf::ObjectId) -> Result<(f64, f64)> {
-    let geom = extract_page_geometry(doc, page_id)?;
-    Ok((geom.crop_box.width() as f64, geom.crop_box.height() as f64))
 }
 
 fn build_text_stream(text: &str, page_height: f64) -> lopdf::Stream {
@@ -475,6 +511,161 @@ fn escape_pdf_text(text: &str) -> String {
     text.replace('\\', "\\\\")
         .replace('(', "\\(")
         .replace(')', "\\)")
+}
+
+fn build_text_stream_from_ocr(page: &PageOcrResult, geometry: PageGeometry) -> lopdf::Stream {
+    let mut ops = Vec::new();
+    let render_width = page.render_width as f32;
+    let render_height = page.render_height as f32;
+    if render_width <= 0.0 || render_height <= 0.0 {
+        return lopdf::Stream::new(lopdf::Dictionary::new(), Vec::new());
+    }
+
+    for line in &page.lines {
+        if line.words.is_empty() {
+            continue;
+        }
+        let line_box = map_ocr_rect_to_pdf(&line.bbox, render_width, render_height, geometry);
+        let line_height = (line_box.y1 - line_box.y0).abs().max(1.0);
+        ops.push(lopdf::content::Operation::new("BT", vec![]));
+        ops.push(lopdf::content::Operation::new(
+            "Tf",
+            vec![
+                lopdf::Object::Name(b"F1".to_vec()),
+                lopdf::Object::Real(line_height),
+            ],
+        ));
+        ops.push(lopdf::content::Operation::new(
+            "Tr",
+            vec![lopdf::Object::Integer(3)],
+        ));
+
+        for word in &line.words {
+            let text = escape_pdf_text(&word.text);
+            if text.trim().is_empty() {
+                continue;
+            }
+            let word_box = map_ocr_rect_to_pdf(&word.bbox, render_width, render_height, geometry);
+            let word_width = (word_box.x1 - word_box.x0).abs().max(0.0);
+            let x = word_box.x0;
+            let y = word_box.y0;
+            ops.push(lopdf::content::Operation::new(
+                "Tm",
+                vec![
+                    lopdf::Object::Real(1.0),
+                    lopdf::Object::Real(0.0),
+                    lopdf::Object::Real(0.0),
+                    lopdf::Object::Real(1.0),
+                    lopdf::Object::Real(x),
+                    lopdf::Object::Real(y),
+                ],
+            ));
+            let scale = estimate_text_horizontal_scale(&word.text, line_height, word_width);
+            ops.push(lopdf::content::Operation::new(
+                "Tz",
+                vec![lopdf::Object::Real(scale)],
+            ));
+            ops.push(lopdf::content::Operation::new(
+                "Tj",
+                vec![lopdf::Object::String(
+                    text.as_bytes().to_vec(),
+                    lopdf::StringFormat::Literal,
+                )],
+            ));
+        }
+
+        ops.push(lopdf::content::Operation::new("ET", vec![]));
+    }
+
+    let content = lopdf::content::Content { operations: ops };
+    lopdf::Stream::new(
+        lopdf::Dictionary::new(),
+        content.encode().unwrap_or_default(),
+    )
+}
+
+fn map_ocr_rect_to_pdf(
+    rect: &Rect,
+    render_width: f32,
+    render_height: f32,
+    geometry: PageGeometry,
+) -> PdfBox {
+    let x0 = rect.x;
+    let y0 = rect.y;
+    let x1 = rect.x + rect.width;
+    let y1 = rect.y + rect.height;
+
+    let corners = [
+        ocr_pixel_to_pdf_point(x0, y0, render_width, render_height, geometry),
+        ocr_pixel_to_pdf_point(x1, y0, render_width, render_height, geometry),
+        ocr_pixel_to_pdf_point(x0, y1, render_width, render_height, geometry),
+        ocr_pixel_to_pdf_point(x1, y1, render_width, render_height, geometry),
+    ];
+
+    let mut min_x = f32::INFINITY;
+    let mut min_y = f32::INFINITY;
+    let mut max_x = f32::NEG_INFINITY;
+    let mut max_y = f32::NEG_INFINITY;
+
+    for (x, y) in corners {
+        min_x = min_x.min(x);
+        min_y = min_y.min(y);
+        max_x = max_x.max(x);
+        max_y = max_y.max(y);
+    }
+
+    if !min_x.is_finite() || !min_y.is_finite() || !max_x.is_finite() || !max_y.is_finite() {
+        return PdfBox {
+            x0: 0.0,
+            y0: 0.0,
+            x1: 0.0,
+            y1: 0.0,
+        };
+    }
+
+    PdfBox {
+        x0: min_x,
+        y0: min_y,
+        x1: max_x,
+        y1: max_y,
+    }
+}
+
+fn estimate_text_horizontal_scale(text: &str, font_size: f32, target_width: f32) -> f32 {
+    let char_count = text.chars().count() as f32;
+    if char_count <= 0.0 || font_size <= 0.0 || target_width <= 0.0 {
+        return 100.0;
+    }
+
+    let avg_advance = if contains_cjk(text) { 1.0 } else { 0.5 };
+    let expected_width = font_size * avg_advance * char_count;
+    if expected_width <= 0.0 {
+        return 100.0;
+    }
+
+    let mut scale = target_width / expected_width * 100.0;
+    if scale < 20.0 {
+        scale = 20.0;
+    } else if scale > 400.0 {
+        scale = 400.0;
+    }
+    scale
+}
+
+fn contains_cjk(text: &str) -> bool {
+    text.chars().any(is_cjk)
+}
+
+fn is_cjk(ch: char) -> bool {
+    matches!(ch as u32,
+        0x4E00..=0x9FFF
+            | 0x3400..=0x4DBF
+            | 0x20000..=0x2A6DF
+            | 0x2A700..=0x2B73F
+            | 0x2B740..=0x2B81F
+            | 0x2B820..=0x2CEAF
+            | 0xF900..=0xFAFF
+    )
 }
 
 fn load_pdfium() -> Result<Pdfium> {

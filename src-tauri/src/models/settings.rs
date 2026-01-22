@@ -37,6 +37,8 @@ pub struct Settings {
     pub content_ocr_timeout_image_ms: u64,
     #[serde(default = "default_content_ocr_timeout_pdf_ms")]
     pub content_ocr_timeout_pdf_ms: u64,
+    #[serde(default)]
+    pub content_enable_pdf_ocr_text_layer_dev: bool,
     #[serde(default = "default_ocr_model_source")]
     pub ocr_model_source: OcrModelSource,
     #[serde(default)]
@@ -137,6 +139,7 @@ impl Default for Settings {
             content_max_ocr_pdf_pages: default_content_max_ocr_pdf_pages(),
             content_ocr_timeout_image_ms: default_content_ocr_timeout_image_ms(),
             content_ocr_timeout_pdf_ms: default_content_ocr_timeout_pdf_ms(),
+            content_enable_pdf_ocr_text_layer_dev: false,
             ocr_model_source: OcrModelSource::Bundled,
             ocr_model_det_path: String::new(),
             ocr_model_rec_path: String::new(),

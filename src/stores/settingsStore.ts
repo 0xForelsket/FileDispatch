@@ -25,6 +25,7 @@ export interface AppSettings {
   contentMaxOcrPdfPages: number;
   contentOcrTimeoutImageMs: number;
   contentOcrTimeoutPdfMs: number;
+  contentEnablePdfOcrTextLayerDev: boolean;
   ocrModelSource: "bundled" | "custom";
   ocrModelDetPath: string;
   ocrModelRecPath: string;
@@ -67,6 +68,7 @@ export const defaultSettings: AppSettings = {
   contentMaxOcrPdfPages: 25,
   contentOcrTimeoutImageMs: 15_000,
   contentOcrTimeoutPdfMs: 120_000,
+  contentEnablePdfOcrTextLayerDev: false,
   ocrModelSource: "bundled",
   ocrModelDetPath: "",
   ocrModelRecPath: "",
