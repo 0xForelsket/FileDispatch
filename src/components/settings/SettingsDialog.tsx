@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Bell, Calendar, FileText, Gauge, Settings, Sliders, X } from "lucide-react";
+import { AlertTriangle, Bell, Calendar, FileText, Gauge, Settings, Sliders, X } from "lucide-react";
 
 import { GeneralPanel } from "@/components/settings/panels/GeneralPanel";
 import { NotificationsPanel } from "@/components/settings/panels/NotificationsPanel";
@@ -9,6 +9,7 @@ import { OCRPanel } from "@/components/settings/panels/OCRPanel";
 import { AdvancedPanel } from "@/components/settings/panels/AdvancedPanel";
 import { FormattingPanel } from "@/components/settings/FormattingPanel";
 import { formatShortcut, matchesShortcut } from "@/lib/shortcuts";
+import { useSettingsStore } from "@/stores/settingsStore";
 
 const tabs = [
   { id: "general", label: "General", icon: Settings },
@@ -28,6 +29,8 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
   const shortcutLabel = useMemo(() => formatShortcut({ key: ",", ctrlOrMeta: true }), []);
+  const saveError = useSettingsStore((state) => state.saveError);
+  const clearSaveError = useSettingsStore((state) => state.clearSaveError);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -122,6 +125,22 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
                   <X className="h-5 w-5" />
                 </button>
               </div>
+              {saveError ? (
+                <div className="mx-6 mt-4 flex items-start gap-3 rounded-[var(--radius)] border border-[var(--fg-alert)]/30 bg-[var(--fg-alert)]/10 px-3 py-2 text-xs text-[var(--fg-alert)]">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="flex-1">
+                    <div className="font-semibold">Settings not saved</div>
+                    <div className="text-[var(--fg-alert)]/80">{saveError}</div>
+                  </div>
+                  <button
+                    className="rounded-[var(--radius)] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--fg-alert)]/80 transition-colors hover:text-[var(--fg-alert)]"
+                    onClick={clearSaveError}
+                    type="button"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              ) : null}
               <div className="custom-scrollbar flex-1 overflow-y-auto p-6">
                 {renderContent()}
               </div>

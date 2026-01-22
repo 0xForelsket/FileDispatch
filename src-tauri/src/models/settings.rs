@@ -22,6 +22,8 @@ pub struct Settings {
     #[serde(default = "default_true")]
     pub use_short_date_names: bool,
     #[serde(default = "default_true")]
+    pub show_tooltips: bool,
+    #[serde(default = "default_true")]
     pub content_enable_ocr: bool,
     #[serde(default = "default_content_max_text_bytes")]
     pub content_max_text_bytes: u64,
@@ -53,6 +55,8 @@ pub struct Settings {
     pub ocr_enable_deskew: bool,
     #[serde(default)]
     pub ocr_enable_binarization: bool,
+    #[serde(default = "default_preview_max_files")]
+    pub preview_max_files: u32,
 }
 
 fn default_date_format() -> String {
@@ -99,6 +103,10 @@ fn default_ocr_confidence_threshold() -> f32 {
     0.6
 }
 
+fn default_preview_max_files() -> u32 {
+    100
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -121,6 +129,7 @@ impl Default for Settings {
             date_format: default_date_format(),
             time_format: default_time_format(),
             use_short_date_names: true,
+            show_tooltips: true,
             content_enable_ocr: true,
             content_max_text_bytes: default_content_max_text_bytes(),
             content_max_ocr_image_bytes: default_content_max_ocr_image_bytes(),
@@ -137,6 +146,7 @@ impl Default for Settings {
             ocr_confidence_threshold: default_ocr_confidence_threshold(),
             ocr_enable_deskew: false,
             ocr_enable_binarization: false,
+            preview_max_files: default_preview_max_files(),
         }
     }
 }
@@ -144,9 +154,12 @@ impl Default for Settings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ThemeMode {
+    #[serde(alias = "standard")]
     Light,
     Dark,
     System,
+    #[serde(alias = "classic")]
+    Magi,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -39,9 +39,11 @@ export interface AppSettings {
 
 interface SettingsState {
   settings: AppSettings;
+  saveError: string | null;
   setSettings: (settings: Partial<AppSettings>) => void;
   loadSettings: () => Promise<void>;
   saveSettings: () => Promise<void>;
+  clearSaveError: () => void;
 }
 
 export const defaultSettings: AppSettings = {
@@ -79,13 +81,17 @@ export const defaultSettings: AppSettings = {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: defaultSettings,
+  saveError: null,
   setSettings: (partial) =>
     set((state) => ({ settings: { ...state.settings, ...partial } })),
   loadSettings: async () => {
     try {
       const settings = await settingsGet();
       const merged = { ...defaultSettings, ...settings };
-      set({ settings: { ...merged, theme: normalizeTheme(merged.theme) } });
+      set({
+        settings: { ...merged, theme: normalizeTheme(merged.theme) },
+        saveError: null,
+      });
     } catch {
       set({ settings: defaultSettings });
     }
@@ -93,10 +99,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   saveSettings: async () => {
     try {
       await settingsUpdate(get().settings);
-    } catch {
-      // ignore for now
+      set({ saveError: null });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ saveError: `Failed to save settings: ${message}` });
     }
   },
+  clearSaveError: () => set({ saveError: null }),
 }));
 
 function normalizeTheme(value: unknown): ThemeMode {
