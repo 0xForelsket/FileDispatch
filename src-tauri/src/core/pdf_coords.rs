@@ -31,7 +31,15 @@ pub struct PageGeometry {
 ///
 /// Assumptions:
 /// - OCR bboxes are in the bitmap coordinate system produced by PDFium rendering.
-/// - `rotate_cw_degrees` matches the PDF page's /Rotate (clockwise).
+/// - PDFium rendering applies the page's intrinsic /Rotate to the raster output, so the OCR
+///   coordinates are in "viewer space" (i.e., the rendered, rotated view).
+/// - Therefore, mapping back into PDF user space requires applying the inverse of /Rotate.
+///
+/// Verified locally (2026-01-22):
+/// - `src-tauri/examples/pdfium_rotate_probe.rs` shows `page.width()/height()` and the rendered
+///   bitmap dimensions are already swapped for /Rotate 90 (rendered output is visually rotated).
+/// - `src-tauri/examples/ocr_bbox_probe.rs --generate` shows OCR bounding boxes use a top-left
+///   origin (y increases downward) in the input bitmap coordinate system.
 pub fn ocr_pixel_to_pdf_point(
     pixel_x: f32,
     pixel_y: f32,
@@ -102,7 +110,8 @@ mod tests {
             rotate_cw_degrees: 0,
         };
 
-        let (x, y) = ocr_pixel_to_pdf_point(0.0, 0.0, 1000.0, 2000.0, geom);
+        // Match the CropBox aspect ratio (612x792 points).
+        let (x, y) = ocr_pixel_to_pdf_point(0.0, 0.0, 612.0, 792.0, geom);
         assert_close(x, 0.0);
         assert_close(y, 792.0);
     }
@@ -119,7 +128,9 @@ mod tests {
             rotate_cw_degrees: 90,
         };
 
-        let (x, y) = ocr_pixel_to_pdf_point(0.0, 0.0, 1000.0, 2000.0, geom);
+        // For /Rotate 90, PDFium reports swapped page width/height, and the rendered bitmap is
+        // in that rotated viewer space.
+        let (x, y) = ocr_pixel_to_pdf_point(0.0, 0.0, 792.0, 612.0, geom);
         assert_close(x, 0.0);
         assert_close(y, 0.0);
     }
@@ -137,17 +148,18 @@ mod tests {
         };
 
         // top-left in rotated view -> bottom-left base
-        let (x1, y1) = ocr_pixel_to_pdf_point(0.0, 0.0, 100.0, 200.0, geom);
+        // Base CropBox is 200x400 points; rotated view is 400x200.
+        let (x1, y1) = ocr_pixel_to_pdf_point(0.0, 0.0, 200.0, 100.0, geom);
         assert_close(x1, 10.0);
         assert_close(y1, 20.0);
 
         // top-right in rotated view -> top-left base
-        let (x2, y2) = ocr_pixel_to_pdf_point(100.0, 0.0, 100.0, 200.0, geom);
+        let (x2, y2) = ocr_pixel_to_pdf_point(200.0, 0.0, 200.0, 100.0, geom);
         assert_close(x2, 10.0);
         assert_close(y2, 420.0);
 
         // bottom-left in rotated view -> bottom-right base
-        let (x3, y3) = ocr_pixel_to_pdf_point(0.0, 200.0, 100.0, 200.0, geom);
+        let (x3, y3) = ocr_pixel_to_pdf_point(0.0, 100.0, 200.0, 100.0, geom);
         assert_close(x3, 210.0);
         assert_close(y3, 20.0);
     }
@@ -169,4 +181,3 @@ mod tests {
         assert_close(y, 400.0);
     }
 }
-

@@ -1668,6 +1668,7 @@ dependencies = [
 name = "file-dispatch"
 version = "0.1.0"
 dependencies = [
+ "ab_glyph",
  "anyhow",
  "chrono",
  "crossbeam-channel",

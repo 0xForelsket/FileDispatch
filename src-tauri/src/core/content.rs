@@ -9,6 +9,8 @@ use pdfium_render::prelude::{PdfDocument, PdfRenderConfig, Pdfium};
 use quick_xml::events::Event;
 use quick_xml::Reader;
 
+use crate::core::ocr_geometry::PageOcrResult;
+use crate::core::ocr_grouping::group_words_into_lines;
 use crate::core::ocr::OcrManager;
 use crate::models::{ContentSource, FileKind, Settings};
 use crate::utils::file_info::FileInfo;
@@ -108,11 +110,12 @@ pub fn make_pdf_searchable(
         return Err(anyhow!("OCR is disabled in settings"));
     }
 
-    let page_text = ocr_pdf_pages(&document, settings, ocr)?;
-    if page_text.is_empty() {
+    let pages = ocr_pdf_pages(&document, settings, ocr)?;
+    if pages.is_empty() {
         return Err(anyhow!("No OCR text extracted"));
     }
 
+    let page_text: Vec<String> = pages.iter().map(page_to_plain_text).collect();
     add_text_layer_to_pdf(source_path, output_path, &page_text)?;
     Ok(MakePdfSearchableStatus::Completed)
 }
@@ -260,7 +263,11 @@ fn extract_ocr_content(
         let pdfium = load_pdfium()?;
         let document = pdfium.load_pdf_from_file(&info.path, None)?;
         let pages = ocr_pdf_pages(&document, settings, ocr)?;
-        let combined = pages.join("\n");
+        let combined = pages
+            .iter()
+            .map(page_to_plain_text)
+            .collect::<Vec<_>>()
+            .join("\n");
         if combined.trim().is_empty() {
             Ok(None)
         } else {
@@ -290,7 +297,7 @@ fn ocr_pdf_pages(
     document: &PdfDocument<'_>,
     settings: &Settings,
     ocr: &mut OcrManager,
-) -> Result<Vec<String>> {
+) -> Result<Vec<PageOcrResult>> {
     let mut output = Vec::new();
     let max_pages = settings.content_max_ocr_pdf_pages.max(1) as usize;
     let deadline =
@@ -305,14 +312,30 @@ fn ocr_pdf_pages(
         }
         let bitmap = page.render_with_config(&PdfRenderConfig::new().set_target_width(2000))?;
         let image = bitmap.as_image().to_rgb8();
+        let render_width = image.width();
+        let render_height = image.height();
         let remaining = deadline.saturating_duration_since(Instant::now());
         let page_timeout = remaining.min(Duration::from_millis(
             settings.content_ocr_timeout_image_ms.max(1),
         ));
-        let text = ocr.recognize_image(image, page_timeout)?;
-        output.push(text);
+        let words = ocr.recognize_image_word_boxes(image, page_timeout)?;
+        let lines = group_words_into_lines(words);
+        output.push(PageOcrResult {
+            page_index: index as u32,
+            render_width,
+            render_height,
+            lines,
+        });
     }
     Ok(output)
+}
+
+fn page_to_plain_text(page: &PageOcrResult) -> String {
+    page.lines
+        .iter()
+        .map(|l| l.text.as_str())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn add_text_layer_to_pdf(

@@ -8,6 +8,7 @@ use oar_ocr::prelude::*;
 use tauri::{AppHandle, Manager};
 
 use crate::core::model_manager::ModelManager;
+use crate::core::ocr_geometry::{Rect, WordBox};
 use crate::models::{OcrModelSource, Settings};
 
 #[derive(Clone, PartialEq)]
@@ -98,6 +99,11 @@ impl OcrManager {
         Ok(result.text)
     }
 
+    pub fn recognize_image_word_boxes(&mut self, image: RgbImage, timeout: Duration) -> Result<Vec<WordBox>> {
+        let options = OcrOptions::from_settings(&self.settings);
+        self.recognize_image_word_boxes_with_options(image, timeout, &options)
+    }
+
     pub fn recognize_image_with_options(
         &mut self,
         image: RgbImage,
@@ -117,6 +123,29 @@ impl OcrManager {
         }
 
         Ok(extract_text_with_threshold(&results, options.confidence_threshold))
+    }
+
+    pub fn recognize_image_word_boxes_with_options(
+        &mut self,
+        image: RgbImage,
+        timeout: Duration,
+        options: &OcrOptions,
+    ) -> Result<Vec<WordBox>> {
+        let start = Instant::now();
+
+        let processed_image = self.preprocess_image(image, options)?;
+
+        let engine = self.ensure_engine()?;
+        let results = engine.predict(vec![processed_image])?;
+
+        if start.elapsed() > timeout {
+            return Err(anyhow!("OCR timed out"));
+        }
+
+        Ok(extract_word_boxes_with_threshold(
+            &results,
+            options.confidence_threshold,
+        ))
     }
 
     fn preprocess_image(&self, img: RgbImage, options: &OcrOptions) -> Result<RgbImage> {
@@ -146,6 +175,7 @@ impl OcrManager {
                 config.rec_path.clone(),
                 config.dict_path.clone(),
             )
+            .return_word_box(true)
             .build()?;
             self.engine = Some(engine);
             self.engine_config = Some(config);
@@ -279,6 +309,112 @@ fn extract_text_with_threshold(results: &[OAROCRResult], min_confidence: f32) ->
     OcrResult {
         text: lines.join("\n"),
         average_confidence,
+    }
+}
+
+fn extract_word_boxes_with_threshold(results: &[OAROCRResult], min_confidence: f32) -> Vec<WordBox> {
+    let mut out = Vec::new();
+
+    for result in results {
+        for region in &result.text_regions {
+            let Some((text, confidence)) = region.text_with_confidence() else {
+                continue;
+            };
+            if confidence < min_confidence {
+                continue;
+            }
+
+            let text = text.trim();
+            if text.is_empty() {
+                continue;
+            }
+
+            if let Some(char_boxes) = region.word_boxes.as_ref().filter(|b| !b.is_empty()) {
+                let chars: Vec<char> = text.chars().collect();
+                let n = chars.len().min(char_boxes.len());
+
+                let mut current_text = String::new();
+                let mut current_bbox: Option<Rect> = None;
+
+                let flush = |out: &mut Vec<WordBox>,
+                                 current_text: &mut String,
+                                 current_bbox: &mut Option<Rect>| {
+                    if !current_text.is_empty() {
+                        if let Some(bbox) = current_bbox.take() {
+                            out.push(WordBox {
+                                text: std::mem::take(current_text),
+                                confidence,
+                                bbox,
+                            });
+                        } else {
+                            current_text.clear();
+                        }
+                    }
+                };
+
+                for i in 0..n {
+                    let ch = chars[i];
+                    if ch.is_whitespace() {
+                        flush(&mut out, &mut current_text, &mut current_bbox);
+                        continue;
+                    }
+
+                    current_text.push(ch);
+                    let rect = bbox_to_rect(&char_boxes[i]);
+                    current_bbox = Some(match current_bbox {
+                        Some(existing) => union_rect(existing, rect),
+                        None => rect,
+                    });
+                }
+
+                flush(&mut out, &mut current_text, &mut current_bbox);
+            } else {
+                // Fallback when char/word boxes are unavailable: emit coarse token boxes
+                // using the region's bounding box.
+                let bbox = bbox_to_rect(&region.bounding_box);
+                let tokens: Vec<&str> = text.split_whitespace().collect();
+                if tokens.is_empty() {
+                    continue;
+                }
+                for token in tokens {
+                    out.push(WordBox {
+                        text: token.to_string(),
+                        confidence,
+                        bbox,
+                    });
+                }
+            }
+        }
+    }
+
+    out
+}
+
+fn bbox_to_rect(bb: &oar_ocr::processors::BoundingBox) -> Rect {
+    let x0 = bb.x_min();
+    let y0 = bb.y_min();
+    let x1 = bb.x_max();
+    let y1 = bb.y_max();
+
+    Rect {
+        x: x0,
+        y: y0,
+        width: (x1 - x0).max(0.0),
+        height: (y1 - y0).max(0.0),
+    }
+}
+
+fn union_rect(a: Rect, b: Rect) -> Rect {
+    let min_x = a.x.min(b.x);
+    let min_y = a.y.min(b.y);
+    let max_x = (a.x + a.width).max(b.x + b.width);
+    let max_y = (a.y + a.height).max(b.y + b.height);
+
+    Rect {
+        x: min_x,
+        y: min_y,
+        width: (max_x - min_x).max(0.0),
+        height: (max_y - min_y).max(0.0),
     }
 }
 
