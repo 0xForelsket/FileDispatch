@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { Rule } from "@/types";
 
 // Create mock functions
-const mockInvoke = mock(() => Promise.resolve(null));
+type InvokeFn = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+const mockInvoke = mock<InvokeFn>(() => Promise.resolve(null));
 
 // Mock the Tauri invoke at the source
 mock.module("@tauri-apps/api/core", () => ({
