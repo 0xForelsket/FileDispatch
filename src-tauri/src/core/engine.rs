@@ -167,6 +167,7 @@ impl RuleEngine {
                 info.path.to_string_lossy().as_ref(),
                 Some(&info.hash),
             )?;
+            record_make_pdf_searchable_output_match(&match_repo, &rule.id, &outcomes);
 
             if should_stop_processing(&rule, &outcomes) {
                 break;
@@ -174,6 +175,33 @@ impl RuleEngine {
         }
 
         Ok(())
+    }
+}
+
+fn record_make_pdf_searchable_output_match(
+    match_repo: &MatchRepository,
+    rule_id: &str,
+    outcomes: &[ActionOutcome],
+) {
+    for outcome in outcomes {
+        if outcome.status != ActionResultStatus::Success
+            || outcome.action_type != ActionType::MakePdfSearchable
+        {
+            continue;
+        }
+
+        let Some(details) = outcome.details.as_ref() else {
+            continue;
+        };
+
+        let path_str = details
+            .destination_path
+            .as_deref()
+            .unwrap_or(details.source_path.as_str());
+        let path = std::path::Path::new(path_str);
+        if let Ok(info) = FileInfo::from_path(path) {
+            let _ = match_repo.record_match(rule_id, path_str, Some(&info.hash));
+        }
     }
 }
 
