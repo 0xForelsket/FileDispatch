@@ -41,7 +41,8 @@ fi
 # Build the Flatpak
 cd "$SCRIPT_DIR"
 echo "Building Flatpak..."
-flatpak run org.flatpak.Builder --force-clean --user --install build-dir com.filedispatch.FileDispatch.yml
+# Avoid rofiles-fuse issues inside the Builder sandbox.
+flatpak run org.flatpak.Builder --disable-rofiles-fuse --force-clean --user --install build-dir com.filedispatch.FileDispatch.yml
 
 # Create bundle for distribution
 echo "Creating distributable bundle..."
