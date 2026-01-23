@@ -23,7 +23,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "deb",
+      "rpm"
+    ],
     "resources": [
       "resources/ocr/*",
       "resources/fonts/*"
