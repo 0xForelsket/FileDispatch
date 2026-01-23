@@ -1796,8 +1796,90 @@ fn is_cjk(ch: char) -> bool {
 }
 
 fn load_pdfium() -> Result<Pdfium> {
-    let bindings = Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path("./"))
-        .or_else(|_| Pdfium::bind_to_system_library())
-        .map_err(|e| anyhow!("Failed to load PDFium: {e}"))?;
-    Ok(Pdfium::new(bindings))
+    let mut candidates: Vec<PathBuf> = Vec::new();
+
+    if let Ok(explicit) = std::env::var("FILEDISPATCH_PDFIUM_PATH") {
+        let explicit_path = PathBuf::from(explicit);
+        if explicit_path.is_file() {
+            push_pdfium_candidate(&mut candidates, explicit_path);
+        } else if explicit_path.is_dir() {
+            push_pdfium_candidate(
+                &mut candidates,
+                Pdfium::pdfium_platform_library_name_at_path(&explicit_path),
+            );
+        } else {
+            warn!(
+                "FILEDISPATCH_PDFIUM_PATH does not exist: {}",
+                explicit_path.display()
+            );
+        }
+    }
+
+    for dir in pdfium_candidate_dirs() {
+        push_pdfium_candidate(
+            &mut candidates,
+            Pdfium::pdfium_platform_library_name_at_path(&dir),
+        );
+    }
+
+    let tried_locations: Vec<String> = candidates
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect();
+
+    let mut last_error: Option<String> = None;
+    for path in candidates {
+        if !path.exists() {
+            continue;
+        }
+        match Pdfium::bind_to_library(&path) {
+            Ok(bindings) => {
+                info!("PDFium loaded from {}", path.display());
+                return Ok(Pdfium::new(bindings));
+            }
+            Err(err) => {
+                last_error = Some(err.to_string());
+            }
+        }
+    }
+
+    match Pdfium::bind_to_system_library() {
+        Ok(bindings) => Ok(Pdfium::new(bindings)),
+        Err(err) => {
+            let mut message = format!("Failed to load PDFium: {}", err);
+            if let Some(last_error) = last_error {
+                message = format!("Failed to load PDFium: {}", last_error);
+            }
+            if !tried_locations.is_empty() {
+                message.push_str(&format!(". Tried: {}", tried_locations.join(", ")));
+            }
+            message.push_str(
+                ". Set FILEDISPATCH_PDFIUM_PATH or place pdfium.dll next to the executable.",
+            );
+            Err(anyhow!(message))
+        }
+    }
+}
+
+fn push_pdfium_candidate(candidates: &mut Vec<PathBuf>, path: PathBuf) {
+    if !candidates.contains(&path) {
+        candidates.push(path);
+    }
+}
+
+fn pdfium_candidate_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            dirs.push(parent.to_path_buf());
+            dirs.push(parent.join("resources"));
+            dirs.push(parent.join("resources").join("pdfium"));
+        }
+    }
+    dirs.push(PathBuf::from("resources"));
+    dirs.push(PathBuf::from("resources").join("pdfium"));
+    dirs.push(PathBuf::from("src-tauri").join("resources"));
+    dirs.push(PathBuf::from("src-tauri").join("resources").join("pdfium"));
+    dirs.push(PathBuf::from("."));
+    dirs
 }

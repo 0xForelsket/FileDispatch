@@ -29,7 +29,8 @@
     ],
     "resources": [
       "resources/ocr/*",
-      "resources/fonts/*"
+      "resources/fonts/*",
+      "resources/pdfium/*"
     ],
     "icon": [
       "icons/32x32.png",
