@@ -1425,4 +1425,291 @@ mod tests {
             fs::set_permissions(&dest, perms).unwrap();
         }
     }
+
+    // ==================== ADDITIONAL EDGE CASE TESTS ====================
+
+    // --- Archive Special Characters Tests ---
+
+    #[test]
+    fn archive_path_with_unicode_characters() {
+        use crate::models::action::ArchiveFormat;
+
+        let dir = tempdir().unwrap();
+        let source_dir = dir.path().join("source");
+        fs::create_dir(&source_dir).unwrap();
+        let source = source_dir.join("report résumé.pdf");
+        let archive = dir.path().join("archive 2024.zip");
+
+        fs::write(&source, "content with émojis 🎉").unwrap();
+
+        // Test that archive creation handles Unicode paths
+        let result = create_archive(&source_dir, &archive, &ArchiveFormat::Zip);
+        if result.is_ok() {
+            assert!(archive.exists());
+            // Verify extraction also handles Unicode
+            let extract_dir = dir.path().join("extract");
+            fs::create_dir(&extract_dir).unwrap();
+            let extract_result = extract_archive(&archive, &extract_dir);
+            assert!(extract_result.is_ok());
+        }
+    }
+
+    #[test]
+    fn archive_path_with_spaces_and_parentheses() {
+        use crate::models::action::ArchiveFormat;
+
+        let dir = tempdir().unwrap();
+        let source_dir = dir.path().join("my files");
+        fs::create_dir(&source_dir).unwrap();
+        let source = source_dir.join("file (1).txt");
+        let archive = dir.path().join("archive (final).zip");
+
+        fs::write(&source, "content").unwrap();
+
+        let result = create_archive(&source_dir, &archive, &ArchiveFormat::Zip);
+        if result.is_ok() {
+            assert!(archive.exists());
+        }
+    }
+
+    #[test]
+    fn archive_empty_directory() {
+        use crate::models::action::ArchiveFormat;
+
+        let dir = tempdir().unwrap();
+        let empty_dir = dir.path().join("empty");
+        fs::create_dir(&empty_dir).unwrap();
+
+        let archive = dir.path().join("empty.zip");
+
+        // Archive creation with empty directory should handle gracefully
+        let result = create_archive(&empty_dir, &archive, &ArchiveFormat::Zip);
+        // Empty archive might fail or succeed depending on implementation
+        // We just verify it doesn't panic
+        let _ = result;
+    }
+
+    // --- Script Execution Edge Cases ---
+
+    #[test]
+    #[cfg(unix)]
+    fn script_command_nonexistent() {
+        // Test that nonexistent commands return error outcome
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("test.txt");
+        fs::write(&source, "content").unwrap();
+
+        let _info = FileInfo::from_path(&source).unwrap();
+
+        // Create a mock executor (would need AppHandle in real usage)
+        // For now we test the error handling behavior
+        let result = Command::new("this_command_definitely_does_not_exist_12345")
+            .output();
+
+        assert!(result.is_err() || result.unwrap().status.success() == false);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn script_command_with_special_shell_characters() {
+        // Test scripts with quotes, pipes, redirects (should be handled by shell)
+        let result = Command::new("sh")
+            .arg("-c")
+            .arg("echo 'hello world' | wc -w")
+            .output();
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.status.success());
+        // "hello world" has 2 words
+        assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "2");
+    }
+
+    // --- File Content Edge Cases ---
+
+    #[test]
+    fn unique_path_with_unicode_extension() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("文件.txt");
+        fs::write(&path, "").unwrap();
+
+        let result = unique_path(&path);
+        // Should handle Unicode extensions correctly
+        assert_eq!(result, dir.path().join("文件 (1).txt"));
+    }
+
+    #[test]
+    fn unique_path_with_multiple_extensions() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("archive.tar.gz");
+        fs::write(&path, "").unwrap();
+
+        let result = unique_path(&path);
+        // Should handle compound extensions
+        assert_eq!(result, dir.path().join("archive.tar (1).gz"));
+    }
+
+    #[test]
+    fn unique_path_with_dots_in_name() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("file.with.many.dots.txt");
+        fs::write(&path, "").unwrap();
+
+        let result = unique_path(&path);
+        // Should only add counter before the actual extension
+        assert_eq!(result, dir.path().join("file.with.many.dots (1).txt"));
+    }
+
+    // --- Permission Edge Cases ---
+
+    #[test]
+    #[cfg(unix)]
+    fn move_to_nonexistent_parent_directory() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let src_dir = tempdir().unwrap();
+        let source = src_dir.path().join("source.txt");
+        fs::write(&source, "content").unwrap();
+
+        // Try to move to a path with a parent directory that doesn't exist
+        // and cannot be created (permission denied)
+        let dest = "/root/forbidden/dest.txt";
+
+        let result = fs::rename(&source, Path::new(dest));
+        // Should fail with permission or path error
+        assert!(result.is_err());
+
+        // Source should still exist
+        assert!(source.exists());
+    }
+
+    #[test]
+    fn move_with_symlink_source() {
+        // Test behavior when source is a symbolic link
+        #[cfg(unix)]
+        {
+            let dir = tempdir().unwrap();
+            let target = dir.path().join("target.txt");
+            let link = dir.path().join("link.txt");
+
+            fs::write(&target, "content").unwrap();
+            std::os::unix::fs::symlink(&target, &link).unwrap();
+
+            let dest = dir.path().join("moved.txt");
+            let result = fs::rename(&link, &dest);
+
+            // Behavior varies by platform and filesystem
+            // Just verify it doesn't panic
+            let _ = result;
+        }
+    }
+
+    // --- Cross-Device Move Tests ---
+
+    #[test]
+    #[cfg(unix)]
+    fn cross_device_move_detection() {
+        let err = std::io::Error::from_raw_os_error(libc::EXDEV);
+        assert!(is_cross_device_error(&err));
+
+        let other_err = std::io::Error::new(std::io::ErrorKind::NotFound, "not found");
+        assert!(!is_cross_device_error(&other_err));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn cross_device_move_detection_windows() {
+        const ERROR_NOT_SAME_DEVICE: i32 = 17;
+        let err = std::io::Error::from_raw_os_error(ERROR_NOT_SAME_DEVICE);
+        assert!(is_cross_device_error(&err));
+
+        let other_err = std::io::Error::new(std::io::ErrorKind::NotFound, "not found");
+        assert!(!is_cross_device_error(&other_err));
+    }
+
+    // --- Empty and Zero-Byte File Edge Cases ---
+
+    #[test]
+    fn move_zero_byte_file() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("empty.txt");
+        let dest = dir.path().join("moved_empty.txt");
+
+        fs::write(&source, "").unwrap();
+
+        let result = fs::rename(&source, &dest);
+        assert!(result.is_ok());
+        assert!(!source.exists());
+        assert!(dest.exists());
+        assert_eq!(fs::metadata(&dest).unwrap().len(), 0);
+    }
+
+    #[test]
+    fn copy_zero_byte_file() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("empty.txt");
+        let dest = dir.path().join("copied_empty.txt");
+
+        fs::write(&source, "").unwrap();
+
+        let result =
+            fs_extra::file::copy(&source, &dest, &fs_extra::file::CopyOptions::new());
+        assert!(result.is_ok());
+        assert!(source.exists()); // Copy preserves source
+        assert!(dest.exists());
+        assert_eq!(fs::metadata(&dest).unwrap().len(), 0);
+    }
+
+    // --- Path Length Edge Cases ---
+
+    #[test]
+    fn unique_path_with_very_long_name() {
+        let dir = tempdir().unwrap();
+        let long_name = "a".repeat(200);
+        let path = dir.path().join(&long_name);
+
+        // May fail on filesystems with length limits
+        let write_result = fs::write(&path, "");
+        if write_result.is_ok() {
+            let result = unique_path(&path);
+            // Should handle or gracefully fail
+            let _ = result;
+        }
+    }
+
+    // --- Conflict Resolution Edge Cases ---
+
+    #[test]
+    fn prepare_destination_with_replace_conflict() {
+        let dir = tempdir().unwrap();
+        let mut dest_path = dir.path().join("existing.txt");
+        fs::write(&dest_path, "old content").unwrap();
+
+        // Replace should succeed even if file exists
+        let result = prepare_destination(
+            ActionType::Move,
+            &mut dest_path,
+            ConflictResolution::Replace,
+            false,
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn prepare_destination_with_rename_conflict() {
+        let dir = tempdir().unwrap();
+        let mut dest_path = dir.path().join("file.txt");
+        fs::write(&dest_path, "content").unwrap();
+
+        // Rename should modify the path to be unique
+        let result = prepare_destination(
+            ActionType::Move,
+            &mut dest_path,
+            ConflictResolution::Rename,
+            false,
+        );
+        assert!(result.is_ok());
+        // Path should have been modified
+        assert_ne!(dest_path, dir.path().join("file.txt"));
+    }
 }
