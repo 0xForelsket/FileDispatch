@@ -1433,4 +1433,598 @@ mod tests {
         }];
         assert!(super::should_stop_processing(&rule, &outcomes));
     }
+
+    // ==================== EDGE CASE TESTS ====================
+
+    // --- Date/Time Boundary Conditions ---
+
+    #[test]
+    fn date_at_exact_midnight() {
+        // Test date condition at exactly midnight (00:00:00)
+        let midnight = Utc::now()
+            .date_naive()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc();
+        let operator = DateOperator::Is {
+            date: midnight.date_naive(),
+        };
+        assert!(evaluate_date(midnight, &operator));
+    }
+
+    #[test]
+    fn date_one_second_before_midnight() {
+        let almost_midnight = Utc::now()
+            .date_naive()
+            .and_hms_opt(23, 59, 59)
+            .unwrap()
+            .and_utc();
+        let operator = DateOperator::Is {
+            date: almost_midnight.date_naive(),
+        };
+        assert!(evaluate_date(almost_midnight, &operator));
+    }
+
+    #[test]
+    fn time_at_exact_midnight() {
+        let midnight = NaiveTime::from_hms_opt(0, 0, 0).unwrap();
+        let operator = TimeOperator::Is {
+            time: NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
+        };
+        assert!(evaluate_time_with(midnight, &operator));
+    }
+
+    #[test]
+    fn time_between_crossing_midnight_at_boundary() {
+        // Test wraparound at exactly the end boundary
+        let end_time = NaiveTime::from_hms_opt(2, 0, 0).unwrap();
+        let operator = TimeOperator::Between {
+            start: NaiveTime::from_hms_opt(23, 0, 0).unwrap(),
+            end: NaiveTime::from_hms_opt(2, 0, 0).unwrap(),
+        };
+        assert!(evaluate_time_with(end_time, &operator));
+    }
+
+    #[test]
+    fn time_between_not_crossing_midnight_at_exact_boundaries() {
+        let start = NaiveTime::from_hms_opt(9, 0, 0).unwrap();
+        let end = NaiveTime::from_hms_opt(17, 0, 0).unwrap();
+        let operator = TimeOperator::Between { start, end };
+        // At start boundary
+        assert!(evaluate_time_with(start, &operator));
+        // At end boundary
+        assert!(evaluate_time_with(end, &operator));
+    }
+
+    #[test]
+    fn date_in_the_last_just_within_boundary() {
+        // Test InTheLast just within the duration
+        let just_within = Utc::now() - Duration::hours(23);
+        let operator = DateOperator::InTheLast {
+            amount: 1,
+            unit: TimeUnit::Days,
+        };
+        // Should match since it's within 1 day
+        assert!(evaluate_date(just_within, &operator));
+    }
+
+    #[test]
+    fn date_not_in_the_last_clearly_outside() {
+        // Test NotInTheLast clearly outside the duration
+        let clearly_outside = Utc::now() - Duration::days(2);
+        let operator = DateOperator::NotInTheLast {
+            amount: 1,
+            unit: TimeUnit::Days,
+        };
+        // Should match since it's more than 1 day ago
+        assert!(evaluate_date(clearly_outside, &operator));
+    }
+
+    #[test]
+    fn date_in_the_last_just_outside_boundary() {
+        // Test InTheLast just outside the duration
+        let just_outside = Utc::now() - Duration::hours(25);
+        let operator = DateOperator::InTheLast {
+            amount: 1,
+            unit: TimeUnit::Days,
+        };
+        // Should NOT match since it's more than 1 day ago
+        assert!(!evaluate_date(just_outside, &operator));
+    }
+
+    // --- Size Boundary Conditions ---
+
+    #[test]
+    fn size_zero_bytes_equals() {
+        let cond = SizeCondition {
+            operator: ComparisonOperator::Equals,
+            value: Some(0),
+            unit: SizeUnit::Bytes,
+        };
+        assert!(evaluate_size(0, &cond));
+        assert!(!evaluate_size(1, &cond));
+    }
+
+    #[test]
+    fn size_zero_bytes_greater_than() {
+        let cond = SizeCondition {
+            operator: ComparisonOperator::GreaterThan,
+            value: Some(0),
+            unit: SizeUnit::Bytes,
+        };
+        assert!(evaluate_size(1, &cond));
+        assert!(!evaluate_size(0, &cond));
+    }
+
+    #[test]
+    fn size_zero_bytes_less_than() {
+        let cond = SizeCondition {
+            operator: ComparisonOperator::LessThan,
+            value: Some(0),
+            unit: SizeUnit::Bytes,
+        };
+        // Nothing is less than 0 for u64
+        assert!(!evaluate_size(0, &cond));
+    }
+
+    #[test]
+    fn size_between_with_equal_min_max() {
+        // Edge case: min equals max
+        let cond = SizeCondition {
+            operator: ComparisonOperator::Between { min: 100, max: 100 },
+            value: None,
+            unit: SizeUnit::Bytes,
+        };
+        assert!(evaluate_size(100, &cond));
+        assert!(!evaluate_size(99, &cond));
+        assert!(!evaluate_size(101, &cond));
+    }
+
+    #[test]
+    fn size_between_with_min_greater_than_max() {
+        // Edge case: min > max (should never match)
+        let cond = SizeCondition {
+            operator: ComparisonOperator::Between { min: 150, max: 50 },
+            value: None,
+            unit: SizeUnit::Bytes,
+        };
+        // This condition can never be satisfied
+        assert!(!evaluate_size(100, &cond));
+        assert!(!evaluate_size(50, &cond));
+        assert!(!evaluate_size(150, &cond));
+    }
+
+    #[test]
+    fn size_max_u64_value() {
+        let cond = SizeCondition {
+            operator: ComparisonOperator::Equals,
+            value: Some(u64::MAX),
+            unit: SizeUnit::Bytes,
+        };
+        assert!(evaluate_size(u64::MAX, &cond));
+        assert!(!evaluate_size(u64::MAX - 1, &cond));
+    }
+
+    #[test]
+    fn size_none_value_treated_as_zero() {
+        let cond = SizeCondition {
+            operator: ComparisonOperator::Equals,
+            value: None,
+            unit: SizeUnit::Bytes,
+        };
+        assert!(evaluate_size(0, &cond));
+    }
+
+    // --- Regex Edge Cases ---
+
+    #[test]
+    fn regex_empty_pattern() {
+        let cond = StringCondition {
+            operator: StringOperator::Matches,
+            value: "".to_string(),
+            case_sensitive: false,
+        };
+        // Empty regex matches everything
+        let result = evaluate_string("anything", &cond).unwrap();
+        assert!(result.matched);
+    }
+
+    #[test]
+    fn regex_invalid_pattern_returns_error() {
+        let cond = StringCondition {
+            operator: StringOperator::Matches,
+            value: r"[invalid".to_string(), // Unclosed bracket
+            case_sensitive: false,
+        };
+        let result = evaluate_string("test", &cond);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn regex_special_characters_in_input() {
+        let cond = StringCondition {
+            operator: StringOperator::Matches,
+            value: r"file\.txt".to_string(),
+            case_sensitive: false,
+        };
+        let result = evaluate_string("file.txt", &cond).unwrap();
+        assert!(result.matched);
+        // Should not match without the dot
+        let result2 = evaluate_string("filetxt", &cond).unwrap();
+        assert!(!result2.matched);
+    }
+
+    #[test]
+    fn regex_unicode_characters() {
+        let cond = StringCondition {
+            operator: StringOperator::Matches,
+            value: r"文档_\d+".to_string(),
+            case_sensitive: false,
+        };
+        let result = evaluate_string("文档_2024", &cond).unwrap();
+        assert!(result.matched);
+    }
+
+    #[test]
+    fn regex_cache_hit() {
+        // Test that regex caching works by using the same pattern twice
+        let cond = StringCondition {
+            operator: StringOperator::Matches,
+            value: r"test_\d+".to_string(),
+            case_sensitive: false,
+        };
+        // First call - compiles and caches
+        let result1 = evaluate_string("test_123", &cond).unwrap();
+        assert!(result1.matched);
+        // Second call - should use cached regex
+        let result2 = evaluate_string("test_456", &cond).unwrap();
+        assert!(result2.matched);
+    }
+
+    // --- Empty Condition Groups ---
+
+    #[test]
+    fn empty_group_match_any_fails() {
+        let info = file_info_for("test.txt");
+        let group = ConditionGroup {
+            match_type: MatchType::Any,
+            conditions: vec![],
+        };
+        let result = evaluate_group(&group, &info).unwrap();
+        // Any of nothing is false
+        assert!(!result.matched);
+    }
+
+    #[test]
+    fn empty_group_match_none_succeeds() {
+        let info = file_info_for("test.txt");
+        let group = ConditionGroup {
+            match_type: MatchType::None,
+            conditions: vec![],
+        };
+        let result = evaluate_group(&group, &info).unwrap();
+        // None of nothing is true
+        assert!(result.matched);
+    }
+
+    // --- Deeply Nested Condition Groups ---
+
+    #[test]
+    fn deeply_nested_conditions_three_levels() {
+        let info = file_info_for("invoice_2024.pdf");
+
+        let level3 = ConditionGroup {
+            match_type: MatchType::Any,
+            conditions: vec![
+                Condition::Extension(StringCondition {
+                    operator: StringOperator::Is,
+                    value: "pdf".to_string(),
+                    case_sensitive: false,
+                }),
+                Condition::Extension(StringCondition {
+                    operator: StringOperator::Is,
+                    value: "docx".to_string(),
+                    case_sensitive: false,
+                }),
+            ],
+        };
+
+        let level2 = ConditionGroup {
+            match_type: MatchType::All,
+            conditions: vec![
+                Condition::Name(StringCondition {
+                    operator: StringOperator::Contains,
+                    value: "2024".to_string(),
+                    case_sensitive: false,
+                }),
+                Condition::Nested(level3),
+            ],
+        };
+
+        let level1 = ConditionGroup {
+            match_type: MatchType::All,
+            conditions: vec![
+                Condition::Name(StringCondition {
+                    operator: StringOperator::Contains,
+                    value: "invoice".to_string(),
+                    case_sensitive: false,
+                }),
+                Condition::Nested(level2),
+            ],
+        };
+
+        let result = evaluate_group(&level1, &info).unwrap();
+        assert!(result.matched);
+    }
+
+    #[test]
+    fn deeply_nested_with_none_at_middle() {
+        let info = file_info_for("report.txt");
+
+        // None of [pdf, docx] - should match for txt files
+        let inner = ConditionGroup {
+            match_type: MatchType::None,
+            conditions: vec![
+                Condition::Extension(StringCondition {
+                    operator: StringOperator::Is,
+                    value: "pdf".to_string(),
+                    case_sensitive: false,
+                }),
+                Condition::Extension(StringCondition {
+                    operator: StringOperator::Is,
+                    value: "docx".to_string(),
+                    case_sensitive: false,
+                }),
+            ],
+        };
+
+        let outer = ConditionGroup {
+            match_type: MatchType::All,
+            conditions: vec![
+                Condition::Name(StringCondition {
+                    operator: StringOperator::Contains,
+                    value: "report".to_string(),
+                    case_sensitive: false,
+                }),
+                Condition::Nested(inner),
+            ],
+        };
+
+        let result = evaluate_group(&outer, &info).unwrap();
+        assert!(result.matched);
+    }
+
+    // --- String Operator Edge Cases ---
+
+    #[test]
+    fn string_empty_value_contains() {
+        let cond = StringCondition {
+            operator: StringOperator::Contains,
+            value: "".to_string(),
+            case_sensitive: false,
+        };
+        let result = evaluate_string("anything", &cond).unwrap();
+        assert!(result.matched);
+    }
+
+    #[test]
+    fn string_empty_target_contains() {
+        let cond = StringCondition {
+            operator: StringOperator::Contains,
+            value: "x".to_string(),
+            case_sensitive: false,
+        };
+        let result = evaluate_string("", &cond).unwrap();
+        assert!(!result.matched);
+    }
+
+    #[test]
+    fn string_both_empty() {
+        let cond = StringCondition {
+            operator: StringOperator::Is,
+            value: "".to_string(),
+            case_sensitive: false,
+        };
+        let result = evaluate_string("", &cond).unwrap();
+        assert!(result.matched);
+    }
+
+    #[test]
+    fn string_unicode_case_sensitivity_ascii_folded() {
+        // Test case insensitivity with ASCII only (eq_ignore_ascii_case)
+        let cond = StringCondition {
+            operator: StringOperator::Is,
+            value: "ÑOÑO".to_string(), // Uppercase ASCII O, uppercase Ñ
+            case_sensitive: false,
+        };
+        // eq_ignore_ascii_case folds ASCII O to o, but Ñ stays unchanged
+        // "ÑOÑO" vs "ÑoÑo" - ASCII O/o matches, Ñ matches Ñ
+        let result = evaluate_string("ÑoÑo", &cond).unwrap();
+        assert!(result.matched);
+    }
+
+    #[test]
+    fn string_unicode_case_sensitivity_non_ascii_not_folded() {
+        // Test that non-ASCII case differences are NOT handled
+        let cond = StringCondition {
+            operator: StringOperator::Is,
+            value: "MÜNCHEN".to_string(), // Uppercase Ü
+            case_sensitive: false,
+        };
+        // eq_ignore_ascii_case does NOT fold ü to Ü
+        let result = evaluate_string("münchen", &cond).unwrap();
+        // This won't match because ü ≠ Ü in ASCII comparison
+        assert!(!result.matched);
+    }
+
+    // --- Shell Script Edge Cases ---
+
+    #[test]
+    fn shell_nonexistent_command() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.txt");
+        fs::write(&file_path, "test").unwrap();
+
+        let result = evaluate_shell("this_command_definitely_does_not_exist_12345", &file_path);
+        assert!(!result);
+    }
+
+    #[test]
+    fn shell_empty_command() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.txt");
+        fs::write(&file_path, "test").unwrap();
+
+        // Empty command - behavior may vary by shell
+        let result = evaluate_shell("", &file_path);
+        // Empty command typically succeeds (returns 0) in sh
+        #[cfg(not(target_os = "windows"))]
+        assert!(result);
+        #[cfg(target_os = "windows")]
+        assert!(result);
+    }
+
+    // --- Date Between Edge Cases ---
+
+    #[test]
+    fn date_between_same_start_and_end() {
+        let today = Utc::now();
+        let operator = DateOperator::Between {
+            start: today.date_naive(),
+            end: today.date_naive(),
+        };
+        assert!(evaluate_date(today, &operator));
+    }
+
+    #[test]
+    fn date_between_start_after_end() {
+        let now = Utc::now();
+        let operator = DateOperator::Between {
+            start: (now + Duration::days(5)).date_naive(),
+            end: (now - Duration::days(5)).date_naive(),
+        };
+        // Start > end, should not match anything
+        assert!(!evaluate_date(now, &operator));
+    }
+
+    // --- Captures with Multiple Groups ---
+
+    #[test]
+    fn regex_multiple_captures() {
+        let cond = StringCondition {
+            operator: StringOperator::Matches,
+            value: r"(\d{4})-(\d{2})-(\d{2})_([a-z]+)".to_string(),
+            case_sensitive: false,
+        };
+        let result = evaluate_string("2024-01-15_report", &cond).unwrap();
+        assert!(result.matched);
+        assert_eq!(result.captures.get("1"), Some(&"2024".to_string()));
+        assert_eq!(result.captures.get("2"), Some(&"01".to_string()));
+        assert_eq!(result.captures.get("3"), Some(&"15".to_string()));
+        assert_eq!(result.captures.get("4"), Some(&"report".to_string()));
+    }
+
+    #[test]
+    fn regex_optional_capture_group() {
+        let cond = StringCondition {
+            operator: StringOperator::Matches,
+            value: r"file_(\d+)?\.txt".to_string(),
+            case_sensitive: false,
+        };
+        // With number
+        let result1 = evaluate_string("file_123.txt", &cond).unwrap();
+        assert!(result1.matched);
+        assert_eq!(result1.captures.get("1"), Some(&"123".to_string()));
+
+        // Without number - capture group is None
+        let result2 = evaluate_string("file_.txt", &cond).unwrap();
+        assert!(result2.matched);
+        // Optional group that didn't match won't be in captures
+        assert!(result2.captures.get("1").is_none());
+    }
+
+    // --- Integration Test: evaluate_conditions ---
+
+    #[test]
+    fn evaluate_conditions_simple_rule() {
+        let info = file_info_for("report_2024.pdf");
+        let rule = Rule {
+            id: "test-rule".to_string(),
+            folder_id: "test-folder".to_string(),
+            name: "Test Rule".to_string(),
+            enabled: true,
+            stop_processing: false,
+            conditions: ConditionGroup {
+                match_type: MatchType::All,
+                conditions: vec![
+                    Condition::Name(StringCondition {
+                        operator: StringOperator::Contains,
+                        value: "report".to_string(),
+                        case_sensitive: false,
+                    }),
+                    Condition::Extension(StringCondition {
+                        operator: StringOperator::Is,
+                        value: "pdf".to_string(),
+                        case_sensitive: false,
+                    }),
+                ],
+            },
+            actions: vec![],
+            position: 0,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+
+        let settings = crate::models::Settings::default();
+        let mut ocr = crate::core::ocr::OcrManager::new_placeholder();
+        let result = super::evaluate_conditions(
+            &rule,
+            &info,
+            &settings,
+            &mut ocr,
+            super::EvaluationOptions::default(),
+        )
+        .unwrap();
+
+        assert!(result.matched);
+    }
+
+    #[test]
+    fn evaluate_conditions_with_regex_captures() {
+        let info = file_info_for("invoice_2024_sales.pdf");
+        let rule = Rule {
+            id: "test-rule".to_string(),
+            folder_id: "test-folder".to_string(),
+            name: "Test Rule".to_string(),
+            enabled: true,
+            stop_processing: false,
+            conditions: ConditionGroup {
+                match_type: MatchType::All,
+                conditions: vec![Condition::Name(StringCondition {
+                    operator: StringOperator::Matches,
+                    value: r"invoice_(\d{4})_(\w+)".to_string(),
+                    case_sensitive: false,
+                })],
+            },
+            actions: vec![],
+            position: 0,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+
+        let settings = crate::models::Settings::default();
+        let mut ocr = crate::core::ocr::OcrManager::new_placeholder();
+        let result = super::evaluate_conditions(
+            &rule,
+            &info,
+            &settings,
+            &mut ocr,
+            super::EvaluationOptions::default(),
+        )
+        .unwrap();
+
+        assert!(result.matched);
+        assert_eq!(result.captures.get("1"), Some(&"2024".to_string()));
+        assert_eq!(result.captures.get("2"), Some(&"sales".to_string()));
+    }
 }

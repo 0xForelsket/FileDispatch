@@ -515,19 +515,48 @@ impl ActionExecutor {
     }
 
     fn execute_script(&self, command: &str, source_path: &Path) -> ActionOutcome {
-        let mut cmd = if cfg!(target_os = "windows") {
-            let mut c = Command::new("cmd");
-            c.arg("/C");
-            c
+        // Try to execute the script, with fallback on Windows
+        let result = if cfg!(target_os = "windows") {
+            // On Windows: Try PowerShell first, fall back to cmd.exe
+            let ps_result = Command::new("powershell")
+                .arg("-NoProfile")
+                .arg("-ExecutionPolicy")
+                .arg("Bypass")
+                .arg("-Command")
+                .arg(command)
+                .env("FILE_PATH", source_path)
+                .status();
+
+            match ps_result {
+                Ok(status) if status.success() => {
+                    return success_outcome(ActionType::RunScript, source_path, None);
+                }
+                Ok(status) => {
+                    // PowerShell ran but script failed - return error
+                    return error_outcome(
+                        ActionType::RunScript,
+                        format!("PowerShell script failed: {status}"),
+                    );
+                }
+                Err(_) => {
+                    // PowerShell not found or failed to start, try cmd.exe
+                    Command::new("cmd")
+                        .arg("/C")
+                        .arg(command)
+                        .env("FILE_PATH", source_path)
+                        .status()
+                }
+            }
         } else {
-            let mut c = Command::new("sh");
-            c.arg("-c");
-            c
+            // Unix: use sh
+            Command::new("sh")
+                .arg("-c")
+                .arg(command)
+                .env("FILE_PATH", source_path)
+                .status()
         };
 
-        let status = cmd.arg(command).env("FILE_PATH", source_path).status();
-
-        match status {
+        match result {
             Ok(status) if status.success() => {
                 success_outcome(ActionType::RunScript, source_path, None)
             }
@@ -1041,5 +1070,359 @@ mod tests {
     fn is_cross_device_error_false_for_not_found() {
         let err = std::io::Error::new(std::io::ErrorKind::NotFound, "Not found");
         assert!(!is_cross_device_error(&err));
+    }
+
+    // ==================== EDGE CASE TESTS ====================
+
+    // --- Cross-Device Error Detection ---
+
+    #[test]
+    #[cfg(unix)]
+    fn is_cross_device_error_true_for_exdev() {
+        let err = std::io::Error::from_raw_os_error(libc::EXDEV);
+        assert!(is_cross_device_error(&err));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn is_cross_device_error_true_for_not_same_device() {
+        const ERROR_NOT_SAME_DEVICE: i32 = 17;
+        let err = std::io::Error::from_raw_os_error(ERROR_NOT_SAME_DEVICE);
+        assert!(is_cross_device_error(&err));
+    }
+
+    #[test]
+    fn is_cross_device_error_false_for_other_os_errors() {
+        // ENOENT (No such file or directory) is not a cross-device error
+        #[cfg(unix)]
+        let err = std::io::Error::from_raw_os_error(libc::ENOENT);
+        #[cfg(windows)]
+        let err = std::io::Error::from_raw_os_error(2); // ERROR_FILE_NOT_FOUND
+        assert!(!is_cross_device_error(&err));
+    }
+
+    // --- Move Fallback Edge Cases ---
+
+    #[test]
+    fn move_fallback_with_empty_file() {
+        let src_dir = tempdir().unwrap();
+        let dst_dir = tempdir().unwrap();
+        let source = src_dir.path().join("empty.txt");
+        let dest = dst_dir.path().join("empty.txt");
+        fs::write(&source, "").unwrap(); // Zero bytes
+
+        let result = move_fallback(&source, &dest);
+        assert!(result.is_ok());
+        assert!(!source.exists());
+        assert!(dest.exists());
+        assert_eq!(fs::read_to_string(&dest).unwrap(), "");
+    }
+
+    #[test]
+    fn move_fallback_to_nonexistent_source() {
+        let src_dir = tempdir().unwrap();
+        let dst_dir = tempdir().unwrap();
+        let source = src_dir.path().join("nonexistent.txt");
+        let dest = dst_dir.path().join("dest.txt");
+
+        let result = move_fallback(&source, &dest);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn move_fallback_preserves_content_integrity() {
+        let src_dir = tempdir().unwrap();
+        let dst_dir = tempdir().unwrap();
+        let source = src_dir.path().join("data.bin");
+        let dest = dst_dir.path().join("data.bin");
+
+        // Create file with specific binary content
+        let content: Vec<u8> = (0..256).map(|i| i as u8).collect();
+        fs::write(&source, &content).unwrap();
+
+        let result = move_fallback(&source, &dest);
+        assert!(result.is_ok());
+        assert_eq!(fs::read(&dest).unwrap(), content);
+    }
+
+    // --- Temp Rename Edge Cases ---
+
+    #[test]
+    fn temp_rename_removes_existing_temp() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("File.txt");
+        let dest = dir.path().join("file.txt");
+        let temp_path = dir.path().join("File.rename_tmp.txt");
+
+        // Create source and a pre-existing temp file
+        fs::write(&source, "content").unwrap();
+        fs::write(&temp_path, "old temp").unwrap();
+
+        let result = temp_rename(&source, &dest);
+        // On case-insensitive filesystems, this should work
+        if result.is_ok() {
+            assert!(!temp_path.exists());
+        }
+    }
+
+    #[test]
+    fn temp_rename_file_without_extension() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("README");
+        let dest = dir.path().join("readme");
+        fs::write(&source, "content").unwrap();
+
+        let result = temp_rename(&source, &dest);
+        if result.is_ok() {
+            // On case-insensitive filesystems
+            assert!(dest.exists() || source.exists());
+        }
+    }
+
+    // --- Windows Case-Only Rename Edge Cases ---
+
+    #[test]
+    fn is_windows_case_only_rename_full_path_case_change() {
+        let source = Path::new("/PATH/TO/File.txt");
+        let dest = Path::new("/path/to/file.txt");
+
+        #[cfg(windows)]
+        assert!(is_windows_case_only_rename(source, dest));
+        #[cfg(not(windows))]
+        assert!(!is_windows_case_only_rename(source, dest));
+    }
+
+    #[test]
+    fn is_windows_case_only_rename_extension_case_change() {
+        let source = Path::new("/path/file.TXT");
+        let dest = Path::new("/path/file.txt");
+
+        #[cfg(windows)]
+        assert!(is_windows_case_only_rename(source, dest));
+        #[cfg(not(windows))]
+        assert!(!is_windows_case_only_rename(source, dest));
+    }
+
+    // --- Unique Path Edge Cases ---
+
+    #[test]
+    fn unique_path_with_many_collisions() {
+        let dir = tempdir().unwrap();
+        let base = dir.path().join("file.txt");
+
+        // Create file and 10 numbered versions
+        fs::write(&base, "").unwrap();
+        for i in 1..=10 {
+            fs::write(dir.path().join(format!("file ({}).txt", i)), "").unwrap();
+        }
+
+        let result = unique_path(&base);
+        assert_eq!(result, dir.path().join("file (11).txt"));
+    }
+
+    #[test]
+    fn unique_path_with_special_characters_in_stem() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("file (special).txt");
+        fs::write(&path, "").unwrap();
+
+        let result = unique_path(&path);
+        assert_eq!(result, dir.path().join("file (special) (1).txt"));
+    }
+
+    #[test]
+    fn unique_path_with_dot_in_stem() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("file.backup.txt");
+        fs::write(&path, "").unwrap();
+
+        let result = unique_path(&path);
+        // Should handle compound extensions correctly
+        assert_eq!(result, dir.path().join("file.backup (1).txt"));
+    }
+
+    // --- Prepare Destination Edge Cases ---
+
+    #[test]
+    fn prepare_destination_replace_directory() {
+        let dir = tempdir().unwrap();
+        let mut dest_path = dir.path().join("existing_dir");
+        fs::create_dir(&dest_path).unwrap();
+        fs::write(dest_path.join("file.txt"), "content").unwrap();
+
+        let result = prepare_destination(
+            ActionType::Move,
+            &mut dest_path,
+            ConflictResolution::Replace,
+            false,
+        );
+        assert!(result.is_ok());
+        assert!(!dest_path.exists());
+    }
+
+    #[test]
+    fn prepare_destination_rename_multiple_collisions() {
+        let dir = tempdir().unwrap();
+        let original = dir.path().join("file.txt");
+        let mut dest_path = original.clone();
+
+        // Create original and numbered versions
+        fs::write(&dest_path, "").unwrap();
+        fs::write(dir.path().join("file (1).txt"), "").unwrap();
+        fs::write(dir.path().join("file (2).txt"), "").unwrap();
+
+        let result = prepare_destination(
+            ActionType::Copy,
+            &mut dest_path,
+            ConflictResolution::Rename,
+            false,
+        );
+        assert!(result.is_ok());
+        assert_eq!(dest_path, dir.path().join("file (3).txt"));
+    }
+
+    // --- Searchable Output Path Edge Cases ---
+
+    #[test]
+    fn searchable_output_path_already_searchable_name() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("document-searchable.pdf");
+
+        let result = searchable_output_path(&path);
+        assert_eq!(
+            result,
+            dir.path().join("document-searchable-searchable.pdf")
+        );
+    }
+
+    #[test]
+    fn searchable_output_path_no_extension() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("document");
+
+        let result = searchable_output_path(&path);
+        // Default extension should be pdf
+        assert_eq!(result, dir.path().join("document-searchable.pdf"));
+    }
+
+    #[test]
+    fn searchable_output_path_multiple_collisions() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("doc.pdf");
+        fs::write(dir.path().join("doc-searchable.pdf"), "").unwrap();
+        fs::write(dir.path().join("doc-searchable (1).pdf"), "").unwrap();
+
+        let result = searchable_output_path(&path);
+        assert_eq!(result, dir.path().join("doc-searchable (2).pdf"));
+    }
+
+    // --- Action Outcome Edge Cases ---
+
+    #[test]
+    fn success_outcome_with_special_path_characters() {
+        let source = Path::new("/path/with spaces/and (parens)/file.txt");
+        let dest = Some(PathBuf::from("/dest/path with émojis 🎉/file.txt"));
+        let outcome = success_outcome(ActionType::Move, source, dest);
+
+        assert_eq!(outcome.status, ActionResultStatus::Success);
+        let details = outcome.details.unwrap();
+        assert_eq!(
+            details.source_path,
+            "/path/with spaces/and (parens)/file.txt"
+        );
+        assert_eq!(
+            details.destination_path,
+            Some("/dest/path with émojis 🎉/file.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn error_outcome_preserves_long_message() {
+        let long_message = "A".repeat(10000);
+        let outcome = error_outcome(ActionType::RunScript, long_message.clone());
+
+        assert_eq!(outcome.error, Some(long_message));
+    }
+
+    // --- File Operations Integration Tests ---
+
+    #[test]
+    fn rename_preserves_file_content() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("original.txt");
+        let dest = dir.path().join("renamed.txt");
+        let content = "Important content that must be preserved";
+        fs::write(&source, content).unwrap();
+
+        let result = fs::rename(&source, &dest);
+        assert!(result.is_ok());
+        assert_eq!(fs::read_to_string(&dest).unwrap(), content);
+    }
+
+    #[test]
+    fn copy_large_file() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("large.bin");
+        let dest = dir.path().join("large_copy.bin");
+
+        // Create a 1MB file
+        let content: Vec<u8> = (0..1_000_000).map(|i| (i % 256) as u8).collect();
+        fs::write(&source, &content).unwrap();
+
+        let result =
+            fs_extra::file::copy(&source, &dest, &fs_extra::file::CopyOptions::new());
+        assert!(result.is_ok());
+        assert_eq!(fs::read(&dest).unwrap(), content);
+    }
+
+    #[test]
+    fn delete_directory_recursively() {
+        let dir = tempdir().unwrap();
+        let nested = dir.path().join("parent/child/grandchild");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(nested.join("file.txt"), "content").unwrap();
+
+        let parent = dir.path().join("parent");
+        let result = fs::remove_dir_all(&parent);
+        assert!(result.is_ok());
+        assert!(!parent.exists());
+    }
+
+    // --- Error Condition Tests ---
+
+    #[test]
+    fn copy_to_readonly_destination() {
+        let src_dir = tempdir().unwrap();
+        let dst_dir = tempdir().unwrap();
+        let source = src_dir.path().join("source.txt");
+        let dest = dst_dir.path().join("dest.txt");
+
+        fs::write(&source, "content").unwrap();
+        fs::write(&dest, "existing").unwrap();
+
+        // Make destination read-only
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&dest).unwrap().permissions();
+            perms.set_mode(0o444);
+            fs::set_permissions(&dest, perms).unwrap();
+        }
+
+        // Try to overwrite - should fail on Unix
+        #[cfg(unix)]
+        {
+            let result = fs::write(&dest, "new content");
+            assert!(result.is_err());
+        }
+
+        // Cleanup - restore permissions
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&dest).unwrap().permissions();
+            perms.set_mode(0o644);
+            fs::set_permissions(&dest, perms).unwrap();
+        }
     }
 }
