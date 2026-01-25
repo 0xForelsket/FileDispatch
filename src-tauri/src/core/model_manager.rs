@@ -1,15 +1,83 @@
-use std::fs;
-use std::io::Write;
+use std::fs::{self, File};
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use directories::ProjectDirs;
 use futures_util::StreamExt;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Emitter};
 
 const MANIFEST_URL: &str =
     "https://raw.githubusercontent.com/0xForelsket/FileDispatch/main/ocr-manifest.json";
+
+/// Validates a language ID to prevent path traversal attacks.
+/// Only allows alphanumeric characters, underscores, and hyphens.
+fn validate_language_id(lang_id: &str) -> Result<()> {
+    // Must be non-empty and reasonable length
+    if lang_id.is_empty() || lang_id.len() > 64 {
+        return Err(anyhow!("Invalid language ID length"));
+    }
+
+    // Only allow safe characters: alphanumeric, underscore, hyphen
+    let valid_pattern = Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap();
+    if !valid_pattern.is_match(lang_id) {
+        return Err(anyhow!(
+            "Invalid language ID '{}': must contain only alphanumeric characters, underscores, or hyphens",
+            lang_id
+        ));
+    }
+
+    // Prevent reserved names
+    let reserved = [".", "..", "detection", "con", "prn", "aux", "nul"];
+    if reserved.contains(&lang_id.to_lowercase().as_str()) {
+        return Err(anyhow!("Invalid language ID '{}': reserved name", lang_id));
+    }
+
+    Ok(())
+}
+
+/// Verifies the SHA256 hash of a file.
+/// Returns Ok if the hash matches or if no expected hash is provided.
+fn verify_file_sha256(path: &PathBuf, expected: Option<&str>) -> Result<()> {
+    let Some(expected_hash) = expected else {
+        // No hash provided - skip verification (backwards compatibility)
+        return Ok(());
+    };
+
+    let expected_hash = expected_hash.to_lowercase();
+
+    let mut file = File::open(path)
+        .map_err(|e| anyhow!("Failed to open file for verification: {}", e))?;
+
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; 8192];
+
+    loop {
+        let bytes_read = file.read(&mut buffer)
+            .map_err(|e| anyhow!("Failed to read file for verification: {}", e))?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    let actual_hash = format!("{:x}", hasher.finalize());
+
+    if actual_hash != expected_hash {
+        // Delete the corrupted file
+        let _ = fs::remove_file(path);
+        return Err(anyhow!(
+            "SHA256 verification failed: expected {}, got {}",
+            expected_hash,
+            actual_hash
+        ));
+    }
+
+    Ok(())
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelManifest {
@@ -24,6 +92,9 @@ pub struct DetectionModel {
     pub name: String,
     pub url: String,
     pub size_bytes: u64,
+    /// SHA256 hash of the model file (optional for backwards compatibility)
+    #[serde(default)]
+    pub sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,8 +103,14 @@ pub struct LanguageModel {
     pub name: String,
     pub rec_url: String,
     pub rec_size_bytes: u64,
+    /// SHA256 hash of the recognition model (optional for backwards compatibility)
+    #[serde(default)]
+    pub rec_sha256: Option<String>,
     pub dict_url: String,
     pub dict_size_bytes: u64,
+    /// SHA256 hash of the dictionary file (optional for backwards compatibility)
+    #[serde(default)]
+    pub dict_sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -138,6 +215,11 @@ impl ModelManager {
     }
 
     pub fn is_language_installed(&self, lang_id: &str) -> bool {
+        // Validate language ID to prevent path traversal
+        if validate_language_id(lang_id).is_err() {
+            return false;
+        }
+
         let lang_dir = self.models_dir.join(lang_id);
         let rec_path = lang_dir.join(format!("{}_rec.onnx", lang_id));
         let dict_path = lang_dir.join(format!("{}_dict.txt", lang_id));
@@ -145,6 +227,11 @@ impl ModelManager {
     }
 
     pub fn get_language_paths(&self, lang_id: &str) -> Option<(PathBuf, PathBuf)> {
+        // Validate language ID to prevent path traversal
+        if validate_language_id(lang_id).is_err() {
+            return None;
+        }
+
         let lang_dir = self.models_dir.join(lang_id);
         let rec_path = lang_dir.join(format!("{}_rec.onnx", lang_id));
         let dict_path = lang_dir.join(format!("{}_dict.txt", lang_id));
@@ -171,6 +258,9 @@ impl ModelManager {
         manifest: &ModelManifest,
         lang_id: &str,
     ) -> Result<()> {
+        // Validate language ID to prevent path traversal
+        validate_language_id(lang_id)?;
+
         let language = manifest
             .languages
             .iter()
@@ -190,12 +280,20 @@ impl ModelManager {
             self.download_file(app, &language.rec_url, &rec_path, lang_id, downloaded_bytes, total_bytes)
                 .await?;
 
+        // Verify recognition model integrity
+        self.emit_progress(app, lang_id, downloaded_bytes, total_bytes, "verifying_rec");
+        verify_file_sha256(&rec_path, language.rec_sha256.as_deref())?;
+
         // Download dictionary
         self.emit_progress(app, lang_id, downloaded_bytes, total_bytes, "downloading_dict");
         let dict_path = lang_dir.join(format!("{}_dict.txt", lang_id));
         downloaded_bytes +=
             self.download_file(app, &language.dict_url, &dict_path, lang_id, downloaded_bytes, total_bytes)
                 .await?;
+
+        // Verify dictionary integrity
+        self.emit_progress(app, lang_id, downloaded_bytes, total_bytes, "verifying_dict");
+        verify_file_sha256(&dict_path, language.dict_sha256.as_deref())?;
 
         // Save metadata
         let meta = serde_json::json!({
@@ -230,6 +328,11 @@ impl ModelManager {
             manifest.detection.size_bytes,
         )
         .await?;
+
+        // Verify detection model integrity
+        self.emit_progress(app, "detection", manifest.detection.size_bytes, manifest.detection.size_bytes, "verifying");
+        verify_file_sha256(&det_path, manifest.detection.sha256.as_deref())?;
+
         self.emit_progress(app, "detection", manifest.detection.size_bytes, manifest.detection.size_bytes, "completed");
 
         Ok(det_path)
@@ -286,7 +389,19 @@ impl ModelManager {
     }
 
     pub fn delete_language(&self, lang_id: &str) -> Result<()> {
+        // Validate language ID to prevent path traversal
+        validate_language_id(lang_id)?;
+
         let lang_dir = self.models_dir.join(lang_id);
+
+        // Extra safety: ensure the path is actually within models_dir
+        let canonical_models = self.models_dir.canonicalize().unwrap_or(self.models_dir.clone());
+        if let Ok(canonical_lang) = lang_dir.canonicalize() {
+            if !canonical_lang.starts_with(&canonical_models) {
+                return Err(anyhow!("Security error: path escapes models directory"));
+            }
+        }
+
         if lang_dir.exists() {
             fs::remove_dir_all(&lang_dir)?;
         }
