@@ -31,6 +31,7 @@ export function FormattingPanel() {
                                 { label: "09-22-2025", value: "%m-%d-%Y" },
                                 { label: "20250922", value: "%Y%m%d" },
                             ]}
+                            ariaLabel="Date format"
                         />
                     </SettingRow>
                     <SettingRow title="Time format" description="Format for {time} pattern token">
@@ -46,6 +47,7 @@ export function FormattingPanel() {
                                 { label: "14:30:45", value: "%H:%M:%S" },
                                 { label: "143045", value: "%H%M%S" },
                             ]}
+                            ariaLabel="Time format"
                         />
                     </SettingRow>
                 </div>

@@ -118,6 +118,7 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
                 value={action.type}
                 onChange={(val) => updateAction(index, createAction(val))}
                 options={actionTypes}
+                ariaLabel="Action type"
               />
               {renderActionFields(action, (updated) => updateAction(index, updated))}
               <button
@@ -344,6 +345,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
             onChange({ ...action, onConflict: val as ConflictResolution })
           }
           options={conflictOptions}
+          ariaLabel="On conflict"
         />
         {action.type !== "sortIntoSubfolder" ? (
           <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
@@ -378,6 +380,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
               onChange({ ...action, onConflict: val as ConflictResolution })
             }
             options={conflictOptions}
+            ariaLabel="On conflict"
           />
         </div>
         <RenamePreview pattern={action.pattern} />
@@ -408,6 +411,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
             { label: "tar", value: "tar" },
             { label: "tar.gz", value: "tarGz" },
           ]}
+          ariaLabel="Archive format"
         />
         <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
           <input
@@ -507,6 +511,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
             { label: "Overwrite original", value: "overwrite" },
             { label: "Save copy (same folder)", value: "copy" },
           ]}
+          ariaLabel="PDF output mode"
         />
         <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
           <input

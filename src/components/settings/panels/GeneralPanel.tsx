@@ -71,6 +71,7 @@ export function GeneralPanel() {
                             { label: "Light", value: "light" },
                             { label: "Dark", value: "dark" },
                         ]}
+                        ariaLabel="Theme"
                     />
                 </SettingRow>
             </section>

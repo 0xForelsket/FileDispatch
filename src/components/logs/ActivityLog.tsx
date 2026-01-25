@@ -109,6 +109,7 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
                 { label: "Rule: All", value: "all" },
                 ...ruleOptions.map(name => ({ label: name, value: name }))
               ]}
+              ariaLabel="Filter by rule"
             />
           </div>
           <div className="relative">
@@ -122,6 +123,7 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
                   { label: "Error", value: "error" },
                   { label: "Skipped", value: "skipped" }
                ]}
+               ariaLabel="Filter by status"
             />
           </div>
           {onToggleExpand ? (

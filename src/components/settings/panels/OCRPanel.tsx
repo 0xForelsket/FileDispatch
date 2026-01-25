@@ -248,6 +248,7 @@ export function OCRPanel() {
                             }}
                             disabled={!settings.contentEnableOcr}
                             className="w-40"
+                            ariaLabel="Minimum confidence score"
                         />
                     </SettingRow>
                 </div>
@@ -271,6 +272,7 @@ export function OCRPanel() {
                             }}
                             options={languageOptions}
                             disabled={!settings.contentEnableOcr || settings.ocrModelSource === "custom"}
+                            ariaLabel="Primary language"
                         />
                     </SettingRow>
                     <SettingRow
@@ -286,6 +288,7 @@ export function OCRPanel() {
                             }}
                             options={[{ label: "None", value: "" }, ...languageOptions.slice(1)]}
                             disabled={!settings.contentEnableOcr || settings.ocrModelSource === "custom"}
+                            ariaLabel="Secondary language"
                         />
                     </SettingRow>
 
@@ -321,6 +324,7 @@ export function OCRPanel() {
                                 { label: "Custom models", value: "custom" },
                             ]}
                             disabled={!settings.contentEnableOcr}
+                            ariaLabel="Model source"
                         />
                     </SettingRow>
                     {settings.ocrModelSource === "custom" ? (

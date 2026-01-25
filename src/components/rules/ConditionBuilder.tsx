@@ -194,6 +194,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
           value={group.matchType}
           onChange={(val) => updateGroup({ matchType: val as MatchType })}
           options={matchOptions}
+          ariaLabel="Match type"
         />
         <span>of the following conditions are met</span>
       </div>
@@ -284,6 +285,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
                 value={condition.type}
                 onChange={(val) => updateCondition(index, createCondition(val))}
                 options={conditionTypes}
+                ariaLabel="Condition type"
               />
               {renderConditionFields(condition, (updated) => updateCondition(index, updated))}
               <button
@@ -372,6 +374,7 @@ function renderConditionFields(
             onChange({ ...condition, operator: val as StringOperator })
           }
           options={stringOperators}
+          ariaLabel="String operator"
         />
         <input
           className={fieldClass}
@@ -389,6 +392,7 @@ function renderConditionFields(
               { label: "Text", value: "text" },
               { label: "OCR", value: "ocr" },
             ]}
+            ariaLabel="Content source"
           />
         ) : null}
         <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
@@ -419,6 +423,7 @@ function renderConditionFields(
             });
           }}
           options={sizeOperators.map(op => ({ label: op.label, value: op.value.type }))}
+          ariaLabel="Size operator"
         />
         {operator.type === "between" ? (
           <>
@@ -464,6 +469,7 @@ function renderConditionFields(
              { label: "MB", value: "megabytes" },
              { label: "GB", value: "gigabytes" }
           ]}
+          ariaLabel="Size unit"
         />
       </>
     );
@@ -489,6 +495,7 @@ function renderConditionFields(
             });
           }}
           options={dateOperators.map(op => ({ label: op.label, value: op.value.type }))}
+          ariaLabel="Date operator"
         />
         {operator.type === "between" ? (
           <>
@@ -538,6 +545,7 @@ function renderConditionFields(
                 })
               }
               options={timeUnits.map(unit => ({ label: unit, value: unit }))}
+              ariaLabel="Date range unit"
             />
           </>
         ) : (
@@ -572,6 +580,7 @@ function renderConditionFields(
             });
           }}
           options={timeOperators.map(op => ({ label: op.label, value: op.value.type }))}
+          ariaLabel="Time operator"
         />
         {operator.type === "between" ? (
           <>
@@ -623,6 +632,7 @@ function renderConditionFields(
           value={condition.kind}
           onChange={(val) => onChange({ ...condition, kind: val as FileKind })}
           options={kinds.map(k => ({ label: k, value: k }))}
+          ariaLabel="File kind"
         />
         <label className="flex items-center gap-2 text-[11px] text-[var(--fg-muted)]">
           <input

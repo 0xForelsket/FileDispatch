@@ -51,7 +51,12 @@ export function SettingToggle({
                 <div className="font-medium text-[var(--fg-primary)]">{title}</div>
                 <div className="text-xs text-[var(--fg-muted)]">{description}</div>
             </div>
-            <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} />
+            <Switch
+                checked={checked}
+                onCheckedChange={onChange}
+                disabled={disabled}
+                ariaLabel={title}
+            />
         </div>
     );
 }

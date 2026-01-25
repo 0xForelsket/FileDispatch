@@ -91,6 +91,7 @@ export function FolderItem({
                 checked={folder.enabled}
                 onCheckedChange={onToggle}
                 size="sm"
+                ariaLabel={`Toggle watcher for ${folder.name}`}
               />
             </div>
           </>

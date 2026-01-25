@@ -14,6 +14,9 @@ interface MagiSelectProps {
   width?: string;
   placeholder?: string;
   disabled?: boolean;
+  ariaLabel?: string;
+  ariaLabelledby?: string;
+  ariaDescribedby?: string;
 }
 
 export function MagiSelect({
@@ -24,6 +27,9 @@ export function MagiSelect({
   width = "w-full",
   placeholder = "SELECT",
   disabled = false,
+  ariaLabel,
+  ariaLabelledby,
+  ariaDescribedby,
 }: MagiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,6 +56,11 @@ export function MagiSelect({
       {/* Trigger */}
       <button
         type="button"
+        aria-label={ariaLabelledby ? undefined : (ariaLabel ?? placeholder ?? "Select option")}
+        aria-labelledby={ariaLabelledby}
+        aria-describedby={ariaDescribedby}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
         onClick={() => {
           if (disabled) return;
           setIsOpen(!isOpen);

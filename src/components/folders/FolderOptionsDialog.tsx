@@ -148,6 +148,7 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
                       checked={removeDuplicates}
                       onCheckedChange={setRemoveDuplicates}
                       disabled={loading}
+                      ariaLabel="Automatically remove duplicate files"
                     />
                   </div>
                 </div>
@@ -167,6 +168,7 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
                       checked={trashIncompleteDownloads}
                       onCheckedChange={setTrashIncompleteDownloads}
                       disabled={loading}
+                      ariaLabel="Clean up incomplete downloads"
                     />
                   </div>
 

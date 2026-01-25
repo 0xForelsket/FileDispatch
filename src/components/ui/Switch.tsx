@@ -6,6 +6,9 @@ interface SwitchProps {
     className?: string;
     disabled?: boolean;
     size?: "sm" | "default";
+    ariaLabel?: string;
+    ariaLabelledby?: string;
+    ariaDescribedby?: string;
 }
 
 export function Switch({
@@ -14,6 +17,9 @@ export function Switch({
     className,
     disabled = false,
     size = "default",
+    ariaLabel,
+    ariaLabelledby,
+    ariaDescribedby,
 }: SwitchProps) {
     const isSmall = size === "sm";
 
@@ -22,6 +28,9 @@ export function Switch({
             type="button"
             role="switch"
             aria-checked={checked}
+            aria-label={ariaLabelledby ? undefined : (ariaLabel ?? "Toggle")}
+            aria-labelledby={ariaLabelledby}
+            aria-describedby={ariaDescribedby}
             disabled={disabled}
             onClick={(e) => {
                 e.stopPropagation();

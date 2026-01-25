@@ -10,6 +10,9 @@ interface SliderProps {
     disabled?: boolean;
     showValue?: boolean;
     formatValue?: (value: number) => string;
+    ariaLabel?: string;
+    ariaLabelledby?: string;
+    ariaDescribedby?: string;
 }
 
 export function Slider({
@@ -22,6 +25,9 @@ export function Slider({
     disabled = false,
     showValue = true,
     formatValue = (v) => `${Math.round(v * 100)}%`,
+    ariaLabel,
+    ariaLabelledby,
+    ariaDescribedby,
 }: SliderProps) {
     const percentage = ((value - min) / (max - min)) * 100;
 
@@ -30,6 +36,9 @@ export function Slider({
             <div className="relative flex-1">
                 <input
                     type="range"
+                    aria-label={ariaLabelledby ? undefined : (ariaLabel ?? "Value")}
+                    aria-labelledby={ariaLabelledby}
+                    aria-describedby={ariaDescribedby}
                     min={min}
                     max={max}
                     step={step}
