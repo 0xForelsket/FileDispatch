@@ -36,9 +36,10 @@ Before you begin, ensure you have the following installed:
 
 - **Rust** (1.75 or later): https://rustup.rs/
 - **Node.js** (18.x or later): https://nodejs.org/
-- **pnpm** (recommended) or npm: https://pnpm.io/
+- **Bun** (1.x, recommended): https://bun.sh/
 
 **Linux additional requirements:**
+
 ```bash
 # Ubuntu/Debian
 sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
@@ -73,7 +74,7 @@ cd file-dispatch
 
 ```bash
 # Install frontend dependencies
-pnpm install
+bun install
 
 # The Rust dependencies will be installed automatically on first build
 ```
@@ -82,7 +83,7 @@ pnpm install
 
 ```bash
 # Start the development server (frontend + backend)
-pnpm tauri dev
+bun run tauri dev
 ```
 
 This will:
@@ -94,7 +95,7 @@ This will:
 
 ```bash
 # Create a production build
-pnpm tauri build
+bun run tauri build
 ```
 
 Binaries will be in `src-tauri/target/release/bundle/`.
@@ -107,11 +108,16 @@ Binaries will be in `src-tauri/target/release/bundle/`.
 file-dispatch/
 ├── src/                      # Frontend (React + TypeScript)
 │   ├── components/           # React components
-│   │   ├── ui/              # shadcn/ui components
-│   │   ├── folders/         # Folder management
-│   │   ├── rules/           # Rule editor
-│   │   ├── preview/         # Preview mode
-│   │   └── logs/            # Activity log
+│   │   ├── ui/              # Base UI components (GlassCard, Switch, etc.)
+│   │   ├── FolderList.tsx   # Folder sidebar
+│   │   ├── RuleList.tsx     # Rule list view
+│   │   ├── RuleEditor.tsx   # Rule editor dialog
+│   │   ├── ConditionBuilder.tsx
+│   │   ├── ActionBuilder.tsx
+│   │   ├── PreviewPanel.tsx
+│   │   ├── ActivityLog.tsx
+│   │   ├── SettingsPanel.tsx
+│   │   └── TemplateGallery.tsx
 │   ├── hooks/               # Custom React hooks
 │   ├── stores/              # Zustand stores
 │   ├── lib/                 # Utilities
@@ -119,14 +125,20 @@ file-dispatch/
 ├── src-tauri/               # Backend (Rust)
 │   ├── src/
 │   │   ├── commands/        # Tauri command handlers
-│   │   ├── core/            # Business logic
+│   │   ├── core/            # Business logic (engine, executor, OCR)
 │   │   ├── models/          # Data models
 │   │   ├── storage/         # Database layer
 │   │   └── utils/           # Utilities
 │   ├── Cargo.toml           # Rust dependencies
 │   └── tauri.conf.json      # Tauri configuration
 ├── docs/                    # Documentation
-└── tests/                   # E2E tests (Playwright)
+│   ├── PRD.md              # Product requirements
+│   ├── ARCHITECTURE.md     # System design
+│   ├── DESIGN.md           # UI/UX design
+│   ├── STACK.md            # Technology choices
+│   ├── ROADMAP.md          # Development roadmap
+│   └── PROJECT_REVIEW_2025.md # Improvement recommendations
+└── tests/                   # Test files
 ```
 
 ---
@@ -143,41 +155,11 @@ Before creating a bug report, please check existing issues to avoid duplicates.
 2. **Steps to Reproduce**: Numbered steps to reproduce the issue
 3. **Expected Behavior**: What you expected to happen
 4. **Actual Behavior**: What actually happened
-5. **Environment**: 
+5. **Environment**:
    - OS and version (e.g., Ubuntu 22.04, Windows 11)
    - File Dispatch version
    - Any relevant logs (found in Settings > View Logs)
 6. **Screenshots**: If applicable
-
-**Bug report template:**
-```markdown
-## Bug Description
-[Clear description]
-
-## Steps to Reproduce
-1. Go to '...'
-2. Click on '...'
-3. See error
-
-## Expected Behavior
-[What should happen]
-
-## Actual Behavior
-[What actually happens]
-
-## Environment
-- OS: 
-- Version: 
-- File Dispatch version:
-
-## Logs
-```
-[Paste relevant logs here]
-```
-
-## Screenshots
-[If applicable]
-```
 
 ### Suggesting Features
 
@@ -249,10 +231,10 @@ docs(readme): add Windows installation instructions
 
 Before submitting your PR, ensure:
 
-- [ ] Code compiles without warnings (`cargo build`, `pnpm build`)
-- [ ] All tests pass (`cargo test`, `pnpm test`)
-- [ ] Linting passes (`cargo clippy`, `pnpm lint`)
-- [ ] Code is formatted (`cargo fmt`, `pnpm format`)
+- [ ] Code compiles without warnings (`cargo build`, `bun run build`)
+- [ ] All tests pass (`cargo test`, `bun run test`)
+- [ ] Linting passes (`cargo clippy`, `bun run lint`)
+- [ ] Code is formatted (`cargo fmt`, `bun run format`)
 - [ ] New features have tests
 - [ ] Documentation is updated if needed
 - [ ] PR description explains the changes
@@ -277,10 +259,11 @@ Before submitting your PR, ensure:
 - Prefer `thiserror` for error types
 - Document public APIs with doc comments
 - Use meaningful variable names
+- Avoid `unwrap()` on hot paths — use proper error handling
 
 ```rust
 // Good
-pub fn evaluate_condition(condition: &Condition, file: &FileInfo) -> bool {
+pub fn evaluate_condition(condition: &Condition, file: &FileInfo) -> Result<bool> {
     match condition {
         Condition::Name(c) => evaluate_name_condition(c, &file.name),
         Condition::Size(c) => evaluate_size_condition(c, file.size),
@@ -363,7 +346,7 @@ mod tests {
             value: "invoice".to_string(),
             case_sensitive: false,
         };
-        
+
         assert!(evaluate_string_condition(&condition, "my-invoice-2025.pdf"));
         assert!(!evaluate_string_condition(&condition, "receipt.pdf"));
     }
@@ -374,13 +357,13 @@ mod tests {
 
 ```bash
 # Run frontend tests
-pnpm test
+bun run test
 
 # Run with coverage
-pnpm test:coverage
+bun run test:coverage
 
 # Run in watch mode
-pnpm test:watch
+bun run test:watch
 ```
 
 **Writing frontend tests:**
@@ -404,21 +387,12 @@ describe('RuleItem', () => {
   it('calls onToggle when switch is clicked', () => {
     const onToggle = vi.fn();
     render(<RuleItem rule={mockRule} onToggle={onToggle} onDelete={vi.fn()} />);
-    
+
     fireEvent.click(screen.getByRole('switch'));
-    
+
     expect(onToggle).toHaveBeenCalledWith('1', false);
   });
 });
-```
-
-### E2E Tests (Optional)
-
-We use Playwright for E2E tests:
-
-```bash
-# Run E2E tests
-pnpm test:e2e
 ```
 
 ---
@@ -434,12 +408,22 @@ Look for issues labeled `good first issue`. These are:
 
 ### Current Priorities
 
-1. **More condition types**: File content, metadata
-2. **More action types**: Archive, unarchive, open
-3. **UI improvements**: Better error messages, loading states
-4. **Documentation**: Tutorials, examples, translations
-5. **Testing**: Increase coverage, add E2E tests
-6. **Platform testing**: Testing on various Linux distros
+1. **Testing**: Increase backend test coverage (currently <1%)
+2. **Accessibility**: Add ARIA labels, keyboard navigation
+3. **Security**: Fix CSP, validate OCR language IDs
+4. **Documentation**: Tutorials, examples, troubleshooting
+5. **Platform testing**: Testing on various Linux distros
+6. **Performance**: Worker pool for heavy operations
+
+### Feature Areas
+
+| Area | Description | Difficulty |
+|------|-------------|------------|
+| Conditions | Add new condition types | Medium |
+| Actions | Add new action types | Medium |
+| UI/UX | Improve error messages, loading states | Low |
+| OCR | Language auto-detection | High |
+| Templates | Add more pre-built rules | Low |
 
 ---
 
@@ -447,7 +431,6 @@ Look for issues labeled `good first issue`. These are:
 
 - **GitHub Issues**: For bugs and feature requests
 - **GitHub Discussions**: For questions and general discussion
-- **Discord**: [Link to Discord server, if applicable]
 
 When asking for help:
 1. Describe what you're trying to do
@@ -464,4 +447,4 @@ Contributors are recognized in:
 - The README contributors section
 - Release notes when applicable
 
-Thank you for contributing to File Dispatch! 🎉
+Thank you for contributing to File Dispatch!
