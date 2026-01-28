@@ -3,6 +3,7 @@ import { AlertTriangle, FolderOpen, GripVertical, Plus, X } from "lucide-react";
 import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import { MagiSelect } from "@/components/ui/MagiSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useSettingsStore } from "@/stores/settingsStore";
 
 
 import type { Action, ArchiveFormat, ConflictResolution } from "@/types";
@@ -43,6 +44,7 @@ const fieldClass =
 const longFieldClass = `${fieldClass} min-w-[220px]`;
 
 export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
+  const allowPermanentDelete = useSettingsStore((state) => state.settings.allowPermanentDelete);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [confirmDeleteIndex, setConfirmDeleteIndex] = useState<number | null>(null);
@@ -108,7 +110,7 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
             }}
             onDragEnd={handleDragEnd}
             className={`group rounded-[var(--radius)] border bg-[var(--bg-subtle)] p-3 transition ${
-              isDragging ? "opacity-50 scale-[0.98]" : "hover:border-[var(--border-strong)]"
+              isDragging ? "opacity-50 scale-[0.98] motion-reduce:transform-none" : "hover:border-[var(--border-strong)]"
             } ${isDragOver ? "border-[var(--accent)] border-2" : action.type === "deletePermanently" ? "border-red-500/50" : "border-[var(--border-main)]"}`}
           >
             <div className="flex flex-wrap items-center gap-2">
@@ -141,7 +143,11 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
             {action.type === "deletePermanently" && (
               <div className="flex items-center gap-2 mt-2 text-xs text-red-500">
                 <AlertTriangle className="h-3.5 w-3.5" />
-                <span>Files will be permanently deleted and cannot be recovered.</span>
+                <span>
+                  {allowPermanentDelete
+                    ? "Files will be permanently deleted and cannot be recovered."
+                    : "Permanent deletes are disabled in settings."}
+                </span>
               </div>
             )}
           </div>
@@ -350,6 +356,35 @@ function RenamePreview({ pattern }: { pattern: string }) {
   );
 }
 
+function DestinationPreview({ destination }: { destination: string }) {
+  if (!destination) {
+    return (
+      <div className="text-[11px] text-[var(--fg-muted)]">
+        Tokens available: {"{name}"}, {"{ext}"}, {"{date}"}, {"{year}"}, {"{month}"}, {"{day}"}
+      </div>
+    );
+  }
+  const preview = resolvePatternPreview(destination);
+  return (
+    <div className="text-[11px] text-[var(--fg-muted)]">
+      Preview: <span className="font-mono text-[var(--fg-secondary)]">{preview}</span>
+    </div>
+  );
+}
+
+function conflictHint(mode: ConflictResolution) {
+  switch (mode) {
+    case "rename":
+      return "If a file exists, add a suffix to keep both.";
+    case "replace":
+      return "If a file exists, overwrite it.";
+    case "skip":
+      return "If a file exists, skip this action.";
+    default:
+      return "";
+  }
+}
+
 function renderActionFields(action: Action, onChange: (action: Action) => void) {
   if (action.type === "move" || action.type === "copy" || action.type === "sortIntoSubfolder") {
     return (
@@ -369,6 +404,12 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
           options={conflictOptions}
           ariaLabel="On conflict"
         />
+        <div className="w-full space-y-1 pl-1">
+          <DestinationPreview destination={action.destination} />
+          <div className="text-[11px] text-[var(--fg-muted)]">
+            {conflictHint(action.onConflict)}
+          </div>
+        </div>
         {action.type !== "sortIntoSubfolder" ? (
           <label className="flex items-center gap-2 text-[11px] text-[var(--fg-secondary)]">
             <input

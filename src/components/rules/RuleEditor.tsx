@@ -177,6 +177,12 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
     }
   }, [draft, folderId, previewMaxFiles]);
 
+  const handleCancelPreview = useCallback(() => {
+    previewRequestId.current += 1;
+    setLoadingPreview(false);
+    setPreviewError(null);
+  }, []);
+
   // Live preview: debounced update when conditions change
   useEffect(() => {
     draftRef.current = draft;
@@ -300,13 +306,13 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={handlePreview}
+            onClick={loadingPreview ? handleCancelPreview : handlePreview}
             className={`px-3 py-1 text-xs font-medium rounded transition-colors ${showPreview
               ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
               : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:bg-[var(--bg-subtle)]"
               }`}
           >
-            Preview
+            {loadingPreview ? "Cancel" : "Preview"}
           </button>
           <button
             onClick={() => setShowTemplateSave(true)}

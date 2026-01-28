@@ -1263,6 +1263,7 @@ mod tests {
     fn match_type_all_requires_all() {
         let info = file_info_for("report.pdf");
         let group = ConditionGroup {
+            label: None,
             match_type: MatchType::All,
             conditions: vec![
                 Condition::Name(StringCondition {
@@ -1285,6 +1286,7 @@ mod tests {
     fn match_type_all_fails_if_one_fails() {
         let info = file_info_for("report.pdf");
         let group = ConditionGroup {
+            label: None,
             match_type: MatchType::All,
             conditions: vec![
                 Condition::Name(StringCondition {
@@ -1307,6 +1309,7 @@ mod tests {
     fn match_type_any_succeeds_with_one() {
         let info = file_info_for("report.pdf");
         let group = ConditionGroup {
+            label: None,
             match_type: MatchType::Any,
             conditions: vec![
                 Condition::Extension(StringCondition {
@@ -1329,6 +1332,7 @@ mod tests {
     fn match_type_any_fails_if_none() {
         let info = file_info_for("report.pdf");
         let group = ConditionGroup {
+            label: None,
             match_type: MatchType::Any,
             conditions: vec![
                 Condition::Extension(StringCondition {
@@ -1351,6 +1355,7 @@ mod tests {
     fn match_type_none_succeeds_if_all_fail() {
         let info = file_info_for("report.pdf");
         let group = ConditionGroup {
+            label: None,
             match_type: MatchType::None,
             conditions: vec![
                 Condition::Extension(StringCondition {
@@ -1373,6 +1378,7 @@ mod tests {
     fn empty_group_matches_all() {
         let info = file_info_for("anything.txt");
         let group = ConditionGroup {
+            label: None,
             match_type: MatchType::All,
             conditions: vec![],
         };
@@ -1384,6 +1390,7 @@ mod tests {
     fn nested_group_matches_any() {
         let info = file_info_for("invoice_2024.pdf");
         let top = ConditionGroup {
+            label: None,
             match_type: MatchType::All,
             conditions: vec![
                 Condition::Name(StringCondition {
@@ -1392,6 +1399,7 @@ mod tests {
                     case_sensitive: false,
                 }),
                 Condition::Nested(ConditionGroup {
+                    label: None,
                     match_type: MatchType::Any,
                     conditions: vec![
                         Condition::Extension(StringCondition {
@@ -1417,8 +1425,10 @@ mod tests {
     fn nested_group_respects_none() {
         let info = file_info_for("report.txt");
         let top = ConditionGroup {
+            label: None,
             match_type: MatchType::All,
             conditions: vec![Condition::Nested(ConditionGroup {
+                label: None,
                 match_type: MatchType::None,
                 conditions: vec![Condition::Extension(StringCondition {
                     operator: StringOperator::Is,
@@ -1464,6 +1474,7 @@ mod tests {
             enabled: true,
             stop_processing: true,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![],
             },
@@ -1490,6 +1501,7 @@ mod tests {
             enabled: true,
             stop_processing: true,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![],
             },
@@ -1760,6 +1772,7 @@ mod tests {
     fn empty_group_match_any_fails() {
         let info = file_info_for("test.txt");
         let group = ConditionGroup {
+            label: None,
             match_type: MatchType::Any,
             conditions: vec![],
         };
@@ -1772,6 +1785,7 @@ mod tests {
     fn empty_group_match_none_succeeds() {
         let info = file_info_for("test.txt");
         let group = ConditionGroup {
+            label: None,
             match_type: MatchType::None,
             conditions: vec![],
         };
@@ -1787,6 +1801,7 @@ mod tests {
         let info = file_info_for("invoice_2024.pdf");
 
         let level3 = ConditionGroup {
+            label: None,
             match_type: MatchType::Any,
             conditions: vec![
                 Condition::Extension(StringCondition {
@@ -1803,6 +1818,7 @@ mod tests {
         };
 
         let level2 = ConditionGroup {
+            label: None,
             match_type: MatchType::All,
             conditions: vec![
                 Condition::Name(StringCondition {
@@ -1815,6 +1831,7 @@ mod tests {
         };
 
         let level1 = ConditionGroup {
+            label: None,
             match_type: MatchType::All,
             conditions: vec![
                 Condition::Name(StringCondition {
@@ -1836,6 +1853,7 @@ mod tests {
 
         // None of [pdf, docx] - should match for txt files
         let inner = ConditionGroup {
+            label: None,
             match_type: MatchType::None,
             conditions: vec![
                 Condition::Extension(StringCondition {
@@ -1852,6 +1870,7 @@ mod tests {
         };
 
         let outer = ConditionGroup {
+            label: None,
             match_type: MatchType::All,
             conditions: vec![
                 Condition::Name(StringCondition {
@@ -2028,6 +2047,7 @@ mod tests {
             enabled: true,
             stop_processing: false,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![
                     Condition::Name(StringCondition {
@@ -2072,6 +2092,7 @@ mod tests {
             enabled: true,
             stop_processing: false,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![Condition::Name(StringCondition {
                     operator: StringOperator::Matches,
@@ -2120,6 +2141,7 @@ mod tests {
             enabled: true,
             stop_processing: false,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![
                     Condition::Extension(StringCondition {
@@ -2183,6 +2205,7 @@ mod tests {
             enabled: true,
             stop_processing: true,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![Condition::Name(StringCondition {
                     operator: StringOperator::Contains,
@@ -2204,6 +2227,7 @@ mod tests {
             enabled: true,
             stop_processing: false,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![Condition::Extension(StringCondition {
                     operator: StringOperator::Is,
@@ -2266,6 +2290,7 @@ mod tests {
             enabled: true,
             stop_processing: false,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![Condition::FullName(StringCondition {
                     operator: StringOperator::Matches,
@@ -2312,6 +2337,7 @@ mod tests {
             enabled: false, // Disabled
             stop_processing: false,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![Condition::Extension(StringCondition {
                     operator: StringOperator::Is,
@@ -2362,6 +2388,7 @@ mod tests {
             enabled: true,
             stop_processing: false,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![], // Empty - matches everything
             },

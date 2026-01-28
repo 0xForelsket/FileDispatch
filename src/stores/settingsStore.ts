@@ -18,7 +18,9 @@ export interface AppSettings {
   timeFormat: string;
   useShortDateNames: boolean;
   showTooltips: boolean;
+  compactMode: boolean;
   dryRun: boolean;
+  allowPermanentDelete: boolean;
   contentEnableOcr: boolean;
   contentMaxTextBytes: number;
   contentMaxOcrImageBytes: number;
@@ -64,7 +66,9 @@ export const defaultSettings: AppSettings = {
   timeFormat: "%H-%M-%S",
   useShortDateNames: true,
   showTooltips: true,
+  compactMode: false,
   dryRun: false,
+  allowPermanentDelete: false,
   contentEnableOcr: true,
   contentMaxTextBytes: 10 * 1024 * 1024,
   contentMaxOcrImageBytes: 15 * 1024 * 1024,

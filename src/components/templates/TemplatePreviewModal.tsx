@@ -12,6 +12,7 @@ interface TemplatePreviewModalProps {
     folderId: string;
     onClose: () => void;
     onInstallComplete: () => void;
+    onRulesCreated?: (rules: Rule[]) => void;
 }
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
@@ -55,6 +56,7 @@ export function TemplatePreviewModal({
     folderId,
     onClose,
     onInstallComplete,
+    onRulesCreated,
 }: TemplatePreviewModalProps) {
     const loadRules = useRuleStore((state) => state.loadRules);
     const [variables, setVariables] = useState<Record<string, string>>(() => {
@@ -84,6 +86,7 @@ export function TemplatePreviewModal({
         setError(null);
 
         try {
+            const createdRules: Rule[] = [];
             for (const presetRule of template.preset.rules) {
                 const now = new Date().toISOString();
                 const rule: Rule = {
@@ -98,10 +101,14 @@ export function TemplatePreviewModal({
                     createdAt: now,
                     updatedAt: now,
                 };
-                await ruleCreate(rule);
+                const created = await ruleCreate(rule);
+                createdRules.push(created);
             }
 
             await loadRules(folderId);
+            if (createdRules.length > 0) {
+                onRulesCreated?.(createdRules);
+            }
             onInstallComplete();
         } catch (err) {
             setError(String(err));

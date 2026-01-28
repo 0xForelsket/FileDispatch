@@ -220,18 +220,20 @@ describe("useRuleStore", () => {
         .mockResolvedValueOnce(duplicatedRule)
         .mockResolvedValueOnce([createMockRule(), duplicatedRule]);
 
-      await useRuleStore.getState().duplicateRule("rule-1", "folder-1");
+      const result = await useRuleStore.getState().duplicateRule("rule-1", "folder-1");
 
       expect(mockInvoke).toHaveBeenCalledWith("rule_duplicate", { id: "rule-1" });
       expect(mockInvoke).toHaveBeenCalledWith("rule_list", { folderId: "folder-1" });
+      expect(result).toEqual(duplicatedRule);
     });
 
     test("handles duplicate errors", async () => {
       mockInvoke.mockRejectedValueOnce(new Error("Duplicate failed"));
 
-      await useRuleStore.getState().duplicateRule("rule-1", "folder-1");
+      const result = await useRuleStore.getState().duplicateRule("rule-1", "folder-1");
 
       expect(useRuleStore.getState().error).toContain("Duplicate failed");
+      expect(result).toBeNull();
     });
   });
 });

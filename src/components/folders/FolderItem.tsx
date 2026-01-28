@@ -94,18 +94,18 @@ export function FolderItem({
               </span>
             ) : null}
 
-            {/* Run Now button - only visible on hover or when running */}
+            {/* Run now button - only visible on hover or when running */}
             <button
               className={cn(
                 "flex h-5 w-5 items-center justify-center rounded transition-colors",
                 running ? "opacity-100 text-[var(--accent)]" : "opacity-0 group-hover:opacity-100 text-[var(--fg-muted)] hover:text-[var(--accent)]",
                 selected && "opacity-100"
               )}
-              title="Run rules now"
+              title="Run now"
               onClick={handleRunNow}
               disabled={running}
               type="button"
-              aria-label="Run rules now"
+              aria-label="Run now"
             >
               {running ? (
                 <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" />

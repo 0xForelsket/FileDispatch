@@ -1,12 +1,13 @@
 import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertTriangle, FileSearch, Pause, Play, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, Copy, FileSearch, Pause, Play, RefreshCw, X } from "lucide-react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
 import type { Rule } from "@/types";
 import { previewFile } from "@/lib/tauri";
 import { useEngineStore } from "@/stores/engineStore";
 import { useFolderStore } from "@/stores/folderStore";
+import { useLogStore } from "@/stores/logStore";
 import { useRuleStore } from "@/stores/ruleStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { Switch } from "@/components/ui/Switch";
@@ -32,6 +33,7 @@ export function RuleStatusDialog({ open, onClose }: RuleStatusDialogProps) {
 
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const rules = useRuleStore((state) => state.rules);
+  const logs = useLogStore((state) => state.entries);
 
   const settings = useSettingsStore((state) => state.settings);
   const setSettings = useSettingsStore((state) => state.setSettings);
@@ -47,6 +49,43 @@ export function RuleStatusDialog({ open, onClose }: RuleStatusDialogProps) {
     () => rules.filter((rule) => rule.enabled),
     [rules],
   );
+
+  const recentErrors = useMemo(() => {
+    return logs
+      .filter((entry) => entry.status === "error")
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .slice(0, 5);
+  }, [logs]);
+
+  const ruleInsights = useMemo(() => {
+    const map = new Map<string, { count: number; lastMatched?: string }>();
+    for (const entry of logs) {
+      if (!entry.ruleId || entry.status !== "success") continue;
+      const existing = map.get(entry.ruleId) ?? { count: 0 };
+      existing.count += 1;
+      if (!existing.lastMatched || Date.parse(entry.createdAt) > Date.parse(existing.lastMatched)) {
+        existing.lastMatched = entry.createdAt;
+      }
+      map.set(entry.ruleId, existing);
+    }
+    return map;
+  }, [logs]);
+
+  const handleCopyError = async (entryId: string) => {
+    const entry = recentErrors.find((item) => item.id === entryId);
+    if (!entry) return;
+    const text = [
+      `Rule: ${entry.ruleName ?? "Unknown rule"}`,
+      `File: ${entry.filePath}`,
+      `Error: ${entry.errorMessage ?? "Unknown error"}`,
+      `Time: ${entry.createdAt}`,
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // ignore copy errors
+    }
+  };
 
   useFocusTrap(open, dialogRef);
 
@@ -213,6 +252,44 @@ export function RuleStatusDialog({ open, onClose }: RuleStatusDialogProps) {
                 )}
               </div>
             </div>
+
+            <div className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-[var(--fg-muted)]">
+                Recent errors
+              </div>
+              <div className="mt-3 space-y-2 text-xs text-[var(--fg-secondary)]">
+                {recentErrors.length > 0 ? (
+                  recentErrors.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-[var(--fg-primary)]">{entry.filePath}</div>
+                          <div className="mt-1 text-[10px] text-[var(--fg-muted)]">
+                            {entry.ruleName ?? "Unknown rule"}
+                          </div>
+                          <div className="mt-1 text-[10px] text-[var(--fg-alert)]">
+                            {entry.errorMessage ?? "Unknown error"}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyError(entry.id)}
+                          className="shrink-0 rounded-[var(--radius)] border border-[var(--border-main)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                          aria-label="Copy error details"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-[var(--fg-muted)]">No recent errors.</div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-4">
@@ -278,6 +355,30 @@ export function RuleStatusDialog({ open, onClose }: RuleStatusDialogProps) {
                 ))}
               </div>
             ) : null}
+
+            <div className="mt-6 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--fg-muted)]">
+                Rule insights
+              </div>
+              <div className="mt-2 space-y-2 text-xs text-[var(--fg-secondary)]">
+                {rules.length > 0 ? (
+                  rules.map((rule) => {
+                    const insight = ruleInsights.get(rule.id);
+                    return (
+                      <div key={rule.id} className="flex items-center justify-between gap-2">
+                        <span className="truncate text-[var(--fg-primary)]">{rule.name}</span>
+                        <span className="text-[10px] text-[var(--fg-muted)]">
+                          {insight?.count ?? 0} matches
+                          {insight?.lastMatched ? ` · ${new Date(insight.lastMatched).toLocaleDateString()}` : ""}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-[var(--fg-muted)]">No rules yet.</div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

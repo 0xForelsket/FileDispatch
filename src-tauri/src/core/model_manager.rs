@@ -1,10 +1,13 @@
+use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 use anyhow::{anyhow, Result};
 use directories::ProjectDirs;
 use futures_util::StreamExt;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -12,6 +15,9 @@ use tauri::{AppHandle, Emitter};
 
 const MANIFEST_URL: &str =
     "https://raw.githubusercontent.com/0xForelsket/FileDispatch/main/ocr-manifest.json";
+
+static CANCELLED_DOWNLOADS: Lazy<Mutex<HashSet<String>>> =
+    Lazy::new(|| Mutex::new(HashSet::new()));
 
 /// Validates a language ID to prevent path traversal attacks.
 /// Only allows alphanumeric characters, underscores, and hyphens.
@@ -310,6 +316,19 @@ impl ModelManager {
         Ok(())
     }
 
+    pub fn cancel_download(lang_id: &str) {
+        if let Ok(mut set) = CANCELLED_DOWNLOADS.lock() {
+            set.insert(lang_id.to_string());
+        }
+    }
+
+    fn take_cancelled(lang_id: &str) -> bool {
+        if let Ok(mut set) = CANCELLED_DOWNLOADS.lock() {
+            return set.remove(lang_id);
+        }
+        false
+    }
+
     pub async fn ensure_detection_model(&self, app: &AppHandle, manifest: &ModelManifest) -> Result<PathBuf> {
         let det_dir = self.models_dir.join("detection");
         let det_path = det_dir.join("det.onnx");
@@ -349,6 +368,11 @@ impl ModelManager {
         base_downloaded: u64,
         total_bytes: u64,
     ) -> Result<u64> {
+        if Self::take_cancelled(lang_id) {
+            let _ = fs::remove_file(dest);
+            self.emit_progress(app, lang_id, base_downloaded, total_bytes, "cancelled");
+            return Err(anyhow!("Download cancelled"));
+        }
         let response = reqwest::get(url).await?;
         if !response.status().is_success() {
             return Err(anyhow!("Failed to download: HTTP {}", response.status()));
@@ -360,6 +384,11 @@ impl ModelManager {
         let mut file_downloaded: u64 = 0;
 
         while let Some(chunk) = stream.next().await {
+            if Self::take_cancelled(lang_id) {
+                let _ = fs::remove_file(dest);
+                self.emit_progress(app, lang_id, base_downloaded + file_downloaded, total_bytes, "cancelled");
+                return Err(anyhow!("Download cancelled"));
+            }
             let chunk = chunk?;
             file.write_all(&chunk)?;
             file_downloaded += chunk.len() as u64;

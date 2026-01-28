@@ -475,6 +475,18 @@ impl ActionExecutor {
         action: &DeleteAction,
         source_path: &Path,
     ) -> ActionOutcome {
+        if action.permanent {
+            if let Ok(settings) = self.settings.lock() {
+                if !settings.allow_permanent_delete {
+                    return ActionOutcome {
+                        action_type,
+                        status: ActionResultStatus::Skipped,
+                        details: None,
+                        error: Some("Permanent deletes are disabled in settings".to_string()),
+                    };
+                }
+            }
+        }
         let result = if action.permanent {
             if source_path.is_dir() {
                 fs::remove_dir_all(source_path)

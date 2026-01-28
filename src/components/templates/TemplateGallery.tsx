@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Search, X } from "lucide-react";
 
-import type { Template, TemplateCategory } from "@/types";
+import type { Rule, Template, TemplateCategory } from "@/types";
 import { BUILTIN_TEMPLATES, TEMPLATE_CATEGORIES, searchTemplates, filterByCategory } from "@/data/templates";
 import { TemplateCard } from "./TemplateCard";
 import { TemplatePreviewModal } from "./TemplatePreviewModal";
@@ -13,9 +13,10 @@ interface TemplateGalleryProps {
     folderId: string;
     isOpen: boolean;
     onClose: () => void;
+    onRulesCreated?: (rules: Rule[]) => void;
 }
 
-export function TemplateGallery({ folderId, isOpen, onClose }: TemplateGalleryProps) {
+export function TemplateGallery({ folderId, isOpen, onClose, onRulesCreated }: TemplateGalleryProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | "all">("all");
     const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
@@ -163,6 +164,7 @@ export function TemplateGallery({ folderId, isOpen, onClose }: TemplateGalleryPr
                     folderId={folderId}
                     onClose={handlePreviewClose}
                     onInstallComplete={handleInstallComplete}
+                    onRulesCreated={onRulesCreated}
                 />
             )}
         </div>,

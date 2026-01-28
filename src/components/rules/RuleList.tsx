@@ -6,6 +6,7 @@ import { useFolderStore } from "@/stores/folderStore";
 // Stable empty function reference to avoid creating new functions on each render
 const noop = () => {};
 import { useRuleStore } from "@/stores/ruleStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { useLogStore } from "@/stores/logStore";
 import type { Rule } from "@/types";
 import { RuleItem } from "@/components/rules/RuleItem";
@@ -17,41 +18,21 @@ interface RuleListProps {
   onSelectRule: (rule: Rule) => void;
   onNewRule: () => void;
   searchQuery?: string;
+  onOpenTemplates?: () => void;
 }
 
-export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery = "" }: RuleListProps) {
+export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery = "", onOpenTemplates }: RuleListProps) {
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const rules = useRuleStore((state) => state.rules);
   const toggleRule = useRuleStore((state) => state.toggleRule);
   const deleteRule = useRuleStore((state) => state.deleteRule);
   const duplicateRule = useRuleStore((state) => state.duplicateRule);
   const reorderRules = useRuleStore((state) => state.reorderRules);
-  const logs = useLogStore((state) => state.entries);
+  const ruleStats = useLogStore((state) => state.ruleStats);
+  const compactMode = useSettingsStore((state) => state.settings.compactMode);
 
   // Create a map of rules by ID for efficient lookup
   const rulesById = useMemo(() => new Map(rules.map((r) => [r.id, r])), [rules]);
-
-  const ruleStats = useMemo(() => {
-    const stats = new Map<string, { lastActivityAt?: string; recentErrors: number; recentEvents: number }>();
-    const now = Date.now();
-    const windowStart = now - 24 * 60 * 60 * 1000;
-    for (const entry of logs) {
-      if (!entry.ruleId) continue;
-      const existing = stats.get(entry.ruleId) ?? { recentErrors: 0, recentEvents: 0 };
-      const timestamp = Date.parse(entry.createdAt);
-      if (!existing.lastActivityAt || timestamp > Date.parse(existing.lastActivityAt)) {
-        existing.lastActivityAt = entry.createdAt;
-      }
-      if (Number.isFinite(timestamp) && timestamp >= windowStart) {
-        existing.recentEvents += 1;
-        if (entry.status === "error") {
-          existing.recentErrors += 1;
-        }
-      }
-      stats.set(entry.ruleId, existing);
-    }
-    return stats;
-  }, [logs]);
 
   const handleCreate = useCallback(() => {
     onNewRule();
@@ -77,11 +58,13 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery 
     }
   }, [deleteRule, selectedFolderId]);
 
-  const handleDuplicate = useCallback((ruleId: string) => {
-    if (selectedFolderId) {
-      duplicateRule(ruleId, selectedFolderId);
+  const handleDuplicate = useCallback(async (ruleId: string) => {
+    if (!selectedFolderId) return;
+    const duplicated = await duplicateRule(ruleId, selectedFolderId);
+    if (duplicated) {
+      onSelectRule(duplicated);
     }
-  }, [duplicateRule, selectedFolderId]);
+  }, [duplicateRule, onSelectRule, selectedFolderId]);
 
   useEffect(() => {
     if (!selectedFolderId) return;
@@ -172,6 +155,15 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery 
                 >
                   New rule
                 </button>
+                {onOpenTemplates ? (
+                  <button
+                    type="button"
+                    onClick={onOpenTemplates}
+                    className="rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-[11px] font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                  >
+                    From template
+                  </button>
+                ) : null}
                 <span className="text-[10px] text-[var(--fg-muted)]">Ctrl/Cmd+N</span>
               </div>
             </div>
@@ -191,9 +183,10 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery 
               onEdit={handleEdit}
               onDelete={handleDelete}
               onDuplicate={handleDuplicate}
-              lastActivityAt={ruleStats.get(rule.id)?.lastActivityAt}
-              recentEvents={ruleStats.get(rule.id)?.recentEvents ?? 0}
-              recentErrors={ruleStats.get(rule.id)?.recentErrors ?? 0}
+              compact={compactMode}
+              lastActivityAt={ruleStats[rule.id]?.lastActivityAt}
+              recentEvents={ruleStats[rule.id]?.recentEvents ?? 0}
+              recentErrors={ruleStats[rule.id]?.recentErrors ?? 0}
               onDragStart={isDraggingEnabled ? handleDragStart : noop}
               onDragOver={isDraggingEnabled ? handleDragOver : noop}
               onDragEnd={isDraggingEnabled ? handleDragEnd : noop}

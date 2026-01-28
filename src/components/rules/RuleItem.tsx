@@ -13,6 +13,7 @@ interface RuleItemProps {
   onEdit: (ruleId: string) => void;
   onDelete: (ruleId: string) => void;
   onDuplicate: (ruleId: string) => void;
+  compact?: boolean;
   lastActivityAt?: string;
   recentEvents?: number;
   recentErrors?: number;
@@ -31,6 +32,7 @@ export const RuleItem = memo(function RuleItem({
   onEdit,
   onDelete,
   onDuplicate,
+  compact = false,
   lastActivityAt,
   recentEvents = 0,
   recentErrors = 0,
@@ -54,6 +56,10 @@ export const RuleItem = memo(function RuleItem({
     activityParts.push(`${recentErrors} errors`);
   }
 
+  const rowSpacing = compact ? "px-2 py-1.5" : "px-2 py-2";
+  const titleClass = compact ? "text-[12px]" : "text-[13px]";
+  const metaClass = compact ? "text-[10px]" : "text-[11px]";
+
   return (
     <div
       draggable
@@ -67,11 +73,11 @@ export const RuleItem = memo(function RuleItem({
         onDragOver(index);
       }}
       onDragEnd={onDragEnd}
-      className={`content-visibility-auto group flex items-start gap-2 rounded-[var(--radius)] px-2 py-2 text-xs cursor-pointer select-none transition duration-150 ease-out ${
+      className={`content-visibility-auto group flex items-start gap-2 rounded-[var(--radius)] ${rowSpacing} text-xs cursor-pointer select-none transition duration-150 ease-out ${
         selected
           ? "bg-[var(--accent-muted)] text-[var(--fg-primary)] shadow-sm"
           : "text-[var(--fg-primary)] hover:bg-[var(--bg-hover)]"
-      } ${!rule.enabled ? "opacity-50" : ""} ${isDragging ? "opacity-40 scale-[0.98]" : ""} ${isDragOver ? "border-t-2 border-[var(--accent)]" : ""}`}
+      } ${!rule.enabled ? "opacity-50" : ""} ${isDragging ? "opacity-40 scale-[0.98] motion-reduce:transform-none" : ""} ${isDragOver ? "border-t-2 border-[var(--accent)]" : ""}`}
     >
       <div
         className="mt-0.5 cursor-grab active:cursor-grabbing text-[var(--fg-muted)] opacity-0 group-hover:opacity-100 transition-opacity duration-150"
@@ -106,12 +112,12 @@ export const RuleItem = memo(function RuleItem({
         className="min-w-0 flex-1 flex flex-col gap-0.5 overflow-hidden text-left"
         aria-label={`Edit rule ${rule.name}`}
       >
-        <span className="truncate text-[13px] font-medium leading-tight">{rule.name}</span>
-        <span className="truncate text-[11px] leading-tight text-[var(--fg-muted)]">
+        <span className={`truncate ${titleClass} font-medium leading-tight`}>{rule.name}</span>
+        <span className={`truncate ${metaClass} leading-tight text-[var(--fg-muted)]`}>
           {triggerSummary} → {actionSummary}
         </span>
         {activityParts.length > 0 ? (
-          <span className="truncate text-[10px] text-[var(--fg-muted)]">
+          <span className={`truncate ${metaClass} text-[var(--fg-muted)]`}>
             {activityParts.join(" · ")}
           </span>
         ) : null}

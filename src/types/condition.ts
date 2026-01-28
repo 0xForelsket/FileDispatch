@@ -99,9 +99,10 @@ export type Condition =
   | { type: "currentTime"; operator: TimeOperator }
   | { type: "kind"; kind: FileKind; negate: boolean }
   | { type: "shellScript"; command: string }
-  | { type: "nested"; matchType: MatchType; conditions: Condition[] };
+  | { type: "nested"; label?: string; matchType: MatchType; conditions: Condition[] };
 
 export interface ConditionGroup {
+  label?: string;
   matchType: MatchType;
   conditions: Condition[];
 }

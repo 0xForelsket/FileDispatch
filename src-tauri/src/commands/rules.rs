@@ -147,6 +147,7 @@ mod tests {
             enabled: true,
             stop_processing: true,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![],
             },

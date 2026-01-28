@@ -27,7 +27,9 @@ export function describeCondition(condition: Condition): string {
     case "shellScript":
       return "Shell script";
     case "nested":
-      return `Nested ${condition.matchType.toUpperCase()} (${condition.conditions.length})`;
+      return condition.label?.trim()
+        ? `Group "${condition.label.trim()}" (${condition.matchType.toUpperCase()}, ${condition.conditions.length})`
+        : `Nested ${condition.matchType.toUpperCase()} (${condition.conditions.length})`;
     default:
       return "Condition";
   }

@@ -7,6 +7,7 @@ import {
   ArrowRightLeft,
   Ban,
   Bell,
+  FileDown,
   ExternalLink,
   FolderOpen,
   RotateCcw,
@@ -16,6 +17,8 @@ import {
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { openPath } from "@tauri-apps/plugin-opener";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 
 import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
@@ -48,6 +51,15 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
     if (typeof window === "undefined") return "all";
     return window.localStorage.getItem("filedispatch.logRule") ?? "all";
   });
+  const [timeRange, setTimeRange] = useState<"all" | "1h" | "24h" | "7d">(() => {
+    if (typeof window === "undefined") return "all";
+    const stored = window.localStorage.getItem("filedispatch.logTimeRange");
+    return (stored as "all" | "1h" | "24h" | "7d") || "all";
+  });
+  const [onlyErrors, setOnlyErrors] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("filedispatch.logOnlyErrors") === "true";
+  });
 
   const deferredQuery = useDeferredValue(query);
 
@@ -56,10 +68,12 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
       window.localStorage.setItem("filedispatch.logQuery", query);
       window.localStorage.setItem("filedispatch.logStatus", statusFilter);
       window.localStorage.setItem("filedispatch.logRule", ruleFilter);
+      window.localStorage.setItem("filedispatch.logTimeRange", timeRange);
+      window.localStorage.setItem("filedispatch.logOnlyErrors", String(onlyErrors));
     } catch {
       return;
     }
-  }, [query, ruleFilter, statusFilter]);
+  }, [query, ruleFilter, statusFilter, timeRange, onlyErrors]);
 
   const scopedEntries = useMemo(() => {
     if (!selectedFolderId) return entries;
@@ -76,17 +90,42 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
   }, [scopedEntries]);
 
   const filteredEntries = useMemo(() => {
+    const effectiveStatus = onlyErrors ? "error" : statusFilter;
+    const now = Date.now();
+    const rangeMs =
+      timeRange === "1h" ? 60 * 60 * 1000 :
+      timeRange === "24h" ? 24 * 60 * 60 * 1000 :
+      timeRange === "7d" ? 7 * 24 * 60 * 60 * 1000 :
+      null;
+
     return scopedEntries.filter((entry) => {
       const matchesQuery =
         deferredQuery.trim().length === 0 ||
         entry.filePath.toLowerCase().includes(deferredQuery.toLowerCase()) ||
         entry.ruleName?.toLowerCase().includes(deferredQuery.toLowerCase()) ||
         entry.actionType.toLowerCase().includes(deferredQuery.toLowerCase());
-      const matchesStatus = statusFilter === "all" || entry.status === statusFilter;
+      const matchesStatus = effectiveStatus === "all" || entry.status === effectiveStatus;
       const matchesRule = ruleFilter === "all" || entry.ruleName === ruleFilter;
-      return matchesQuery && matchesStatus && matchesRule;
+      const timestamp = Date.parse(entry.createdAt);
+      const matchesTime = rangeMs === null || (!Number.isNaN(timestamp) && timestamp >= now - rangeMs);
+      return matchesQuery && matchesStatus && matchesRule && matchesTime;
     });
-  }, [scopedEntries, deferredQuery, ruleFilter, statusFilter]);
+  }, [scopedEntries, deferredQuery, ruleFilter, statusFilter, timeRange, onlyErrors]);
+
+  const handleExport = useCallback(async () => {
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const defaultName = `filedispatch-logs-${timestamp}.json`;
+      const path = await save({
+        defaultPath: defaultName,
+        filters: [{ name: "File Dispatch Logs", extensions: ["json"] }],
+      });
+      if (!path) return;
+      await writeTextFile(path, JSON.stringify(filteredEntries, null, 2));
+    } catch {
+      // ignore export errors for now
+    }
+  }, [filteredEntries]);
 
   const undoByLog = useMemo(() => {
     return new Map(undoEntries.map((entry) => [entry.logId, entry]));
@@ -163,6 +202,40 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
                ariaLabel="Filter by status"
             />
           </div>
+          <div className="relative">
+            <MagiSelect
+              width="w-28"
+              value={timeRange}
+              onChange={(val) => setTimeRange(val as "all" | "1h" | "24h" | "7d")}
+              options={[
+                { label: "Time: All", value: "all" },
+                { label: "Last 1h", value: "1h" },
+                { label: "Last 24h", value: "24h" },
+                { label: "Last 7d", value: "7d" },
+              ]}
+              ariaLabel="Filter by time range"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setOnlyErrors((prev) => !prev)}
+            className={`rounded-[var(--radius)] border px-2 py-1 text-[10px] font-semibold transition-colors ${
+              onlyErrors
+                ? "border-[var(--fg-alert)] bg-[var(--fg-alert)]/10 text-[var(--fg-alert)]"
+                : "border-[var(--border-main)] bg-[var(--bg-panel)] text-[var(--fg-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+            }`}
+            aria-pressed={onlyErrors}
+          >
+            Only errors
+          </button>
+          <button
+            type="button"
+            onClick={handleExport}
+            className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+          >
+            <FileDown className="h-3 w-3" />
+            Export
+          </button>
           {onToggleExpand ? (
             <button
               onClick={onToggleExpand}

@@ -187,6 +187,7 @@ mod tests {
             enabled: Some(true),
             stop_processing: None,
             conditions: ConditionGroup {
+                label: None,
                 match_type: MatchType::All,
                 conditions: vec![Condition::Name(StringCondition {
                     operator: StringOperator::Contains,

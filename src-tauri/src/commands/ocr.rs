@@ -61,6 +61,12 @@ pub async fn ocr_download_language(app: AppHandle, language_id: String) -> Resul
 }
 
 #[tauri::command]
+pub async fn ocr_cancel_download(language_id: String) -> Result<(), String> {
+    ModelManager::cancel_download(&language_id);
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn ocr_delete_language(
     state: State<'_, AppState>,
     language_id: String,

@@ -90,6 +90,15 @@ export function GeneralPanel() {
                             void saveSettings();
                         }}
                     />
+                    <SettingToggle
+                        title="Compact rule list"
+                        description="Reduce row height for dense rule lists"
+                        checked={settings.compactMode}
+                        onChange={(checked) => {
+                            setSettings({ compactMode: checked });
+                            void saveSettings();
+                        }}
+                    />
                 </div>
             </section>
 
@@ -107,6 +116,16 @@ export function GeneralPanel() {
                             void saveSettings();
                         }}
                         highlight={settings.dryRun}
+                    />
+                    <SettingToggle
+                        title="Allow permanent deletes"
+                        description="Enable delete-permanently actions (recommended off)"
+                        checked={settings.allowPermanentDelete}
+                        onChange={(checked) => {
+                            setSettings({ allowPermanentDelete: checked });
+                            void saveSettings();
+                        }}
+                        highlight={settings.allowPermanentDelete}
                     />
                 </div>
             </section>

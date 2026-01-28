@@ -6,6 +6,7 @@ import {
     ocrFetchAvailableLanguages,
     ocrGetInstalledLanguages,
     ocrDownloadLanguage,
+    ocrCancelDownload,
     ocrDeleteLanguage,
     type LanguageInfo,
     type InstalledLanguage,
@@ -61,6 +62,13 @@ export function LanguageManager({ disabled }: { disabled?: boolean }) {
                     return next;
                 });
                 fetchLanguages();
+            } else if (progress.status === "cancelled") {
+                setDownloadProgress((prev) => {
+                    const next = { ...prev };
+                    delete next[progress.languageId];
+                    return next;
+                });
+                setError("Download cancelled");
             } else {
                 setDownloadProgress((prev) => ({
                     ...prev,
@@ -93,6 +101,14 @@ export function LanguageManager({ disabled }: { disabled?: boolean }) {
                 return next;
             });
             setError(err instanceof Error ? err.message : "Download failed");
+        }
+    };
+
+    const handleCancel = async (languageId: string) => {
+        try {
+            await ocrCancelDownload(languageId);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Cancel failed");
         }
     };
 
@@ -174,6 +190,13 @@ export function LanguageManager({ disabled }: { disabled?: boolean }) {
                                     <span className="text-xs text-[var(--fg-muted)]">
                                         {formatBytes(progress.downloadedBytes)}
                                     </span>
+                                    <button
+                                        className="rounded-[var(--radius)] border border-[var(--border-main)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                                        onClick={() => handleCancel(lang.id)}
+                                        type="button"
+                                    >
+                                        Cancel
+                                    </button>
                                 </div>
                             ) : isInstalled ? (
                                 <button

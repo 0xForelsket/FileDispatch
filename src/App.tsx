@@ -10,6 +10,9 @@ import {
   Activity,
   Eye,
   Search,
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
   ChevronDown,
   X
 } from "lucide-react";
@@ -67,7 +70,13 @@ function App() {
       loadRules: state.loadRules,
     })),
   );
-  const logs = useLogStore((state) => state.entries);
+  const { logEntries, undoEntries, undoAction } = useLogStore(
+    useShallow((state) => ({
+      logEntries: state.entries,
+      undoEntries: state.undoEntries,
+      undoAction: state.undoAction,
+    })),
+  );
   const settings = useSettingsStore((state) => state.settings);
   const { togglePaused, status: engineStatus } = useEngineStore(
     useShallow((state) => ({
@@ -92,6 +101,7 @@ function App() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isLogExpanded, setIsLogExpanded] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [templateMode, setTemplateMode] = useState<"browse" | "create">("browse");
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -116,6 +126,22 @@ function App() {
       return { folders: 220, rules: 280 };
     }
   });
+  const [collapsedPanes, setCollapsedPanes] = useState(() => {
+    if (typeof window === "undefined") {
+      return { folders: false, rules: false };
+    }
+    const stored = window.localStorage.getItem("filedispatch.collapsedPanes");
+    if (!stored) return { folders: false, rules: false };
+    try {
+      const parsed = JSON.parse(stored) as { folders?: boolean; rules?: boolean };
+      return {
+        folders: Boolean(parsed.folders),
+        rules: Boolean(parsed.rules),
+      };
+    } catch {
+      return { folders: false, rules: false };
+    }
+  });
   const resizeRef = useRef<{
     pane: "folders" | "rules" | null;
     startX: number;
@@ -131,6 +157,14 @@ function App() {
       return;
     }
   }, [paneWidths]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("filedispatch.collapsedPanes", JSON.stringify(collapsedPanes));
+    } catch {
+      return;
+    }
+  }, [collapsedPanes]);
 
   useEffect(() => {
     const handleMove = (event: MouseEvent) => {
@@ -170,6 +204,7 @@ function App() {
   }, [editorDirty]);
 
   const startResize = (pane: "folders" | "rules") => (event: React.MouseEvent) => {
+    if (collapsedPanes[pane]) return;
     resizeRef.current = {
       pane,
       startX: event.clientX,
@@ -178,6 +213,13 @@ function App() {
     document.body.style.cursor = "col-resize";
     event.preventDefault();
   };
+
+  const togglePane = (pane: "folders" | "rules") => {
+    setCollapsedPanes((prev) => ({ ...prev, [pane]: !prev[pane] }));
+  };
+
+  const folderPaneWidth = collapsedPanes.folders ? 36 : paneWidths.folders;
+  const rulePaneWidth = collapsedPanes.rules ? 36 : paneWidths.rules;
 
   const effectiveMode = selectedFolderId ? editorMode : "empty";
   const effectiveRule = selectedFolderId ? editingRule : null;
@@ -189,10 +231,10 @@ function App() {
   }, [selectedFolderId]);
 
   const activeLogs = useMemo(() => {
-    if (!selectedFolderId) return logs;
+    if (!selectedFolderId) return logEntries;
     const activeRuleIds = new Set(rules.map((rule) => rule.id));
-    return logs.filter((entry) => entry.ruleId && activeRuleIds.has(entry.ruleId));
-  }, [logs, rules, selectedFolderId]);
+    return logEntries.filter((entry) => entry.ruleId && activeRuleIds.has(entry.ruleId));
+  }, [logEntries, rules, selectedFolderId]);
 
   const stats = useMemo(() => {
     const total = activeLogs.length;
@@ -215,6 +257,14 @@ function App() {
     }
     action();
   }, [editorDirty]);
+
+  const handleTemplateRulesCreated = useCallback((createdRules: Rule[]) => {
+    if (templateMode !== "create" || createdRules.length === 0) return;
+    runWithDirtyCheck(() => {
+      setEditingRule(createdRules[0]);
+      setEditorMode("edit");
+    });
+  }, [runWithDirtyCheck, templateMode]);
 
   const handleNewRule = useCallback(() => {
     if (!selectedFolderId) return;
@@ -295,7 +345,20 @@ function App() {
       id: "open-templates",
       label: "Open Templates",
       keywords: ["template", "gallery"],
-      action: () => setIsGalleryOpen(true),
+      action: () => {
+        setTemplateMode("browse");
+        setIsGalleryOpen(true);
+      },
+    },
+    {
+      id: "new-from-template",
+      label: "New Rule from Template",
+      keywords: ["template", "new"],
+      disabled: !selectedFolderId,
+      action: () => {
+        setTemplateMode("create");
+        setIsGalleryOpen(true);
+      },
     },
     {
       id: "rule-status",
@@ -325,7 +388,18 @@ function App() {
         void useSettingsStore.getState().saveSettings();
       },
     },
-  ]), [engineStatus?.status.paused, handleNewRule, selectedFolderId, settings.dryRun, togglePaused]);
+    {
+      id: "undo-last",
+      label: "Undo Last Action",
+      keywords: ["undo"],
+      disabled: undoEntries.length === 0,
+      action: () => {
+        if (undoEntries.length > 0) {
+          void undoAction(undoEntries[0].id);
+        }
+      },
+    },
+  ]), [engineStatus?.status.paused, handleNewRule, selectedFolderId, settings.dryRun, togglePaused, undoEntries, undoAction]);
 
   return (
     <div
@@ -397,7 +471,10 @@ function App() {
         {/* Rule Operations Group - aligned with Rules pane */}
         <div className="w-[280px] flex items-center gap-1 px-3 border-l border-[var(--border-main)]">
           <button
-            onClick={() => setIsGalleryOpen(true)}
+            onClick={() => {
+              setTemplateMode("browse");
+              setIsGalleryOpen(true);
+            }}
             disabled={!selectedFolderId}
             className={`flex items-center justify-center p-1.5 rounded transition-colors ${isLinear
               ? "text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)] disabled:opacity-40 disabled:hover:bg-transparent"
@@ -420,6 +497,22 @@ function App() {
             aria-label="Create new rule"
           >
             <FilePlus className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+
+          <button
+            onClick={() => {
+              setTemplateMode("create");
+              setIsGalleryOpen(true);
+            }}
+            disabled={!selectedFolderId}
+            className={`flex items-center justify-center p-1.5 rounded transition-colors ${isLinear
+              ? "text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)] disabled:opacity-40 disabled:hover:bg-transparent"
+              : "text-[var(--fg-primary)] hover:text-[var(--fg-alert)] disabled:opacity-40"
+              }`}
+            title="New Rule from Template"
+            aria-label="Create rule from template"
+          >
+            <LayoutGrid className="h-4 w-4" strokeWidth={1.5} />
           </button>
 
           <button
@@ -536,6 +629,29 @@ function App() {
             <Eye className="h-4 w-4" strokeWidth={1.5} />
           </button>
 
+          <button
+            onClick={() => {
+              if (undoEntries.length > 0) {
+                void undoAction(undoEntries[0].id);
+              }
+            }}
+            disabled={undoEntries.length === 0}
+            className={`relative flex items-center justify-center p-1.5 rounded transition-colors ${
+              undoEntries.length === 0
+                ? "text-[var(--fg-muted)] opacity-40"
+                : "text-[var(--fg-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+            }`}
+            title={undoEntries.length > 0 ? "Undo last action" : "No undo available"}
+            aria-label="Undo last action"
+          >
+            <RotateCcw className="h-4 w-4" strokeWidth={1.5} />
+            {undoEntries.length > 0 ? (
+              <span className="absolute -right-1.5 -top-1.5 rounded-full bg-[var(--accent)] px-1 py-0.5 text-[9px] font-semibold text-[var(--accent-contrast)]">
+                {undoEntries.length}
+              </span>
+            ) : null}
+          </button>
+
           <StatsModal
             total={stats.total}
             efficiency={stats.efficiency}
@@ -565,7 +681,7 @@ function App() {
 
         {/* Pane 1: Folders */}
         <aside
-          style={{ width: `${paneWidths.folders}px` }}
+          style={{ width: `${folderPaneWidth}px` }}
           className={`flex flex-col relative transition duration-300 ${isLinear ? "bg-[var(--bg-panel)] border-r border-[var(--border-main)]" : "magi-border bg-black"
           }`}>
           {!isLinear && <AbsoluteCornerDecorations />}
@@ -574,15 +690,40 @@ function App() {
           <div className={`flex items-center gap-2 select-none shrink-0 ${isLinear
             ? "h-8 px-3 border-b border-[var(--border-main)] bg-[var(--bg-subtle)]/50"
             : "bg-[var(--fg-primary)] text-black px-2 py-1 tracking-widest uppercase font-serif font-bold text-sm"
-            }`}>
-            <span className={`text-[11px] font-medium ${isLinear ? "text-[var(--fg-muted)] uppercase tracking-wider" : ""}`}>
-              Folders
-            </span>
+            } ${collapsedPanes.folders ? "justify-center" : "justify-between"}`}>
+            {!collapsedPanes.folders ? (
+              <>
+                <span className={`text-[11px] font-medium ${isLinear ? "text-[var(--fg-muted)] uppercase tracking-wider" : ""}`}>
+                  Folders
+                </span>
+                <button
+                  type="button"
+                  onClick={() => togglePane("folders")}
+                  className="rounded p-1 text-[var(--fg-muted)] transition-colors hover:text-[var(--fg-primary)]"
+                  aria-label="Collapse folders pane"
+                  title="Collapse folders"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => togglePane("folders")}
+                className="rounded p-1 text-[var(--fg-muted)] transition-colors hover:text-[var(--fg-primary)]"
+                aria-label="Expand folders pane"
+                title="Expand folders"
+              >
+                <ChevronRight className="h-3 w-3" />
+              </button>
+            )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-1.5 custom-scrollbar">
-            <FolderList />
-          </div>
+          {!collapsedPanes.folders ? (
+            <div className="flex-1 overflow-y-auto p-1.5 custom-scrollbar">
+              <FolderList />
+            </div>
+          ) : null}
         </aside>
 
         {/* Pane 2: Rules */}
@@ -593,7 +734,7 @@ function App() {
         />
 
         <section
-          style={{ width: `${paneWidths.rules}px` }}
+          style={{ width: `${rulePaneWidth}px` }}
           className={`flex flex-col relative transition duration-300 ${isLinear ? "bg-[var(--bg-panel)] border-r border-[var(--border-main)]" : "magi-border bg-[var(--bg-panel)]"
           }`}>
           {!isLinear && <AbsoluteCornerDecorations color="var(--fg-secondary)" />}
@@ -602,35 +743,66 @@ function App() {
           <div className={`flex items-center gap-2 select-none shrink-0 ${isLinear
             ? "h-8 px-3 border-b border-[var(--border-main)] bg-[var(--bg-subtle)]/50"
             : "bg-[var(--fg-primary)] text-[var(--bg-panel)] px-2 py-1 tracking-widest uppercase font-serif font-bold text-sm"
-            }`}>
-            {selectedFolderId && activeFolder ? (
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[11px] font-medium text-[var(--fg-primary)] truncate">
-                  {activeFolder.name}
-                </span>
-                <ChevronDown className="h-3 w-3 text-[var(--fg-muted)] shrink-0" />
-              </div>
+            } ${collapsedPanes.rules ? "justify-center" : "justify-between"}`}>
+            {!collapsedPanes.rules ? (
+              <>
+                {selectedFolderId && activeFolder ? (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[11px] font-medium text-[var(--fg-primary)] truncate">
+                      {activeFolder.name}
+                    </span>
+                    <ChevronDown className="h-3 w-3 text-[var(--fg-muted)] shrink-0" />
+                  </div>
+                ) : (
+                  <span className={`text-[11px] font-medium ${isLinear ? "text-[var(--fg-muted)] uppercase tracking-wider" : ""}`}>
+                    Rules
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => togglePane("rules")}
+                  className="rounded p-1 text-[var(--fg-muted)] transition-colors hover:text-[var(--fg-primary)]"
+                  aria-label="Collapse rules pane"
+                  title="Collapse rules"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </button>
+              </>
             ) : (
-              <span className={`text-[11px] font-medium ${isLinear ? "text-[var(--fg-muted)] uppercase tracking-wider" : ""}`}>
-                Rules
-              </span>
+              <button
+                type="button"
+                onClick={() => togglePane("rules")}
+                className="rounded p-1 text-[var(--fg-muted)] transition-colors hover:text-[var(--fg-primary)]"
+                aria-label="Expand rules pane"
+                title="Expand rules"
+              >
+                <ChevronRight className="h-3 w-3" />
+              </button>
             )}
           </div>
 
-          {ruleTransferError ? (
-            <div className="px-3 py-1 text-[10px] text-[var(--fg-alert)] border-b border-[var(--border-main)] bg-[var(--bg-subtle)]/60">
-              {ruleTransferError}
-            </div>
-          ) : null}
+          {!collapsedPanes.rules ? (
+            <>
+              {ruleTransferError ? (
+                <div className="px-3 py-1 text-[10px] text-[var(--fg-alert)] border-b border-[var(--border-main)] bg-[var(--bg-subtle)]/60">
+                  {ruleTransferError}
+                </div>
+              ) : null}
 
-          <div className="flex-1 overflow-y-auto relative p-1.5 custom-scrollbar">
-            <RuleList
-              selectedRuleId={effectiveRule?.id ?? ""}
-              onNewRule={handleNewRule}
-              onSelectRule={handleSelectRule}
-              searchQuery={deferredSearchQuery}
-            />
-          </div>
+              <div className="flex-1 overflow-y-auto relative p-1.5 custom-scrollbar">
+                <RuleList
+                  selectedRuleId={effectiveRule?.id ?? ""}
+                  onNewRule={handleNewRule}
+                  onSelectRule={handleSelectRule}
+                  searchQuery={deferredSearchQuery}
+                  onOpenTemplates={() => {
+                    setTemplateMode("create");
+                    setIsGalleryOpen(true);
+                  }}
+                />
+              </div>
+            </>
+          ) : null}
         </section>
 
         {/* Pane 3: Editor */}
@@ -686,8 +858,8 @@ function App() {
                 <Activity className="h-3 w-3" />
                 <span>Activity Log</span>
               </div>
-              {logs.length > 0 && (
-                <span>Last: {logs[0].filePath.split(/[\\/]/).pop()} ({logs[0].status})</span>
+              {logEntries.length > 0 && (
+                <span>Last: {logEntries[0].filePath.split(/[\\/]/).pop()} ({logEntries[0].status})</span>
               )}
             </button>
           )}
@@ -698,7 +870,11 @@ function App() {
       <TemplateGallery
         folderId={selectedFolderId ?? ""}
         isOpen={isGalleryOpen}
-        onClose={() => setIsGalleryOpen(false)}
+        onClose={() => {
+          setIsGalleryOpen(false);
+          setTemplateMode("browse");
+        }}
+        onRulesCreated={handleTemplateRulesCreated}
       />
       <RuleStatusDialog
         open={isStatusOpen}

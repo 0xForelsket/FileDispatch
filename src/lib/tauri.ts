@@ -104,5 +104,7 @@ export const ocrGetInstalledLanguages = () =>
   invoke<InstalledLanguage[]>("ocr_get_installed_languages");
 export const ocrDownloadLanguage = (languageId: string) =>
   invoke<void>("ocr_download_language", { languageId });
+export const ocrCancelDownload = (languageId: string) =>
+  invoke<void>("ocr_cancel_download", { languageId });
 export const ocrDeleteLanguage = (languageId: string) =>
   invoke<void>("ocr_delete_language", { languageId });

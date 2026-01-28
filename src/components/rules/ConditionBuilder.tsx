@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GripVertical, LayersPlus, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronRight, GripVertical, LayersPlus, Plus, X } from "lucide-react";
 import { MagiSelect } from "@/components/ui/MagiSelect";
 
 
@@ -108,6 +108,7 @@ const fieldClass =
   "rounded-[var(--radius)] bg-[var(--bg-panel)] border border-[var(--border-main)] px-2 py-1 text-sm text-[var(--fg-primary)] shadow-none outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]";
 const smallFieldClass = `${fieldClass} w-20`;
 const longFieldClass = `${fieldClass} min-w-[220px]`;
+const labelFieldClass = `${fieldClass} h-7 min-w-[140px] text-[11px]`;
 const addConditionButtonClass =
   "flex items-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-xs font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]";
 const addGroupButtonClass =
@@ -118,6 +119,7 @@ const addControlsWrapperClass =
 export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilderProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<number, boolean>>({});
   const isNested = depth > 0;
 
   const updateGroup = (updates: Partial<ConditionGroup>) =>
@@ -144,6 +146,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
         ...group.conditions,
         {
           type: "nested",
+          label: undefined,
           matchType: "all",
           conditions: [],
         },
@@ -204,6 +207,14 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
         const isDragOver = dragOverIndex === index;
 
         if (condition.type === "nested") {
+          const isCollapsed = Boolean(collapsedGroups[index]);
+          const labelValue = condition.label ?? "";
+          const labelText = labelValue.trim();
+          const summary =
+            condition.conditions.length === 0
+              ? "No conditions"
+              : `${condition.matchType} · ${condition.conditions.length} condition${condition.conditions.length === 1 ? "" : "s"}`;
+          const summaryText = labelText ? `${labelText} · ${summary}` : summary;
           return (
             <div
               key={index}
@@ -219,7 +230,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
               }}
               onDragEnd={handleDragEnd}
               className={`space-y-3 rounded-[var(--radius)] border bg-[var(--bg-subtle)] p-3 ml-4 transition ${
-                isDragging ? "opacity-50 scale-[0.98]" : ""
+              isDragging ? "opacity-50 scale-[0.98] motion-reduce:transform-none" : ""
               } ${isDragOver ? "border-[var(--accent)] border-2" : "border-[var(--border-main)]"}`}
             >
               <div className="flex items-center justify-between">
@@ -227,9 +238,39 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
                   <div className="cursor-grab active:cursor-grabbing text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]">
                     <GripVertical className="h-3.5 w-3.5" />
                   </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCollapsedGroups((prev) => ({ ...prev, [index]: !prev[index] }))
+                    }
+                    className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                    aria-label={isCollapsed ? "Expand group" : "Collapse group"}
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
                   <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--fg-muted)]">
                     Nested group
                   </span>
+                  <input
+                    className={labelFieldClass}
+                    placeholder="Group name"
+                    value={labelValue}
+                    onChange={(e) => {
+                      const nextLabel = e.target.value;
+                      updateCondition(index, {
+                        ...condition,
+                        label: nextLabel.trim().length === 0 ? undefined : nextLabel,
+                      });
+                    }}
+                    aria-label="Group name"
+                  />
+                  {isCollapsed ? (
+                    <span className="text-[10px] text-[var(--fg-muted)]">{summaryText}</span>
+                  ) : null}
                 </div>
                 <button
                   className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--fg-alert)]/15 hover:text-[var(--fg-alert)]"
@@ -240,20 +281,24 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <ConditionBuilder
-                group={{
-                  matchType: condition.matchType,
-                  conditions: condition.conditions,
-                }}
-                onChange={(nextGroup) =>
-                  updateCondition(index, {
-                    type: "nested",
-                    matchType: nextGroup.matchType,
-                    conditions: nextGroup.conditions,
-                  })
-                }
-                depth={depth + 1}
-              />
+              {!isCollapsed ? (
+                <ConditionBuilder
+                  group={{
+                    label: condition.label,
+                    matchType: condition.matchType,
+                    conditions: condition.conditions,
+                  }}
+                  onChange={(nextGroup) =>
+                    updateCondition(index, {
+                      type: "nested",
+                      label: nextGroup.label,
+                      matchType: nextGroup.matchType,
+                      conditions: nextGroup.conditions,
+                    })
+                  }
+                  depth={depth + 1}
+                />
+              ) : null}
             </div>
           );
         }
@@ -273,7 +318,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
             }}
             onDragEnd={handleDragEnd}
             className={`group rounded-[var(--radius)] border bg-[var(--bg-panel)] p-2 transition ${
-              isDragging ? "opacity-50 scale-[0.98]" : "hover:border-[var(--border-strong)]"
+              isDragging ? "opacity-50 scale-[0.98] motion-reduce:transform-none" : "hover:border-[var(--border-strong)]"
             } ${isDragOver ? "border-[var(--accent)] border-2" : "border-[var(--border-main)]"}`}
           >
             <div className="flex flex-wrap items-center gap-2">

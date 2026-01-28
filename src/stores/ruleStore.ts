@@ -21,7 +21,7 @@ interface RuleState {
   deleteRule: (id: string, folderId: string) => Promise<void>;
   toggleRule: (id: string, enabled: boolean, folderId: string) => Promise<void>;
   reorderRules: (folderId: string, orderedIds: string[]) => Promise<void>;
-  duplicateRule: (id: string, folderId: string) => Promise<void>;
+  duplicateRule: (id: string, folderId: string) => Promise<Rule | null>;
 }
 
 export const useRuleStore = create<RuleState>((set, get) => ({
@@ -85,10 +85,12 @@ export const useRuleStore = create<RuleState>((set, get) => ({
   duplicateRule: async (id, folderId) => {
     set({ loading: true, error: undefined });
     try {
-      await ruleDuplicate(id);
+      const rule = await ruleDuplicate(id);
       await get().loadRules(folderId);
+      return rule;
     } catch (err) {
       set({ error: String(err), loading: false });
+      return null;
     }
   },
 }));
