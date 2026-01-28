@@ -27,10 +27,12 @@ impl Database {
         Ok(db)
     }
 
+    #[allow(dead_code)]
     pub fn pool(&self) -> &Pool<SqliteConnectionManager> {
         &self.pool
     }
 
+    #[allow(dead_code)]
     pub fn get_conn(&self) -> Result<PooledConnection<SqliteConnectionManager>> {
         Ok(self.pool.get()?)
     }

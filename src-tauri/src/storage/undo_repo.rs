@@ -59,6 +59,7 @@ impl UndoRepository {
         })
     }
 
+    #[allow(dead_code)]
     pub fn latest(&self) -> Result<Option<UndoEntry>> {
         let mut items = self.list(1)?;
         Ok(items.pop())

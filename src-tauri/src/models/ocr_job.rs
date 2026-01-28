@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -41,4 +43,3 @@ pub struct OcrConfig {
     /// Concurrency for OCR work (default 1).
     pub sidecar_concurrency: usize,
 }
-

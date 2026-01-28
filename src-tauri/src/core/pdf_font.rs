@@ -21,6 +21,7 @@ pub struct FontMetrics1000 {
     pub descent: i16,
     pub cap_height: i16,
     pub bbox: [i16; 4],
+    #[allow(dead_code)]
     pub units_per_em: u16,
 }
 

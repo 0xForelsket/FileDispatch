@@ -20,6 +20,7 @@ pub struct FileInfo {
     pub added: DateTime<Utc>,
     pub kind: FileKind,
     pub parent: Option<String>,
+    #[allow(dead_code)]
     pub is_dir: bool,
     pub hash: String,
     /// When this file was last matched by any rule (populated from match_repo when available)

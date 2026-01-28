@@ -1565,8 +1565,6 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn move_to_nonexistent_parent_directory() {
-        use std::os::unix::fs::PermissionsExt;
-
         let src_dir = tempdir().unwrap();
         let source = src_dir.path().join("source.txt");
         fs::write(&source, "content").unwrap();

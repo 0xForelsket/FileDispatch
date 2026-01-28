@@ -153,6 +153,7 @@ impl ModelManager {
         Ok(Self { models_dir })
     }
 
+    #[allow(dead_code)]
     pub fn models_dir(&self) -> &PathBuf {
         &self.models_dir
     }
@@ -214,6 +215,7 @@ impl ModelManager {
         Ok(installed)
     }
 
+    #[allow(dead_code)]
     pub fn is_language_installed(&self, lang_id: &str) -> bool {
         // Validate language ID to prevent path traversal
         if validate_language_id(lang_id).is_err() {

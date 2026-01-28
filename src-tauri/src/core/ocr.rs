@@ -49,6 +49,7 @@ impl OcrOptions {
 #[derive(Clone, Debug)]
 pub struct OcrResult {
     pub text: String,
+    #[allow(dead_code)]
     pub average_confidence: f32,
 }
 
@@ -93,6 +94,7 @@ impl OcrManager {
         Ok(result.text)
     }
 
+    #[allow(dead_code)]
     pub fn recognize_image(&mut self, image: RgbImage, timeout: Duration) -> Result<String> {
         let options = OcrOptions::from_settings(&self.settings);
         let result = self.recognize_image_with_options(image, timeout, &options)?;

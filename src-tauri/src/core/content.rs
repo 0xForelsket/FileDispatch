@@ -808,7 +808,6 @@ fn build_text_stream_from_ocr_cidfont(
             word_layouts.push(WordLayout {
                 text,
                 x0,
-                x1,
                 y0,
                 y1,
             });
@@ -1063,7 +1062,6 @@ fn ocr_diagnostic_mode(settings: &Settings) -> bool {
 struct WordLayout {
     text: String,
     x0: f32,
-    x1: f32,
     y0: f32,
     y1: f32,
 }

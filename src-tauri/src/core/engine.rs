@@ -9,8 +9,8 @@ use chrono::{Duration, Utc};
 use lru::LruCache;
 use regex::{Regex, RegexBuilder};
 
-/// Thread-local cache for compiled regexes to avoid recompilation
 thread_local! {
+    /// Thread-local cache for compiled regexes to avoid recompilation
     static REGEX_CACHE: RefCell<LruCache<(String, bool), Regex>> =
         RefCell::new(LruCache::new(NonZeroUsize::new(100).unwrap()));
 }

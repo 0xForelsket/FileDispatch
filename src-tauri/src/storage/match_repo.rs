@@ -13,6 +13,7 @@ impl MatchRepository {
         Self { db }
     }
 
+    #[allow(dead_code)]
     pub fn has_match(
         &self,
         rule_id: &str,
@@ -41,6 +42,7 @@ impl MatchRepository {
 
     /// Check if a file with this hash was already processed by this rule
     /// (regardless of the file path - handles renames)
+    #[allow(dead_code)]
     pub fn has_hash_match(&self, rule_id: &str, file_hash: &str) -> Result<bool> {
         self.db.with_conn(|conn| {
             let count: i64 = conn.query_row(
