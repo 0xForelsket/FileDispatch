@@ -49,7 +49,7 @@ export function SettingsDialog({ compact = false, trigger, open: controlledOpen,
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [setOpen]);
 
   useFocusTrap(open, dialogRef);
 

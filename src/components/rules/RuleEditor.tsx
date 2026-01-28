@@ -82,51 +82,6 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
     [draft.conditions],
   );
 
-  if (!folderId) {
-    return (
-      <div className="flex h-full items-center justify-center p-6 text-center">
-        <div className="max-w-sm rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-panel)] px-6 py-5 text-xs text-[var(--fg-muted)]">
-          <div className="text-sm font-semibold text-[var(--fg-primary)]">Add your first folder</div>
-          <p className="mt-1 text-[11px] text-[var(--fg-muted)]">
-            Choose a folder in the left pane to start building rules.
-          </p>
-          <ol className="mt-3 list-decimal list-inside space-y-1 text-[11px]">
-            <li>Add a folder to watch</li>
-            <li>Create a rule</li>
-            <li>Preview and enable</li>
-          </ol>
-        </div>
-      </div>
-    );
-  }
-
-  if (mode === "empty") {
-    return (
-      <div className="flex h-full items-center justify-center p-6 text-center">
-        <div className="max-w-sm rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-panel)] px-6 py-5 text-xs text-[var(--fg-muted)]">
-          <div className="text-sm font-semibold text-[var(--fg-primary)]">Create your first rule</div>
-          <p className="mt-1 text-[11px] text-[var(--fg-muted)]">
-            Select a rule from the list or create a new one to get started.
-          </p>
-          <ol className="mt-3 list-decimal list-inside space-y-1 text-[11px]">
-            <li>Define conditions</li>
-            <li>Choose actions</li>
-            <li>Preview and enable</li>
-          </ol>
-          {onNewRule ? (
-            <button
-              type="button"
-              onClick={onNewRule}
-              className="mt-4 rounded-[var(--radius)] bg-[var(--accent)] px-3 py-1.5 text-[11px] font-semibold text-[var(--accent-contrast)] transition-colors hover:opacity-90"
-            >
-              New rule
-            </button>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
   const handleSave = useCallback(async () => {
     const validationError = validateRule(draft);
     if (validationError) {
@@ -190,7 +145,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
         previewTokenRef.current = null;
       }
     }
-  }, [draft, folderId, previewMaxFiles, ocrCancelRequest]);
+  }, [draft, folderId, previewMaxFiles]);
 
   const handleCancelPreview = useCallback(() => {
     previewRequestId.current += 1;
@@ -200,7 +155,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
     }
     setLoadingPreview(false);
     setPreviewError(null);
-  }, [ocrCancelRequest]);
+  }, []);
 
   // Live preview: debounced update when conditions change
   useEffect(() => {
@@ -283,7 +238,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
         livePreviewTokenRef.current = null;
       }
     };
-  }, [draft.conditions, folderId, isOpen, livePreviewExpanded, livePreviewMaxFiles, ocrCancelRequest]);
+  }, [draft.conditions, folderId, isOpen, livePreviewExpanded, livePreviewMaxFiles]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -304,6 +259,51 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [isOpen, draft, folderId, deleteRule, onClose, handleSave]);
+
+  if (!folderId) {
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-center">
+        <div className="max-w-sm rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-panel)] px-6 py-5 text-xs text-[var(--fg-muted)]">
+          <div className="text-sm font-semibold text-[var(--fg-primary)]">Add your first folder</div>
+          <p className="mt-1 text-[11px] text-[var(--fg-muted)]">
+            Choose a folder in the left pane to start building rules.
+          </p>
+          <ol className="mt-3 list-decimal list-inside space-y-1 text-[11px]">
+            <li>Add a folder to watch</li>
+            <li>Create a rule</li>
+            <li>Preview and enable</li>
+          </ol>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "empty") {
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-center">
+        <div className="max-w-sm rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-panel)] px-6 py-5 text-xs text-[var(--fg-muted)]">
+          <div className="text-sm font-semibold text-[var(--fg-primary)]">Create your first rule</div>
+          <p className="mt-1 text-[11px] text-[var(--fg-muted)]">
+            Select a rule from the list or create a new one to get started.
+          </p>
+          <ol className="mt-3 list-decimal list-inside space-y-1 text-[11px]">
+            <li>Define conditions</li>
+            <li>Choose actions</li>
+            <li>Preview and enable</li>
+          </ol>
+          {onNewRule ? (
+            <button
+              type="button"
+              onClick={onNewRule}
+              className="mt-4 rounded-[var(--radius)] bg-[var(--accent)] px-3 py-1.5 text-[11px] font-semibold text-[var(--accent-contrast)] transition-colors hover:opacity-90"
+            >
+              New rule
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   if (!isOpen) {
     return (

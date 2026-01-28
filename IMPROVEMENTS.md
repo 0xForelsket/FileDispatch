@@ -176,7 +176,12 @@ Ship a first pass that fixes accessibility + safety issues and makes system stat
 [x] Improve typing responsiveness: `useDeferredValue` for rule/log search, memoize filters; virtualize `RuleList` when rule counts are large.
 [x] Surface “Run now” results in UI (toast/log panel), remove `console.*` debugging from production paths.
 [x] Add rule-level insights (last matched, match count, recent errors) and add log row actions (open/show-in-file-manager).
-[ ] Validate: run `bun test`, `bun run lint`, `bun run typecheck`, and manual smoke tests for “rule preview”, “run now”, “import/export”, “OCR language download”.
+[ ] Validate:
+  - [x] `bun test`
+  - [x] `bun run tauri build`
+  - [x] `bun run lint`
+  - [ ] `bun run typecheck`
+  - [ ] Manual smoke tests for “rule preview”, “run now”, “import/export”, “OCR language download”.
 [ ] Verify edge cases: very long file paths, huge log history, rapid file event bursts, slow OCR/downloads, offline mode.
 
 ## Open questions

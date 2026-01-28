@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Command } from "lucide-react";
 
@@ -24,6 +24,12 @@ export function CommandPalette({ items }: CommandPaletteProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
 
+  const openPalette = useCallback(() => {
+    setQuery("");
+    setActiveIndex(0);
+    setOpen(true);
+  }, []);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return items;
@@ -37,12 +43,12 @@ export function CommandPalette({ items }: CommandPaletteProps) {
     const handler = (event: KeyboardEvent) => {
       if (matchesShortcut(event, { key: "k", ctrlOrMeta: true, allowInInput: true })) {
         event.preventDefault();
-        setOpen(true);
+        openPalette();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [openPalette]);
 
   useEffect(() => {
     if (!open) return;
@@ -68,12 +74,6 @@ export function CommandPalette({ items }: CommandPaletteProps) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [activeIndex, filtered, open]);
-
-  useEffect(() => {
-    if (!open) return;
-    setActiveIndex(0);
-    setQuery("");
-  }, [open]);
 
   useFocusTrap(open, dialogRef);
 
