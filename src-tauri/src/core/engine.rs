@@ -20,8 +20,9 @@ use crate::core::duplicates::DuplicateDetector;
 use crate::core::executor::{ActionExecutor, ActionOutcome, ActionResultStatus};
 use crate::core::watcher::{FileEvent, FileEventKind};
 use crate::models::{
-    ActionDetails, ActionType, Condition, ConditionGroup, DateOperator, FileKind, LogEntry,
-    LogStatus, MatchType, Rule, SizeUnit, StringCondition, StringOperator, TimeOperator, TimeUnit,
+    ActionDetails, ActionType, Condition, ConditionGroup, DateOperator, EngineError, EngineEvent,
+    EngineStatus, FileKind, LogEntry, LogStatus, MatchType, Rule, SizeUnit, StringCondition,
+    StringOperator, TimeOperator, TimeUnit,
 };
 use crate::storage::database::Database;
 use crate::storage::folder_repo::FolderRepository;
@@ -43,6 +44,7 @@ pub struct RuleEngine {
     last_seen: std::sync::Mutex<LruCache<std::path::PathBuf, std::time::Instant>>,
     paused: std::sync::Arc<std::sync::atomic::AtomicBool>,
     duplicate_detector: DuplicateDetector,
+    status: std::sync::Arc<std::sync::Mutex<EngineStatus>>,
 }
 
 impl RuleEngine {
@@ -53,6 +55,7 @@ impl RuleEngine {
         settings: std::sync::Arc<std::sync::Mutex<crate::models::Settings>>,
         ocr: std::sync::Arc<std::sync::Mutex<crate::core::ocr::OcrManager>>,
         paused: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        status: std::sync::Arc<std::sync::Mutex<EngineStatus>>,
     ) -> Self {
         Self {
             event_rx,
@@ -65,6 +68,7 @@ impl RuleEngine {
             )),
             paused,
             duplicate_detector: DuplicateDetector::new(db.clone()),
+            status,
         }
     }
 
@@ -72,6 +76,7 @@ impl RuleEngine {
         thread::spawn(move || {
             for event in self.event_rx.iter() {
                 if let Err(err) = self.process_event(&event) {
+                    self.record_error(err.to_string());
                     eprintln!("Rule engine error: {err}");
                 }
             }
@@ -79,6 +84,7 @@ impl RuleEngine {
     }
 
     fn process_event(&self, event: &FileEvent) -> Result<()> {
+        self.record_event(event);
         if self.paused.load(std::sync::atomic::Ordering::SeqCst) {
             return Ok(());
         }
@@ -174,7 +180,46 @@ impl RuleEngine {
             }
         }
 
+        self.record_processed();
         Ok(())
+    }
+
+    fn record_event(&self, event: &FileEvent) {
+        let now = Utc::now();
+        if let Ok(mut status) = self.status.lock() {
+            status.paused = self.paused.load(std::sync::atomic::Ordering::SeqCst);
+            status.queue_depth = self.event_rx.len();
+            status.last_event = Some(EngineEvent {
+                path: event.path.to_string_lossy().to_string(),
+                folder_id: event.folder_id.clone(),
+                kind: format!("{:?}", event.kind),
+                received_at: now,
+            });
+            status.updated_at = now;
+        }
+    }
+
+    fn record_processed(&self) {
+        let now = Utc::now();
+        if let Ok(mut status) = self.status.lock() {
+            status.processed_count = status.processed_count.saturating_add(1);
+            status.queue_depth = self.event_rx.len();
+            status.paused = self.paused.load(std::sync::atomic::Ordering::SeqCst);
+            status.updated_at = now;
+        }
+    }
+
+    fn record_error(&self, message: String) {
+        let now = Utc::now();
+        if let Ok(mut status) = self.status.lock() {
+            status.last_error = Some(EngineError {
+                message,
+                occurred_at: now,
+            });
+            status.queue_depth = self.event_rx.len();
+            status.paused = self.paused.load(std::sync::atomic::Ordering::SeqCst);
+            status.updated_at = now;
+        }
     }
 }
 

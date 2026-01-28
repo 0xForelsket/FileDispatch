@@ -7,6 +7,7 @@ export const TEMPLATE_CATEGORIES = [
     { id: "development", label: "Development", icon: "💻" },
     { id: "downloads", label: "Downloads", icon: "📥" },
     { id: "general", label: "General", icon: "📁" },
+    { id: "custom", label: "Custom", icon: "✨" },
 ] as const;
 
 export const BUILTIN_TEMPLATES: Template[] = [

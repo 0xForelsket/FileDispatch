@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Settings, X, Trash2 } from "lucide-react";
 
@@ -6,10 +6,13 @@ import type { Folder } from "@/types";
 import { useFolderStore } from "@/stores/folderStore";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Switch } from "@/components/ui/Switch";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+
+type FolderOptionsTrigger = React.ReactElement<{ onClick?: React.MouseEventHandler }>;
 
 interface FolderOptionsDialogProps {
   folder: Folder;
-  trigger?: React.ReactNode;
+  trigger?: FolderOptionsTrigger;
 }
 
 export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProps) {
@@ -24,6 +27,9 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
   const renameFolder = useFolderStore((state) => state.renameFolder);
   const removeFolder = useFolderStore((state) => state.removeFolder);
   const loading = useFolderStore((state) => state.loading);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(open, dialogRef);
 
   const handleDelete = async () => {
     await removeFolder(folder.id);
@@ -66,21 +72,31 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
   const modal = open && typeof document !== "undefined"
     ? createPortal(
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div
+        <button
+          type="button"
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           onClick={handleCancel}
+          aria-label="Close folder options"
+          tabIndex={-1}
         />
-        <div className="relative w-full max-w-md flex flex-col rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]">
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="folder-options-title"
+          className="relative w-full max-w-md flex flex-col rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]"
+        >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--border-main)] p-4">
             <div>
-              <h2 className="text-lg font-semibold text-[var(--fg-primary)]">
+              <h2 id="folder-options-title" className="text-lg font-semibold text-[var(--fg-primary)]">
                 {folder.isGroup ? "Group Options" : "Folder Options"}
               </h2>
             </div>
             <button
               onClick={handleCancel}
               className="rounded-[var(--radius)] p-2 text-[var(--fg-muted)] hover:bg-[var(--bg-subtle)]"
+              aria-label="Close folder options"
             >
               <X className="h-4 w-4" />
             </button>
@@ -90,10 +106,11 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
           <div className="p-4 space-y-4">
             {/* Name (Rename) */}
             <div>
-              <label className="block text-sm font-medium text-[var(--fg-primary)] mb-2">
+              <label htmlFor="folder-options-name" className="block text-sm font-medium text-[var(--fg-primary)] mb-2">
                 Name
               </label>
               <input
+                id="folder-options-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-2 text-sm text-[var(--fg-primary)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
@@ -106,13 +123,14 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
               <>
                 {/* Scan Depth Setting */}
                 <div>
-                  <label className="block text-sm font-medium text-[var(--fg-primary)] mb-2">
+                  <label htmlFor="folder-options-depth" className="block text-sm font-medium text-[var(--fg-primary)] mb-2">
                     Subfolder Scanning Depth
                   </label>
                   <p className="text-xs text-[var(--fg-muted)] mb-3">
                     Control how deep FileDispatch scans for files in subfolders
                   </p>
                   <select
+                    id="folder-options-depth"
                     value={scanDepth}
                     onChange={(e) => setScanDepth(Number(e.target.value))}
                     className="w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-2 text-sm text-[var(--fg-primary)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
@@ -174,20 +192,22 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
 
                   <div className="flex items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] p-3">
                     <div>
-                      <div className="text-sm font-medium text-[var(--fg-primary)]">
+                      <label htmlFor="folder-options-timeout" className="text-sm font-medium text-[var(--fg-primary)]">
                         Move to trash after
-                      </div>
+                      </label>
                       <p className="text-xs text-[var(--fg-muted)]">
                         Minutes of no size changes before cleanup
                       </p>
                     </div>
                     <input
+                      id="folder-options-timeout"
                       className="w-24 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-sm text-[var(--fg-primary)] shadow-[var(--shadow-sm)] outline-none transition-colors focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)] disabled:opacity-50"
                       type="number"
                       min={1}
                       value={incompleteTimeoutMinutes}
                       onChange={(e) => setIncompleteTimeoutMinutes(Number(e.target.value))}
                       disabled={!trashIncompleteDownloads || loading}
+                      aria-label="Incomplete download timeout in minutes"
                     />
                   </div>
                 </div>
@@ -230,7 +250,7 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
               className="rounded-[var(--radius)] bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-50"
               disabled={loading}
             >
-              {loading ? "Saving..." : "Save"}
+              {loading ? "Saving…" : "Save"}
             </button>
           </div>
         </div>
@@ -241,19 +261,25 @@ export function FolderOptionsDialog({ folder, trigger }: FolderOptionsDialogProp
 
   return (
     <>
-      {trigger ? (
-        <div onClick={handleOpen} className="contents">
-          {trigger}
-        </div>
-      ) : (
+      {trigger ? React.cloneElement(trigger, {
+            onClick: (event: React.MouseEvent) => {
+              trigger.props.onClick?.(event);
+              if (!event.defaultPrevented) {
+                handleOpen();
+              }
+            },
+          })
+        : null}
+      {!trigger ? (
         <button
           onClick={(e) => { e.stopPropagation(); handleOpen(); }}
           className="flex h-5 w-5 items-center justify-center rounded text-[var(--fg-muted)] hover:text-[var(--fg-primary)] transition-colors"
           title="Folder options"
+          aria-label="Folder options"
         >
           <Settings className="h-3 w-3" />
         </button>
-      )}
+      ) : null}
       {modal}
 
       <ConfirmDialog

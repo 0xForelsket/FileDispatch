@@ -95,6 +95,18 @@ impl WatcherService {
             .collect();
         *self.ignore_patterns.write().unwrap() = compiled;
     }
+
+    pub fn list_watched_folders(&self) -> Vec<(PathBuf, String, i32)> {
+        let folders = self.watched_folders.read().unwrap();
+        let depths = self.folder_depths.read().unwrap();
+        folders
+            .iter()
+            .map(|(path, folder_id)| {
+                let depth = depths.get(folder_id).copied().unwrap_or(0);
+                (path.clone(), folder_id.clone(), depth)
+            })
+            .collect()
+    }
 }
 
 fn handle_event(

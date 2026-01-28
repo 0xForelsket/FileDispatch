@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FileUp, X } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -7,14 +7,23 @@ import type { Preset } from "@/types";
 import { presetInstall, presetRead } from "@/lib/tauri";
 
 import { useRuleStore } from "@/stores/ruleStore";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+
+type PresetTrigger = React.ReactElement<{
+  onClick?: React.MouseEventHandler;
+  disabled?: boolean;
+  "aria-disabled"?: boolean;
+}>;
 
 interface PresetImportDialogProps {
   folderId: string;
+  trigger?: PresetTrigger;
+  disabled?: boolean;
 }
 
   /* ... imports same ... */
 
-export function PresetImportDialog({ folderId }: PresetImportDialogProps) {
+export function PresetImportDialog({ folderId, trigger, disabled = false }: PresetImportDialogProps) {
   const loadRules = useRuleStore((state) => state.loadRules);
   const [preset, setPreset] = useState<Preset | null>(null);
   const [presetPath, setPresetPath] = useState<string | null>(null);
@@ -22,13 +31,19 @@ export function PresetImportDialog({ folderId }: PresetImportDialogProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(modalOpen, dialogRef);
 
   const presetSummary = useMemo(() => {
     if (!preset) return "";
     return `${preset.rules.length} rules`;
   }, [preset]);
 
+  const isDisabled = disabled || loading;
+
   const handlePick = async () => {
+    if (isDisabled) return;
     setError(null);
     const selected = await open({
       multiple: false,
@@ -78,17 +93,30 @@ export function PresetImportDialog({ folderId }: PresetImportDialogProps) {
     modalOpen && preset
       ? createPortal(
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
-            <div className="relative w-full max-w-2xl overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setModalOpen(false)}
+              aria-label="Close preset dialog"
+              tabIndex={-1}
+            />
+            <div
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="preset-import-title"
+              className="relative w-full max-w-2xl overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]"
+            >
               <div className="flex items-center justify-between border-b border-[var(--border-main)] px-4 py-3">
                  <div>
-                   <h2 className="text-sm font-semibold text-[var(--fg-primary)]">Install preset</h2>
+                   <h2 id="preset-import-title" className="text-sm font-semibold text-[var(--fg-primary)]">Install preset</h2>
                    <p className="text-[11px] text-[var(--fg-muted)]">{preset.name}</p>
                  </div>
                  <button
                    className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
                    onClick={() => setModalOpen(false)}
                    type="button"
+                   aria-label="Close preset dialog"
                  >
                     <X className="h-4 w-4" />
                  </button>
@@ -121,6 +149,7 @@ export function PresetImportDialog({ folderId }: PresetImportDialogProps) {
                                   className="w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-2 py-1 text-sm text-[var(--fg-primary)] outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]"
                                   value={variables[variable.id] ?? variable.default ?? ""}
                                   placeholder={variable.default ?? "Enter value"}
+                                  aria-label={variable.name}
                                   onChange={(e) =>
                                     setVariables((prev) => ({
                                       ...prev,
@@ -160,15 +189,23 @@ export function PresetImportDialog({ folderId }: PresetImportDialogProps) {
 
   return (
     <>
-      <button
-        className="group flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-xs font-semibold text-[var(--fg-primary)] transition-colors hover:bg-[var(--bg-subtle)]"
-        onClick={handlePick}
-        type="button"
-        disabled={loading}
-      >
-        <FileUp className="h-3.5 w-3.5 text-[var(--fg-primary)]" />
-        Import Preset
-      </button>
+      {trigger && React.isValidElement(trigger)
+        ? React.cloneElement(trigger, {
+            onClick: handlePick,
+            disabled: isDisabled,
+            "aria-disabled": isDisabled,
+          })
+        : (
+          <button
+            className="group flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-1.5 text-xs font-semibold text-[var(--fg-primary)] transition-colors hover:bg-[var(--bg-subtle)]"
+            onClick={handlePick}
+            type="button"
+            disabled={isDisabled}
+          >
+            <FileUp className="h-3.5 w-3.5 text-[var(--fg-primary)]" />
+            Import Preset
+          </button>
+        )}
       {modal}
       {error && !modalOpen ? (
         <span className="ml-3 text-xs text-[var(--fg-alert)] font-medium">{error}</span>

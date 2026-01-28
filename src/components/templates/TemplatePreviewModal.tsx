@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, FileText, X } from "lucide-react";
 
 import type { Template, Rule, Action, ConditionGroup } from "@/types";
 import { ruleCreate } from "@/lib/tauri";
 import { useRuleStore } from "@/stores/ruleStore";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 interface TemplatePreviewModalProps {
     template: Template;
@@ -19,6 +20,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
     development: { bg: "bg-blue-500/10", text: "text-blue-400" },
     downloads: { bg: "bg-orange-500/10", text: "text-orange-400" },
     general: { bg: "bg-slate-500/10", text: "text-slate-400" },
+    custom: { bg: "bg-pink-500/10", text: "text-pink-400" },
 };
 
 function substituteVariables(text: string, variables: Record<string, string>): string {
@@ -66,8 +68,11 @@ export function TemplatePreviewModal({
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
 
     const colors = CATEGORY_COLORS[template.category] ?? CATEGORY_COLORS.general;
+
+    useFocusTrap(true, dialogRef);
 
     const handleInstall = async () => {
         if (!folderId) {
@@ -115,7 +120,13 @@ export function TemplatePreviewModal({
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-lg overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]">
+            <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="template-preview-title"
+                className="relative w-full max-w-lg overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]"
+            >
                 {/* Header */}
                 <div className="flex items-start justify-between border-b border-[var(--border-main)] p-5">
                     <div className="flex items-start gap-4">
@@ -125,7 +136,7 @@ export function TemplatePreviewModal({
                             {template.icon}
                         </span>
                         <div>
-                            <h2 className="text-base font-semibold text-[var(--fg-primary)]">
+                            <h2 id="template-preview-title" className="text-base font-semibold text-[var(--fg-primary)]">
                                 {template.name}
                             </h2>
                             <span
@@ -139,6 +150,7 @@ export function TemplatePreviewModal({
                         type="button"
                         onClick={onClose}
                         className="rounded-[var(--radius)] p-1.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                        aria-label="Close template preview"
                     >
                         <X className="h-4 w-4" />
                     </button>
@@ -193,6 +205,7 @@ export function TemplatePreviewModal({
                                             className="mt-2 w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] px-3 py-2 text-sm text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
                                             value={variables[variable.id] ?? variable.default ?? ""}
                                             placeholder={variable.default ?? "Enter value"}
+                                            aria-label={variable.name}
                                             onChange={(e) =>
                                                 setVariables((prev) => ({
                                                     ...prev,
@@ -230,9 +243,9 @@ export function TemplatePreviewModal({
                         type="button"
                         onClick={handleInstall}
                         disabled={loading || !folderId}
-                        className="rounded-[var(--radius)] bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-[var(--accent-contrast)] transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-[var(--radius)] bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-[var(--accent-contrast)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {loading ? "Installing..." : "Install Template"}
+                        {loading ? "Installing…" : "Install Template"}
                     </button>
                 </div>
             </div>

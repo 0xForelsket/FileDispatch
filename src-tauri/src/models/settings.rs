@@ -23,6 +23,8 @@ pub struct Settings {
     pub use_short_date_names: bool,
     #[serde(default = "default_true")]
     pub show_tooltips: bool,
+    #[serde(default)]
+    pub dry_run: bool,
     #[serde(default = "default_true")]
     pub content_enable_ocr: bool,
     #[serde(default = "default_content_max_text_bytes")]
@@ -136,6 +138,7 @@ impl Default for Settings {
             time_format: default_time_format(),
             use_short_date_names: true,
             show_tooltips: true,
+            dry_run: false,
             content_enable_ocr: true,
             content_max_text_bytes: default_content_max_text_bytes(),
             content_max_ocr_image_bytes: default_content_max_ocr_image_bytes(),

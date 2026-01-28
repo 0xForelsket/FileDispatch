@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, Bell, Calendar, FileText, Gauge, Settings, Sliders, X } from "lucide-react";
 
@@ -10,6 +10,7 @@ import { AdvancedPanel } from "@/components/settings/panels/AdvancedPanel";
 import { FormattingPanel } from "@/components/settings/FormattingPanel";
 import { formatShortcut, matchesShortcut } from "@/lib/shortcuts";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 const tabs = [
   { id: "general", label: "General", icon: Settings },
@@ -20,13 +21,20 @@ const tabs = [
   { id: "advanced", label: "Advanced", icon: Sliders },
 ];
 
+type SettingsTrigger = React.ReactElement<{ onClick?: React.MouseEventHandler }>;
+
 interface SettingsDialogProps {
   compact?: boolean;
-  trigger?: React.ReactNode;
+  trigger?: SettingsTrigger;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps) {
-  const [open, setOpen] = useState(false);
+export function SettingsDialog({ compact = false, trigger, open: controlledOpen, onOpenChange }: SettingsDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState("general");
   const shortcutLabel = useMemo(() => formatShortcut({ key: ",", ctrlOrMeta: true }), []);
   const saveError = useSettingsStore((state) => state.saveError);
@@ -42,6 +50,8 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  useFocusTrap(open, dialogRef);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -70,7 +80,13 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <div className="relative flex h-[600px] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)] md:flex-row">
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-dialog-title"
+            className="relative flex h-[600px] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)] md:flex-row"
+          >
             <div className="flex w-full flex-col border-b border-[var(--border-main)] bg-[var(--bg-subtle)] p-4 md:w-64 md:border-b-0 md:border-r">
               <h2 className="mb-4 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--fg-muted)]">
                 Settings
@@ -80,7 +96,7 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex w-full items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-medium transition-all ${activeTab === tab.id
+                    className={`flex w-full items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-medium transition-colors ${activeTab === tab.id
                       ? "border border-[var(--accent)] bg-[var(--accent-muted)] text-[var(--fg-primary)]"
                       : "text-[var(--fg-secondary)] hover:bg-[var(--bg-panel)] hover:text-[var(--fg-primary)]"
                       }`}
@@ -109,7 +125,7 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
             <div className="flex flex-1 flex-col">
               <div className="flex items-center justify-between border-b border-[var(--border-main)] p-6">
                 <div>
-                  <h2 className="text-2xl font-semibold text-[var(--fg-primary)]">
+                  <h2 id="settings-dialog-title" className="text-2xl font-semibold text-[var(--fg-primary)]">
                     {tabs.find((tab) => tab.id === activeTab)?.label}
                   </h2>
                   <p className="text-sm text-[var(--fg-muted)]">
@@ -121,6 +137,7 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
                   onClick={() => setOpen(false)}
                   className="rounded-[var(--radius)] p-2 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
                   type="button"
+                  aria-label="Close settings"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -163,9 +180,7 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
   return (
     <>
       {trigger ? (
-        <div onClick={() => setOpen(true)} className="contents">
-          {trigger}
-        </div>
+        React.cloneElement(trigger, { onClick: () => setOpen(true) })
       ) : compact ? (
         <button
           className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius)] border border-[var(--border-main)] text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
@@ -177,7 +192,7 @@ export function SettingsDialog({ compact = false, trigger }: SettingsDialogProps
         </button>
       ) : (
         <button
-          className="flex w-full items-center gap-2 rounded-[var(--radius)] px-2.5 py-2 text-xs font-semibold text-[var(--fg-secondary)] transition-all hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+          className="flex w-full items-center gap-2 rounded-[var(--radius)] px-2.5 py-2 text-xs font-semibold text-[var(--fg-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
           onClick={() => setOpen(true)}
           type="button"
         >

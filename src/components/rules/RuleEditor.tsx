@@ -1,16 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Loader2, Plus } from "lucide-react";
 
 import type { Condition, ConditionGroup, Rule } from "@/types";
 import { useRuleStore } from "@/stores/ruleStore";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useEditorStore } from "@/stores/editorStore";
 import { ActionBuilder } from "@/components/rules/ActionBuilder";
 import { ConditionBuilder } from "@/components/rules/ConditionBuilder";
 import { PreviewPanel } from "@/components/preview/PreviewPanel";
+import { TemplateSaveDialog } from "@/components/templates/TemplateSaveDialog";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
 import { previewRuleDraft } from "@/lib/tauri";
 import { matchesShortcut } from "@/lib/shortcuts";
 import type { PreviewItem } from "@/types";
+import { describeCondition } from "@/lib/conditionLabels";
 
 interface RuleEditorProps {
   mode: "empty" | "new" | "edit";
@@ -56,6 +59,8 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showTemplateSave, setShowTemplateSave] = useState(false);
+  const setDirty = useEditorStore((state) => state.setDirty);
 
   // Live preview state
   const [livePreviewResults, setLivePreviewResults] = useState<PreviewItem[]>([]);
@@ -66,9 +71,59 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   // Request ID for race condition prevention
   const previewRequestId = useRef(0);
   const draftRef = useRef(draft);
+  const baselineRef = useRef<string>(JSON.stringify(rule ?? createEmptyRule(folderId)));
 
   const isOpen = mode !== "empty" && Boolean(folderId);
   const isNew = mode === "new";
+  const conditionLabels = useMemo(
+    () => draft.conditions.conditions.map((condition) => describeCondition(condition)),
+    [draft.conditions],
+  );
+
+  if (!folderId) {
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-center">
+        <div className="max-w-sm rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-panel)] px-6 py-5 text-xs text-[var(--fg-muted)]">
+          <div className="text-sm font-semibold text-[var(--fg-primary)]">Add your first folder</div>
+          <p className="mt-1 text-[11px] text-[var(--fg-muted)]">
+            Choose a folder in the left pane to start building rules.
+          </p>
+          <ol className="mt-3 list-decimal list-inside space-y-1 text-[11px]">
+            <li>Add a folder to watch</li>
+            <li>Create a rule</li>
+            <li>Preview and enable</li>
+          </ol>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "empty") {
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-center">
+        <div className="max-w-sm rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-panel)] px-6 py-5 text-xs text-[var(--fg-muted)]">
+          <div className="text-sm font-semibold text-[var(--fg-primary)]">Create your first rule</div>
+          <p className="mt-1 text-[11px] text-[var(--fg-muted)]">
+            Select a rule from the list or create a new one to get started.
+          </p>
+          <ol className="mt-3 list-decimal list-inside space-y-1 text-[11px]">
+            <li>Define conditions</li>
+            <li>Choose actions</li>
+            <li>Preview and enable</li>
+          </ol>
+          {onNewRule ? (
+            <button
+              type="button"
+              onClick={onNewRule}
+              className="mt-4 rounded-[var(--radius)] bg-[var(--accent)] px-3 py-1.5 text-[11px] font-semibold text-[var(--accent-contrast)] transition-colors hover:opacity-90"
+            >
+              New rule
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   const handleSave = useCallback(async () => {
     const validationError = validateRule(draft);
@@ -83,6 +138,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
     } else {
       await createRule({ ...draft, folderId });
       onClose();
+      setDirty(false);
       return;
     }
 
@@ -91,7 +147,9 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
       setSaveError(error);
       return;
     }
-  }, [draft, updateRule, createRule, folderId, onClose]);
+    baselineRef.current = JSON.stringify(draft);
+    setDirty(false);
+  }, [draft, updateRule, createRule, folderId, onClose, setDirty]);
 
   const handlePreview = useCallback(async () => {
     // Increment request ID to invalidate any pending requests
@@ -123,6 +181,17 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   useEffect(() => {
     draftRef.current = draft;
   }, [draft]);
+
+  useEffect(() => {
+    const next = JSON.stringify(draft);
+    setDirty(next !== baselineRef.current);
+  }, [draft, setDirty]);
+
+  useEffect(() => {
+    return () => {
+      setDirty(false);
+    };
+  }, [setDirty]);
 
   // Live preview: debounced update when conditions change
   useEffect(() => {
@@ -239,6 +308,12 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
           >
             Preview
           </button>
+          <button
+            onClick={() => setShowTemplateSave(true)}
+            className="px-3 py-1 text-xs font-medium rounded text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:bg-[var(--bg-subtle)] transition-colors"
+          >
+            Save Template
+          </button>
           <div className="h-4 w-px bg-[var(--border-main)]" />
           <button
             onClick={onClose}
@@ -259,10 +334,11 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
         {/* Rule Name - Hazel style prominent input */}
         <div className="mb-5">
           <div className="flex items-center gap-3">
-            <label className={`text-sm font-medium shrink-0 ${isMagi ? "text-[var(--fg-primary)] uppercase tracking-wider" : "text-[var(--fg-secondary)]"}`}>
+            <label htmlFor="rule-name-input" className={`text-sm font-medium shrink-0 ${isMagi ? "text-[var(--fg-primary)] uppercase tracking-wider" : "text-[var(--fg-secondary)]"}`}>
               {isMagi ? "Designation:" : "Name:"}
             </label>
             <input
+              id="rule-name-input"
               className={`${inputClass} font-medium flex-1`}
               value={draft.name}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
@@ -305,7 +381,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
               >
                 <div className="flex items-center gap-2">
                   {livePreviewLoading ? (
-                    <Loader2 className="h-3 w-3 animate-spin text-[var(--fg-muted)]" />
+                    <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none text-[var(--fg-muted)]" />
                   ) : livePreviewExpanded ? (
                     <ChevronDown className="h-3 w-3 text-[var(--fg-muted)]" />
                   ) : (
@@ -317,7 +393,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
                   {!livePreviewExpanded ? (
                     <span className="text-[var(--fg-muted)]">Expand to preview</span>
                   ) : livePreviewLoading ? (
-                    <span className="text-[var(--fg-muted)]">Scanning...</span>
+                    <span className="text-[var(--fg-muted)]">Scanning…</span>
                   ) : livePreviewResults.length > 0 ? (
                     <>
                       <span className="text-[var(--accent)] font-medium">
@@ -352,7 +428,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
                   ))}
                   {livePreviewResults.length > 20 && (
                     <div className="px-3 py-2 text-xs text-[var(--fg-muted)] text-center bg-[var(--bg-panel)]">
-                      +{livePreviewResults.length - 20} more files...
+                      +{livePreviewResults.length - 20} more files…
                       <button
                         onClick={handlePreview}
                         className="ml-2 text-[var(--accent)] hover:underline"
@@ -394,6 +470,12 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
         loading={loadingPreview}
         error={previewError}
         ruleName={draft.name}
+        conditionLabels={conditionLabels}
+      />
+      <TemplateSaveDialog
+        open={showTemplateSave}
+        onClose={() => setShowTemplateSave(false)}
+        rule={draft}
       />
     </div>
   );

@@ -1,8 +1,10 @@
+import { useRef } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, Eye, X, XCircle } from "lucide-react";
 
 import type { PreviewItem } from "@/types";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 interface PreviewPanelProps {
   open: boolean;
@@ -11,9 +13,13 @@ interface PreviewPanelProps {
   loading: boolean;
   error: string | null;
   ruleName: string;
+  conditionLabels?: string[];
 }
 
-export function PreviewPanel({ open, onClose, results, loading, error, ruleName }: PreviewPanelProps) {
+export function PreviewPanel({ open, onClose, results, loading, error, ruleName, conditionLabels = [] }: PreviewPanelProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(open, dialogRef);
+
   if (!open) return null;
 
   const matched = results.filter((item) => item.matched).length;
@@ -27,14 +33,20 @@ export function PreviewPanel({ open, onClose, results, loading, error, ruleName 
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
               onClick={onClose}
             />
-            <div className="relative w-full max-w-5xl overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]">
+            <div
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="preview-panel-title"
+              className="relative w-full max-w-5xl overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]"
+            >
               <div className="flex items-center justify-between border-b border-[var(--border-main)] p-6">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] text-[var(--accent)]">
                     <Eye className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-[var(--fg-primary)]">
+                    <h2 id="preview-panel-title" className="text-xl font-semibold text-[var(--fg-primary)]">
                       Preview Results
                     </h2>
                     <p className="text-sm text-[var(--fg-muted)]">
@@ -46,6 +58,7 @@ export function PreviewPanel({ open, onClose, results, loading, error, ruleName 
                   className="rounded-[var(--radius)] p-2 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
                   onClick={onClose}
                   type="button"
+                  aria-label="Close preview"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -97,11 +110,14 @@ export function PreviewPanel({ open, onClose, results, loading, error, ruleName 
                                 {item.filePath.split(/[/\\]/).pop()}
                               </div>
                               <div className="grid gap-1 text-[11px] text-[var(--fg-muted)]">
-                                {item.conditionResults.map((passed, index) => (
-                                  <div key={index}>
-                                    {passed ? "✓" : "✗"} Condition {index + 1}
-                                  </div>
-                                ))}
+                                {item.conditionResults.map((passed, index) => {
+                                  const label = conditionLabels[index] ?? `Condition ${index + 1}`;
+                                  return (
+                                    <div key={index}>
+                                      {passed ? "✓" : "✗"} {label}
+                                    </div>
+                                  );
+                                })}
                               </div>
                               {item.actions.length > 0 ? (
                                 <div className="space-y-1 text-[11px] text-[var(--fg-muted)]">

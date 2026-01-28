@@ -4,6 +4,13 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .content-visibility-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 48px;
+  }
+}
+
 @layer base {
   :root {
     /* Default / Fallback (Light) - Things Inspired */

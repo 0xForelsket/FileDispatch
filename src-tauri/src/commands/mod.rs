@@ -1,4 +1,5 @@
 pub mod folders;
+pub mod engine;
 pub mod logs;
 pub mod ocr;
 pub mod preview;

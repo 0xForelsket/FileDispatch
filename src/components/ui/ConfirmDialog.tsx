@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AlertTriangle, X } from "lucide-react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export function ConfirmDialog({
   variant = "default",
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(isOpen, dialogRef);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -71,18 +73,22 @@ export function ConfirmDialog({
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
       <div
         ref={dialogRef}
-        className="w-full max-w-sm mx-4 bg-[var(--bg-panel)] border border-[var(--border-main)] rounded-[calc(var(--radius)+4px)] shadow-[var(--shadow-lg)] animate-in fade-in zoom-in-95 duration-200"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+        className="w-full max-w-sm mx-4 bg-[var(--bg-panel)] border border-[var(--border-main)] rounded-[calc(var(--radius)+4px)] shadow-[var(--shadow-lg)] animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none motion-reduce:duration-0"
       >
         <div className="flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-full bg-[var(--bg-subtle)] ${styles.icon}`}>
               <AlertTriangle className="h-4 w-4" />
             </div>
-            <h3 className="text-[15px] font-semibold text-[var(--fg-primary)]">{title}</h3>
+            <h3 id="confirm-dialog-title" className="text-[15px] font-semibold text-[var(--fg-primary)]">{title}</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-[var(--radius)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--bg-hover)] transition-all duration-150"
+            className="p-1.5 rounded-[var(--radius)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-150"
+            aria-label="Close confirmation"
           >
             <X className="h-4 w-4" />
           </button>
@@ -93,7 +99,7 @@ export function ConfirmDialog({
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-[var(--border-dim)] bg-[var(--bg-subtle)]/50 rounded-b-[calc(var(--radius)+4px)]">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-[13px] font-medium rounded-[var(--radius)] border border-[var(--border-main)] text-[var(--fg-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)] hover:border-[var(--border-strong)] transition-all duration-150"
+            className="px-4 py-2 text-[13px] font-medium rounded-[var(--radius)] border border-[var(--border-main)] text-[var(--fg-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)] hover:border-[var(--border-strong)] transition-colors duration-150"
           >
             {cancelLabel}
           </button>
@@ -102,7 +108,7 @@ export function ConfirmDialog({
               onConfirm();
               onClose();
             }}
-            className={`px-4 py-2 text-[13px] font-medium rounded-[var(--radius)] transition-all duration-150 ${styles.button}`}
+            className={`px-4 py-2 text-[13px] font-medium rounded-[var(--radius)] transition-colors duration-150 ${styles.button}`}
           >
             {confirmLabel}
           </button>

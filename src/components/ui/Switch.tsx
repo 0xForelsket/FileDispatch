@@ -37,7 +37,7 @@ export function Switch({
                 onCheckedChange(!checked);
             }}
             className={cn(
-                "relative inline-flex shrink-0 cursor-pointer items-center rounded-full transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-panel)] disabled:cursor-not-allowed disabled:opacity-50",
+                "relative inline-flex shrink-0 cursor-pointer items-center rounded-full transition duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-panel)] disabled:cursor-not-allowed disabled:opacity-50",
                 isSmall ? "h-4 w-7" : "h-5 w-9",
                 checked
                     ? "bg-[var(--accent)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]"
@@ -47,7 +47,7 @@ export function Switch({
         >
             <span
                 className={cn(
-                    "pointer-events-none block rounded-full shadow-sm ring-0 transition-all duration-200 ease-out",
+                    "pointer-events-none block rounded-full shadow-sm ring-0 transition duration-200 ease-out",
                     isSmall ? "h-2.5 w-2.5" : "h-3.5 w-3.5",
                     checked
                         ? cn(isSmall ? "translate-x-3" : "translate-x-4", "bg-white")

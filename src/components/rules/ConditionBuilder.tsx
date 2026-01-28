@@ -218,7 +218,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
                 handleDragOver(index);
               }}
               onDragEnd={handleDragEnd}
-              className={`space-y-3 rounded-[var(--radius)] border bg-[var(--bg-subtle)] p-3 ml-4 transition-all ${
+              className={`space-y-3 rounded-[var(--radius)] border bg-[var(--bg-subtle)] p-3 ml-4 transition ${
                 isDragging ? "opacity-50 scale-[0.98]" : ""
               } ${isDragOver ? "border-[var(--accent)] border-2" : "border-[var(--border-main)]"}`}
             >
@@ -272,7 +272,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
               handleDragOver(index);
             }}
             onDragEnd={handleDragEnd}
-            className={`group rounded-[var(--radius)] border bg-[var(--bg-panel)] p-2 transition-all ${
+            className={`group rounded-[var(--radius)] border bg-[var(--bg-panel)] p-2 transition ${
               isDragging ? "opacity-50 scale-[0.98]" : "hover:border-[var(--border-strong)]"
             } ${isDragOver ? "border-[var(--accent)] border-2" : "border-[var(--border-main)]"}`}
           >

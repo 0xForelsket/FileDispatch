@@ -4,6 +4,7 @@ mod models;
 mod storage;
 mod utils;
 
+use commands::engine::{engine_pause_set, engine_pause_toggle, engine_status_get};
 use commands::folders::{
     folder_add, folder_create_group, folder_list, folder_move, folder_remove, folder_rename,
     folder_toggle, folder_update_settings,
@@ -27,7 +28,7 @@ use core::incomplete::IncompleteCleaner;
 use core::ocr::OcrManager;
 use core::state::AppState;
 use core::watcher::WatcherService;
-use models::Settings;
+use models::{EngineStatus, Settings};
 use std::time::Duration;
 use storage::database::Database;
 use storage::folder_repo::FolderRepository;
@@ -49,12 +50,14 @@ pub fn run() {
     let db = Database::new().expect("failed to initialize database");
     let (event_tx, event_rx) = crossbeam_channel::bounded(1000);
     let watcher = WatcherService::new(event_tx, vec![]).expect("failed to initialize watcher");
+    let engine_status = std::sync::Arc::new(std::sync::Mutex::new(EngineStatus::default()));
     let state = AppState {
         db: db.clone(),
         watcher: std::sync::Arc::new(std::sync::Mutex::new(watcher)),
         settings: std::sync::Arc::new(std::sync::Mutex::new(Settings::default())),
         ocr: std::sync::Arc::new(std::sync::Mutex::new(OcrManager::new_placeholder())),
         paused: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        engine_status: engine_status.clone(),
     };
 
     tauri::Builder::default()
@@ -104,6 +107,7 @@ pub fn run() {
                 state.settings.clone(),
                 state.ocr.clone(),
                 state.paused.clone(),
+                state.engine_status.clone(),
             );
             engine.start();
 
@@ -211,6 +215,9 @@ pub fn run() {
             undo_list,
             undo_execute,
             folder_run_now,
+            engine_status_get,
+            engine_pause_set,
+            engine_pause_toggle,
             ocr_fetch_available_languages,
             ocr_get_installed_languages,
             ocr_download_language,

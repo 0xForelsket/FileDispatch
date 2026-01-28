@@ -113,8 +113,8 @@ export function LanguageManager({ disabled }: { disabled?: boolean }) {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-4 text-[var(--fg-muted)]">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span className="text-sm">Loading languages...</span>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                <span className="text-sm">Loading languages…</span>
             </div>
         );
     }
@@ -165,7 +165,7 @@ export function LanguageManager({ disabled }: { disabled?: boolean }) {
                                 <div className="flex items-center gap-2">
                                     <div className="h-1.5 w-20 overflow-hidden rounded-full bg-[var(--border-main)]">
                                         <div
-                                            className="h-full bg-[var(--accent)] transition-all"
+                                            className="h-full bg-[var(--accent)] transition-[width] duration-200"
                                             style={{
                                                 width: `${progress.totalBytes > 0 ? (progress.downloadedBytes / progress.totalBytes) * 100 : 0}%`,
                                             }}
@@ -184,7 +184,7 @@ export function LanguageManager({ disabled }: { disabled?: boolean }) {
                                     title="Delete language"
                                 >
                                     {isDeleting ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
                                     ) : (
                                         <Trash2 className="h-3.5 w-3.5" />
                                     )}

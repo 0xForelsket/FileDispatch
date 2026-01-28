@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Search, X } from "lucide-react";
 
@@ -6,6 +6,8 @@ import type { Template, TemplateCategory } from "@/types";
 import { BUILTIN_TEMPLATES, TEMPLATE_CATEGORIES, searchTemplates, filterByCategory } from "@/data/templates";
 import { TemplateCard } from "./TemplateCard";
 import { TemplatePreviewModal } from "./TemplatePreviewModal";
+import { useUserTemplates } from "@/hooks/useUserTemplates";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 interface TemplateGalleryProps {
     folderId: string;
@@ -17,13 +19,17 @@ export function TemplateGallery({ folderId, isOpen, onClose }: TemplateGalleryPr
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | "all">("all");
     const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+    const userTemplates = useUserTemplates();
+    const dialogRef = useRef<HTMLDivElement>(null);
+
+    useFocusTrap(isOpen, dialogRef);
 
     const filteredTemplates = useMemo(() => {
-        let result = BUILTIN_TEMPLATES;
+        let result = [...userTemplates, ...BUILTIN_TEMPLATES];
         result = filterByCategory(result, selectedCategory);
         result = searchTemplates(result, searchQuery);
         return result;
-    }, [searchQuery, selectedCategory]);
+    }, [searchQuery, selectedCategory, userTemplates]);
 
     const handleTemplateClick = (template: Template) => {
         setPreviewTemplate(template);
@@ -43,20 +49,28 @@ export function TemplateGallery({ folderId, isOpen, onClose }: TemplateGalleryPr
     return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
-            <div
+            <button
+                type="button"
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                 onClick={onClose}
-                aria-hidden="true"
+                aria-label="Close template gallery"
+                tabIndex={-1}
             />
 
             {/* Modal */}
-            <div className="relative flex h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]">
+            <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="template-gallery-title"
+                className="relative flex h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]"
+            >
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-[var(--border-main)] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <span className="text-2xl">📦</span>
                         <div>
-                            <h2 className="text-base font-semibold text-[var(--fg-primary)]">Template Gallery</h2>
+                            <h2 id="template-gallery-title" className="text-base font-semibold text-[var(--fg-primary)]">Template Gallery</h2>
                             <p className="text-xs text-[var(--fg-muted)]">
                                 Choose a template to get started quickly
                             </p>
@@ -66,6 +80,7 @@ export function TemplateGallery({ folderId, isOpen, onClose }: TemplateGalleryPr
                         type="button"
                         onClick={onClose}
                         className="rounded-[var(--radius)] p-2 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                        aria-label="Close template gallery"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -78,10 +93,11 @@ export function TemplateGallery({ folderId, isOpen, onClose }: TemplateGalleryPr
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--fg-muted)]" />
                         <input
                             type="text"
-                            placeholder="Search templates..."
+                            placeholder="Search templates…"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-subtle)] py-2.5 pl-10 pr-4 text-sm text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                            aria-label="Search templates"
                         />
                     </div>
 

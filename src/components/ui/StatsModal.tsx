@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { BarChart3 } from "lucide-react";
 
 import type { LogEntry } from "@/types";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 const WINDOW_HOURS = 10;
 const BUCKET_MS = 60 * 60 * 1000;
@@ -13,7 +14,7 @@ interface StatsModalProps {
   savedBytes: number;
   activeRules: number;
   logs: LogEntry[];
-  trigger?: React.ReactNode;
+  trigger?: React.ReactElement<{ onClick?: React.MouseEventHandler }> | null;
 }
 
 /* ... (imports and logic same) ... */
@@ -27,6 +28,8 @@ export function StatsModal({
   trigger,
 }: StatsModalProps) {
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(open, dialogRef);
 
   // Combined single-pass calculation for status counts and throughput
   const { statusCounts, throughput } = useMemo(() => {
@@ -92,11 +95,23 @@ export function StatsModal({
     open && typeof document !== "undefined"
       ? createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative w-full max-w-5xl overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+            aria-label="Close analytics dialog"
+            tabIndex={-1}
+          />
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="stats-modal-title"
+            className="relative w-full max-w-5xl overflow-hidden rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] shadow-[var(--shadow-md)]"
+          >
             <div className="flex items-center justify-between border-b border-[var(--border-main)] px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold text-[var(--fg-primary)]">Analytics</h2>
+                <h2 id="stats-modal-title" className="text-lg font-semibold text-[var(--fg-primary)]">Analytics</h2>
                 <p className="text-xs text-[var(--fg-muted)]">Last {WINDOW_HOURS} hours</p>
               </div>
               <div className="flex items-center gap-3 text-xs text-[var(--fg-muted)]">
@@ -165,9 +180,7 @@ export function StatsModal({
   return (
     <>
       {trigger ? (
-        <div onClick={() => setOpen(true)} className="contents">
-          {trigger}
-        </div>
+        React.cloneElement(trigger, { onClick: () => setOpen(true) })
       ) : (
         <button
           onClick={() => setOpen(true)}

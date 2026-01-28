@@ -6,6 +6,7 @@ import { useFolderStore } from "@/stores/folderStore";
 // Stable empty function reference to avoid creating new functions on each render
 const noop = () => {};
 import { useRuleStore } from "@/stores/ruleStore";
+import { useLogStore } from "@/stores/logStore";
 import type { Rule } from "@/types";
 import { RuleItem } from "@/components/rules/RuleItem";
 import { matchesShortcut } from "@/lib/shortcuts";
@@ -25,9 +26,32 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery 
   const deleteRule = useRuleStore((state) => state.deleteRule);
   const duplicateRule = useRuleStore((state) => state.duplicateRule);
   const reorderRules = useRuleStore((state) => state.reorderRules);
+  const logs = useLogStore((state) => state.entries);
 
   // Create a map of rules by ID for efficient lookup
   const rulesById = useMemo(() => new Map(rules.map((r) => [r.id, r])), [rules]);
+
+  const ruleStats = useMemo(() => {
+    const stats = new Map<string, { lastActivityAt?: string; recentErrors: number; recentEvents: number }>();
+    const now = Date.now();
+    const windowStart = now - 24 * 60 * 60 * 1000;
+    for (const entry of logs) {
+      if (!entry.ruleId) continue;
+      const existing = stats.get(entry.ruleId) ?? { recentErrors: 0, recentEvents: 0 };
+      const timestamp = Date.parse(entry.createdAt);
+      if (!existing.lastActivityAt || timestamp > Date.parse(existing.lastActivityAt)) {
+        existing.lastActivityAt = entry.createdAt;
+      }
+      if (Number.isFinite(timestamp) && timestamp >= windowStart) {
+        existing.recentEvents += 1;
+        if (entry.status === "error") {
+          existing.recentErrors += 1;
+        }
+      }
+      stats.set(entry.ruleId, existing);
+    }
+    return stats;
+  }, [logs]);
 
   const handleCreate = useCallback(() => {
     onNewRule();
@@ -129,8 +153,28 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery 
     <div className="h-full flex flex-col">
       <div className="custom-scrollbar flex-1 overflow-y-auto">
         {rules.length === 0 ? (
-          <div className="px-4 py-6 text-center text-xs text-[var(--fg-muted)]">
-            No rules yet. Create one to start organizing files.
+          <div className="p-4">
+            <div className="rounded-[var(--radius)] border border-dashed border-[var(--border-main)] bg-[var(--bg-subtle)] px-4 py-5 text-xs text-[var(--fg-muted)]">
+              <div className="text-sm font-semibold text-[var(--fg-primary)]">Create your first rule</div>
+              <p className="mt-1 text-[11px] text-[var(--fg-muted)]">
+                Define when a file should match and what to do next.
+              </p>
+              <ol className="mt-3 list-decimal list-inside space-y-1 text-[11px]">
+                <li>Create a rule for this folder</li>
+                <li>Add conditions and actions</li>
+                <li>Preview and enable</li>
+              </ol>
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  className="rounded-[var(--radius)] bg-[var(--accent)] px-3 py-1.5 text-[11px] font-semibold text-[var(--accent-contrast)] transition-colors hover:opacity-90"
+                >
+                  New rule
+                </button>
+                <span className="text-[10px] text-[var(--fg-muted)]">Ctrl/Cmd+N</span>
+              </div>
+            </div>
           </div>
         ) : filteredRules.length === 0 ? (
           <div className="px-4 py-6 text-center text-xs text-[var(--fg-muted)]">
@@ -147,6 +191,9 @@ export function RuleList({ selectedRuleId, onSelectRule, onNewRule, searchQuery 
               onEdit={handleEdit}
               onDelete={handleDelete}
               onDuplicate={handleDuplicate}
+              lastActivityAt={ruleStats.get(rule.id)?.lastActivityAt}
+              recentEvents={ruleStats.get(rule.id)?.recentEvents ?? 0}
+              recentErrors={ruleStats.get(rule.id)?.recentErrors ?? 0}
               onDragStart={isDraggingEnabled ? handleDragStart : noop}
               onDragOver={isDraggingEnabled ? handleDragOver : noop}
               onDragEnd={isDraggingEnabled ? handleDragEnd : noop}

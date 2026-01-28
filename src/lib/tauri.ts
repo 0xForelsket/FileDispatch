@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import type { Folder, LogEntry, Preset, PreviewItem, Rule, UndoEntry } from "@/types";
+import type { EngineStatusSnapshot, Folder, LogEntry, Preset, PreviewItem, Rule, UndoEntry } from "@/types";
 import type { AppSettings } from "@/stores/settingsStore";
 
 export const folderList = () => invoke<Folder[]>("folder_list");
@@ -62,6 +62,11 @@ export const undoExecute = (undoId: string) =>
 export const settingsGet = () => invoke<AppSettings>("settings_get");
 export const settingsUpdate = (settings: AppSettings) =>
   invoke<void>("settings_update", { settings });
+
+export const engineStatusGet = () => invoke<EngineStatusSnapshot>("engine_status_get");
+export const enginePauseSet = (paused: boolean) =>
+  invoke<boolean>("engine_pause_set", { paused });
+export const enginePauseToggle = () => invoke<boolean>("engine_pause_toggle");
 
 export const previewRule = (ruleId: string) =>
   invoke<PreviewItem[]>("preview_rule", { ruleId });

@@ -95,6 +95,24 @@ export function GeneralPanel() {
 
             <section>
                 <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
+                    Safety
+                </h3>
+                <div className="space-y-3">
+                    <SettingToggle
+                        title="Dry run mode"
+                        description="Simulate actions without modifying files"
+                        checked={settings.dryRun}
+                        onChange={(checked) => {
+                            setSettings({ dryRun: checked });
+                            void saveSettings();
+                        }}
+                        highlight={settings.dryRun}
+                    />
+                </div>
+            </section>
+
+            <section>
+                <h3 className="mb-4 text-sm font-semibold text-[var(--fg-primary)]">
                     Log retention
                 </h3>
                 <SettingRow title="Log retention (days)" description="How long to keep history">

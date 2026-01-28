@@ -131,19 +131,19 @@ function SettingToggle({ title, description, checked, onChange }: SettingToggleP
             role="switch"
             aria-checked={checked}
             onClick={() => onChange(!checked)}
-            className="flex w-full items-center justify-between rounded-[var(--radius)] border border-transparent p-3 text-left transition-all hover:border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
+            className="flex w-full items-center justify-between rounded-[var(--radius)] border border-transparent p-3 text-left transition-colors hover:border-[var(--border-main)] hover:bg-[var(--bg-subtle)]"
         >
             <div>
                 <div className="font-medium text-[var(--fg-primary)]">{title}</div>
                 <div className="text-xs text-[var(--fg-muted)]">{description}</div>
             </div>
             <span
-                className={`relative h-6 w-10 rounded-full border border-[var(--border-main)] transition-all ${checked ? "bg-[var(--accent)]" : "bg-[var(--bg-panel)]"
-                    }`}
+                className={`relative h-6 w-10 rounded-full border border-[var(--border-main)] transition-colors ${checked ? "bg-[var(--accent)]" : "bg-[var(--bg-panel)]"
+                  }`}
             >
                 <span
-                    className={`absolute top-1 h-4 w-4 rounded-full border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-sm transition-all ${checked ? "right-1" : "left-1"
-                        }`}
+                    className={`absolute top-1 h-4 w-4 rounded-full border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-sm transition-transform ${checked ? "right-1" : "left-1"
+                      }`}
                 />
             </span>
         </button>

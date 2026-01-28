@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
@@ -7,12 +7,15 @@ import {
   ArrowRightLeft,
   Ban,
   Bell,
+  ExternalLink,
+  FolderOpen,
   RotateCcw,
   Search,
   Terminal,
   Trash2,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { openPath } from "@tauri-apps/plugin-opener";
 
 import { useFolderStore } from "@/stores/folderStore";
 import { useLogStore } from "@/stores/logStore";
@@ -32,9 +35,31 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
   const clearLogs = useLogStore((state) => state.clearLogs);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const rules = useRuleStore((state) => state.rules);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<LogStatus | "all">("all");
-  const [ruleFilter, setRuleFilter] = useState<string>("all");
+  const [query, setQuery] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem("filedispatch.logQuery") ?? "";
+  });
+  const [statusFilter, setStatusFilter] = useState<LogStatus | "all">(() => {
+    if (typeof window === "undefined") return "all";
+    const stored = window.localStorage.getItem("filedispatch.logStatus");
+    return (stored as LogStatus | "all") || "all";
+  });
+  const [ruleFilter, setRuleFilter] = useState<string>(() => {
+    if (typeof window === "undefined") return "all";
+    return window.localStorage.getItem("filedispatch.logRule") ?? "all";
+  });
+
+  const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("filedispatch.logQuery", query);
+      window.localStorage.setItem("filedispatch.logStatus", statusFilter);
+      window.localStorage.setItem("filedispatch.logRule", ruleFilter);
+    } catch {
+      return;
+    }
+  }, [query, ruleFilter, statusFilter]);
 
   const scopedEntries = useMemo(() => {
     if (!selectedFolderId) return entries;
@@ -53,15 +78,15 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
   const filteredEntries = useMemo(() => {
     return scopedEntries.filter((entry) => {
       const matchesQuery =
-        query.trim().length === 0 ||
-        entry.filePath.toLowerCase().includes(query.toLowerCase()) ||
-        entry.ruleName?.toLowerCase().includes(query.toLowerCase()) ||
-        entry.actionType.toLowerCase().includes(query.toLowerCase());
+        deferredQuery.trim().length === 0 ||
+        entry.filePath.toLowerCase().includes(deferredQuery.toLowerCase()) ||
+        entry.ruleName?.toLowerCase().includes(deferredQuery.toLowerCase()) ||
+        entry.actionType.toLowerCase().includes(deferredQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || entry.status === statusFilter;
       const matchesRule = ruleFilter === "all" || entry.ruleName === ruleFilter;
       return matchesQuery && matchesStatus && matchesRule;
     });
-  }, [scopedEntries, query, ruleFilter, statusFilter]);
+  }, [scopedEntries, deferredQuery, ruleFilter, statusFilter]);
 
   const undoByLog = useMemo(() => {
     return new Map(undoEntries.map((entry) => [entry.logId, entry]));
@@ -83,6 +108,17 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
     }
   }, [undoByLog, undoAction]);
 
+  const handleOpenFile = useCallback((path: string) => {
+    void openPath(path);
+  }, []);
+
+  const handleOpenFolder = useCallback((path: string) => {
+    const parent = path.replace(/[/\\][^/\\]+$/, "");
+    if (parent) {
+      void openPath(parent);
+    }
+  }, []);
+
   return (
     <section className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-[var(--border-main)] bg-[var(--bg-panel)] px-4 py-3">
@@ -92,12 +128,13 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
         </div>
         <div className="flex items-center gap-2">
           <div className="group relative">
-            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[var(--fg-muted)] group-focus-within:text-[var(--fg-primary)]" />
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[var(--fg-muted)] group-focus-within:text-[var(--fg-primary)]" aria-hidden="true" />
             <input
               className="w-48 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] py-1 pl-8 pr-2 text-xs text-[var(--fg-primary)] outline-none transition-colors placeholder:text-[var(--fg-muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_1px_var(--accent)]"
               placeholder="Search logs…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search logs"
             />
           </div>
           <div className="relative">
@@ -135,6 +172,11 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
               {expanded ? "Minimize" : "Expand"}
             </button>
           ) : null}
+          {undoEntries.length > 0 ? (
+            <div className="rounded-full border border-[var(--border-main)] bg-[var(--bg-subtle)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-secondary)]">
+              Undo available: {undoEntries.length}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -144,6 +186,7 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
           <div className="w-24">Status</div>
           <div className="flex-1">Action</div>
           <div className="w-20 text-right">Size</div>
+          <div className="w-20 text-right">Open</div>
           <div className="w-20 text-right">Undo</div>
         </div>
         <div ref={scrollContainerRef} className="custom-scrollbar flex-1 overflow-y-auto">
@@ -200,11 +243,32 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
                       {formatBytes(getSizeBytes(entry))}
                     </div>
                     <div className="w-20 text-right">
+                      <div className="inline-flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                          onClick={() => handleOpenFile(entry.filePath)}
+                          aria-label="Open file"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+                          onClick={() => handleOpenFolder(entry.filePath)}
+                          aria-label="Open containing folder"
+                        >
+                          <FolderOpen className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="w-20 text-right">
                       {undoByLog.has(entry.id) ? (
                         <button
                           className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-[var(--border-main)] px-2 py-0.5 text-[10px] font-semibold text-[var(--fg-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
                           onClick={() => handleUndo(entry.id)}
                           type="button"
+                          aria-label="Undo action"
                         >
                           <RotateCcw className="h-3 w-3" />
                           Undo
@@ -223,7 +287,7 @@ export function ActivityLog({ onToggleExpand, expanded = false }: ActivityLogPro
 
       <div className="flex items-center justify-between border-t border-[var(--border-main)] bg-[var(--bg-panel)] px-4 py-2 text-xs text-[var(--fg-secondary)]">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-[var(--accent)] animate-pulse" />
+          <span className="h-2 w-2 rounded-full bg-[var(--accent)] animate-pulse motion-reduce:animate-none" />
           <span className="font-semibold">Stream active</span>
         </div>
         <button

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AlertTriangle, FolderOpen, GripVertical, Plus, X } from "lucide-react";
 import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import { MagiSelect } from "@/components/ui/MagiSelect";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 
 import type { Action, ArchiveFormat, ConflictResolution } from "@/types";
@@ -23,7 +24,7 @@ const actionTypes = [
   { value: "runScript", label: "Run Script" },
   { value: "notify", label: "Notify" },
   { value: "open", label: "Open (Default App)" },
-  { value: "openWith", label: "Open With..." },
+  { value: "openWith", label: "Open With…" },
   { value: "showInFileManager", label: "Show in File Manager" },
   { value: "makePdfSearchable", label: "Make PDF Searchable (OCR)" },
   { value: "pause", label: "Pause" },
@@ -44,6 +45,7 @@ const longFieldClass = `${fieldClass} min-w-[220px]`;
 export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [confirmDeleteIndex, setConfirmDeleteIndex] = useState<number | null>(null);
 
   const updateAction = (index: number, updated: Action) => {
     const next = [...actions];
@@ -105,7 +107,7 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
               handleDragOver(index);
             }}
             onDragEnd={handleDragEnd}
-            className={`group rounded-[var(--radius)] border bg-[var(--bg-subtle)] p-3 transition-all ${
+            className={`group rounded-[var(--radius)] border bg-[var(--bg-subtle)] p-3 transition ${
               isDragging ? "opacity-50 scale-[0.98]" : "hover:border-[var(--border-strong)]"
             } ${isDragOver ? "border-[var(--accent)] border-2" : action.type === "deletePermanently" ? "border-red-500/50" : "border-[var(--border-main)]"}`}
           >
@@ -116,7 +118,13 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
               <MagiSelect
                 width="w-40"
                 value={action.type}
-                onChange={(val) => updateAction(index, createAction(val))}
+                onChange={(val) => {
+                  if (val === "deletePermanently") {
+                    setConfirmDeleteIndex(index);
+                    return;
+                  }
+                  updateAction(index, createAction(val));
+                }}
                 options={actionTypes}
                 ariaLabel="Action type"
               />
@@ -147,6 +155,20 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
         <Plus className="h-3 w-3" />
         Add action
       </button>
+      <ConfirmDialog
+        isOpen={confirmDeleteIndex !== null}
+        onClose={() => setConfirmDeleteIndex(null)}
+        onConfirm={() => {
+          if (confirmDeleteIndex !== null) {
+            updateAction(confirmDeleteIndex, createAction("deletePermanently"));
+          }
+          setConfirmDeleteIndex(null);
+        }}
+        title="Delete permanently?"
+        message="This action permanently deletes files and cannot be undone."
+        confirmLabel="Add Action"
+        variant="danger"
+      />
     </div>
   );
 }
@@ -336,7 +358,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
         <FolderInput
           value={action.destination}
           onChange={(val) => onChange({ ...action, destination: val })}
-          placeholder="Select folder..."
+            placeholder="Select folder…"
         />
         <MagiSelect
           width="w-32"
@@ -395,7 +417,7 @@ function renderActionFields(action: Action, onChange: (action: Action) => void) 
         <FolderInput
           value={action.destination}
           onChange={(val) => onChange({ ...action, destination: val })}
-          placeholder="Select destination..."
+          placeholder="Select destination…"
         />
         <MagiSelect
           width="w-32"

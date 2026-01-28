@@ -11,6 +11,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string
     development: { bg: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-400" },
     downloads: { bg: "bg-orange-500/10", border: "border-orange-500/30", text: "text-orange-400" },
     general: { bg: "bg-slate-500/10", border: "border-slate-500/30", text: "text-slate-400" },
+    custom: { bg: "bg-pink-500/10", border: "border-pink-500/30", text: "text-pink-400" },
 };
 
 export function TemplateCard({ template, onClick }: TemplateCardProps) {
@@ -20,7 +21,7 @@ export function TemplateCard({ template, onClick }: TemplateCardProps) {
         <button
             type="button"
             onClick={onClick}
-            className="group relative flex flex-col items-start gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] p-4 text-left transition-all duration-200 hover:border-[var(--accent)] hover:shadow-[var(--shadow-md)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg-app)]"
+            className="group relative flex flex-col items-start gap-2 rounded-[var(--radius)] border border-[var(--border-main)] bg-[var(--bg-panel)] p-4 text-left transition duration-200 hover:border-[var(--accent)] hover:shadow-[var(--shadow-md)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg-app)]"
         >
             {/* Icon & Category Badge */}
             <div className="flex w-full items-start justify-between">

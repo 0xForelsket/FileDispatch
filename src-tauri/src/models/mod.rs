@@ -1,5 +1,6 @@
 pub mod action;
 pub mod condition;
+pub mod engine;
 pub mod folder;
 pub mod log_entry;
 pub mod preview;
@@ -11,6 +12,7 @@ pub mod ocr_job;
 
 pub use action::*;
 pub use condition::*;
+pub use engine::*;
 pub use folder::*;
 pub use log_entry::*;
 pub use preview::*;

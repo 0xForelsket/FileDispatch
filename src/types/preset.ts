@@ -30,7 +30,8 @@ export type TemplateCategory =
   | "finance"
   | "development"
   | "downloads"
-  | "general";
+  | "general"
+  | "custom";
 
 export interface Template {
   id: string;

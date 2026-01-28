@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 
 
@@ -56,11 +56,27 @@ export function FolderList() {
   const moveFolder = useFolderStore((state) => state.moveFolder);
   const rules = useRuleStore((state) => state.rules);
 
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const stored = window.localStorage.getItem("filedispatch.folderGroups");
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
   const tree = useMemo(() => buildTree(folders), [folders]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("filedispatch.folderGroups", JSON.stringify(expandedGroups));
+    } catch {
+      return;
+    }
+  }, [expandedGroups]);
 
   const toggleGroup = (id: string) => {
     setExpandedGroups(prev => ({ ...prev, [id]: !prev[id] }));
@@ -104,7 +120,6 @@ export function FolderList() {
 
     if (!id || id === targetId) return;
 
-    console.log(`Moving ${id} to ${targetId || "root"}`);
     await moveFolder(id, targetId);
   };
 
@@ -126,17 +141,20 @@ export function FolderList() {
           onDrop={(e) => handleDrop(e, node.folder.id)}
         >
           {/* Expand/Collapse Arrow */}
-          <div
+          <button
+            type="button"
             className="w-4 h-4 flex items-center justify-center cursor-pointer shrink-0 opacity-50 hover:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               if (node.folder.isGroup) toggleGroup(node.folder.id);
             }}
+            aria-label={isExpanded ? "Collapse group" : "Expand group"}
+            disabled={!node.folder.isGroup}
           >
             {node.folder.isGroup && (
               <ChevronRight className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-90")} />
             )}
-          </div>
+          </button>
 
           <div className="flex-1 min-w-0">
             <FolderItem

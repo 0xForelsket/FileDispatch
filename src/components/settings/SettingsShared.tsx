@@ -39,7 +39,18 @@ export function SettingToggle({
     return (
         <div
             onClick={() => !disabled && onChange(!checked)}
-            className={`flex w-full items-center justify-between rounded-[var(--radius)] border p-3 text-left transition-all ${
+            role="button"
+            tabIndex={disabled ? -1 : 0}
+            aria-pressed={checked}
+            aria-disabled={disabled}
+            onKeyDown={(event) => {
+                if (disabled) return;
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onChange(!checked);
+                }
+            }}
+            className={`flex w-full items-center justify-between rounded-[var(--radius)] border p-3 text-left transition-colors ${
                 disabled
                     ? "cursor-not-allowed opacity-50"
                     : highlight

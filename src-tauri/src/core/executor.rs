@@ -62,6 +62,15 @@ impl ActionExecutor {
         info: &FileInfo,
         captures: &HashMap<String, String>,
     ) -> Vec<ActionOutcome> {
+        let dry_run = self
+            .settings
+            .lock()
+            .map(|s| s.dry_run)
+            .unwrap_or(false);
+        if dry_run {
+            return self.simulate_actions(actions, info, captures);
+        }
+
         let mut outcomes = Vec::new();
         let mut current_path = info.path.clone();
 
@@ -161,6 +170,180 @@ impl ActionExecutor {
         }
 
         outcomes
+    }
+
+    fn simulate_actions(
+        &self,
+        actions: &[Action],
+        info: &FileInfo,
+        captures: &HashMap<String, String>,
+    ) -> Vec<ActionOutcome> {
+        let mut outcomes = Vec::new();
+        let mut current_path = info.path.clone();
+
+        for action in actions {
+            let (action_type, dest_path) = match action {
+                Action::Move(action) => (
+                    ActionType::Move,
+                    self.resolve_destination(
+                        action.destination.as_str(),
+                        info,
+                        captures,
+                        false,
+                        &current_path,
+                    ),
+                ),
+                Action::Copy(action) => (
+                    ActionType::Copy,
+                    self.resolve_destination(
+                        action.destination.as_str(),
+                        info,
+                        captures,
+                        false,
+                        &current_path,
+                    ),
+                ),
+                Action::Rename(action) => (
+                    ActionType::Rename,
+                    self.resolve_rename_destination(
+                        action.pattern.as_str(),
+                        info,
+                        captures,
+                        &current_path,
+                    ),
+                ),
+                Action::SortIntoSubfolder(action) => (
+                    ActionType::SortIntoSubfolder,
+                    self.resolve_destination(
+                        action.destination.as_str(),
+                        info,
+                        captures,
+                        true,
+                        &current_path,
+                    ),
+                ),
+                Action::Archive(action) => (
+                    ActionType::Archive,
+                    self.resolve_archive_destination(action, info, captures, &current_path),
+                ),
+                Action::Unarchive(action) => (
+                    ActionType::Unarchive,
+                    self.resolve_unarchive_destination(action, info, captures, &current_path),
+                ),
+                Action::Delete(_) => (ActionType::Delete, None),
+                Action::DeletePermanently(_) => (ActionType::DeletePermanently, None),
+                Action::RunScript(_) => (ActionType::RunScript, None),
+                Action::Notify(_) => (ActionType::Notify, None),
+                Action::Open(_) => (ActionType::Open, None),
+                Action::ShowInFileManager(_) => (ActionType::ShowInFileManager, None),
+                Action::OpenWith(_) => (ActionType::OpenWith, None),
+                Action::MakePdfSearchable(action) => (
+                    ActionType::MakePdfSearchable,
+                    self.resolve_pdf_searchable_destination(action, &current_path),
+                ),
+                Action::Pause(_) => (ActionType::Pause, None),
+                Action::Continue => (ActionType::Continue, None),
+                Action::Ignore => (ActionType::Ignore, None),
+            };
+
+            let outcome = dry_run_outcome(action_type, &current_path, dest_path);
+            if let Some(details) = &outcome.details {
+                if let Some(dest) = &details.destination_path {
+                    if matches!(
+                        outcome.action_type,
+                        ActionType::Move | ActionType::Rename | ActionType::SortIntoSubfolder
+                    ) {
+                        current_path = PathBuf::from(dest);
+                    }
+                }
+            }
+            outcomes.push(outcome);
+        }
+
+        outcomes
+    }
+
+    fn resolve_destination(
+        &self,
+        destination: &str,
+        info: &FileInfo,
+        captures: &HashMap<String, String>,
+        force_dir: bool,
+        source_path: &Path,
+    ) -> Option<PathBuf> {
+        let resolved = self.pattern_engine.resolve(destination, info, captures);
+        let mut dest_path = expand_tilde(&resolved);
+        if force_dir || dest_path.is_dir() {
+            dest_path = dest_path.join(&info.full_name);
+        }
+        if dest_path == source_path {
+            None
+        } else {
+            Some(dest_path)
+        }
+    }
+
+    fn resolve_rename_destination(
+        &self,
+        pattern: &str,
+        info: &FileInfo,
+        captures: &HashMap<String, String>,
+        source_path: &Path,
+    ) -> Option<PathBuf> {
+        let resolved = self.pattern_engine.resolve(pattern, info, captures);
+        let dest_path = match source_path.parent() {
+            Some(parent) => parent.join(&resolved),
+            None => PathBuf::from(resolved.as_str()),
+        };
+        if dest_path == source_path {
+            None
+        } else {
+            Some(dest_path)
+        }
+    }
+
+    fn resolve_archive_destination(
+        &self,
+        action: &ArchiveAction,
+        info: &FileInfo,
+        captures: &HashMap<String, String>,
+        source_path: &Path,
+    ) -> Option<PathBuf> {
+        let resolved = self.pattern_engine.resolve(&action.destination, info, captures);
+        let dest_path = ensure_archive_path(&expand_tilde(&resolved), source_path, &action.format);
+        Some(dest_path)
+    }
+
+    fn resolve_unarchive_destination(
+        &self,
+        action: &UnarchiveAction,
+        info: &FileInfo,
+        captures: &HashMap<String, String>,
+        source_path: &Path,
+    ) -> Option<PathBuf> {
+        let dest_path = action
+            .destination
+            .as_ref()
+            .map(|d| expand_tilde(&self.pattern_engine.resolve(d, info, captures)))
+            .unwrap_or_else(|| {
+                source_path
+                    .parent()
+                    .unwrap_or_else(|| Path::new(""))
+                    .to_path_buf()
+            });
+        Some(dest_path)
+    }
+
+    fn resolve_pdf_searchable_destination(
+        &self,
+        action: &MakePdfSearchableAction,
+        source_path: &Path,
+    ) -> Option<PathBuf> {
+        if action.overwrite {
+            None
+        } else {
+            Some(searchable_output_path(source_path))
+        }
     }
 
     fn execute_move(
@@ -740,6 +923,21 @@ fn success_outcome(action_type: ActionType, source: &Path, dest: Option<PathBuf>
             metadata: HashMap::new(),
         }),
         error: None,
+    }
+}
+
+fn dry_run_outcome(action_type: ActionType, source: &Path, dest: Option<PathBuf>) -> ActionOutcome {
+    let mut metadata = HashMap::new();
+    metadata.insert("dry_run".to_string(), "true".to_string());
+    ActionOutcome {
+        action_type,
+        status: ActionResultStatus::Skipped,
+        details: Some(ActionDetails {
+            source_path: source.to_string_lossy().to_string(),
+            destination_path: dest.map(|p| p.to_string_lossy().to_string()),
+            metadata,
+        }),
+        error: Some("Dry run".to_string()),
     }
 }
 

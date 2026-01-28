@@ -1,5 +1,5 @@
-import { memo, useEffect, useRef, useState } from "react";
-import { GripVertical, Trash2 } from "lucide-react";
+import { memo, useState } from "react";
+import { Copy, GripVertical, Trash2 } from "lucide-react";
 
 import type { Condition, Rule } from "@/types";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -13,6 +13,9 @@ interface RuleItemProps {
   onEdit: (ruleId: string) => void;
   onDelete: (ruleId: string) => void;
   onDuplicate: (ruleId: string) => void;
+  lastActivityAt?: string;
+  recentEvents?: number;
+  recentErrors?: number;
   onDragStart: (index: number) => void;
   onDragOver: (index: number) => void;
   onDragEnd: () => void;
@@ -27,28 +30,29 @@ export const RuleItem = memo(function RuleItem({
   onToggle,
   onEdit,
   onDelete,
+  onDuplicate,
+  lastActivityAt,
+  recentEvents = 0,
+  recentErrors = 0,
   onDragStart,
   onDragOver,
   onDragEnd,
   isDragging,
   isDragOver,
 }: RuleItemProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerSummary = summarizeConditions(rule.conditions.conditions);
   const actionSummary = summarizeAction(rule.actions[0]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handleClick = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [menuOpen]);
+  const activityParts: string[] = [];
+  if (lastActivityAt) {
+    activityParts.push(`Last run ${formatTimestamp(lastActivityAt)}`);
+  }
+  if (recentEvents > 0) {
+    activityParts.push(`${recentEvents} events (24h)`);
+  }
+  if (recentErrors > 0) {
+    activityParts.push(`${recentErrors} errors`);
+  }
 
   return (
     <div
@@ -63,8 +67,7 @@ export const RuleItem = memo(function RuleItem({
         onDragOver(index);
       }}
       onDragEnd={onDragEnd}
-      onClick={() => onEdit(rule.id)}
-      className={`group flex items-start gap-2 rounded-[var(--radius)] px-2 py-2 text-xs cursor-pointer select-none transition-all duration-150 ease-out ${
+      className={`content-visibility-auto group flex items-start gap-2 rounded-[var(--radius)] px-2 py-2 text-xs cursor-pointer select-none transition duration-150 ease-out ${
         selected
           ? "bg-[var(--accent-muted)] text-[var(--fg-primary)] shadow-sm"
           : "text-[var(--fg-primary)] hover:bg-[var(--bg-hover)]"
@@ -83,11 +86,12 @@ export const RuleItem = memo(function RuleItem({
             e.stopPropagation();
             onToggle(rule.id, !rule.enabled);
         }}
-        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ease-out ${
+        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition duration-200 ease-out ${
             rule.enabled
               ? "bg-[var(--accent)] border-[var(--accent)] shadow-sm"
               : "bg-transparent border-[var(--border-strong)] hover:border-[var(--fg-muted)]"
         }`}
+        aria-label={rule.enabled ? "Disable rule" : "Enable rule"}
       >
           {rule.enabled && (
             <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -96,18 +100,38 @@ export const RuleItem = memo(function RuleItem({
           )}
       </button>
 
-      <div className="min-w-0 flex-1 flex flex-col gap-0.5 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => onEdit(rule.id)}
+        className="min-w-0 flex-1 flex flex-col gap-0.5 overflow-hidden text-left"
+        aria-label={`Edit rule ${rule.name}`}
+      >
         <span className="truncate text-[13px] font-medium leading-tight">{rule.name}</span>
         <span className="truncate text-[11px] leading-tight text-[var(--fg-muted)]">
           {triggerSummary} → {actionSummary}
         </span>
-      </div>
+        {activityParts.length > 0 ? (
+          <span className="truncate text-[10px] text-[var(--fg-muted)]">
+            {activityParts.join(" · ")}
+          </span>
+        ) : null}
+      </button>
 
       {selected && (
          <div className="flex items-center">
             <button
+              onClick={(e) => { e.stopPropagation(); onDuplicate(rule.id); }}
+              className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors duration-150 hover:bg-[var(--bg-subtle)] hover:text-[var(--fg-primary)]"
+              aria-label="Duplicate rule"
+              type="button"
+            >
+                <Copy className="h-3.5 w-3.5" />
+            </button>
+            <button
               onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
-              className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-all duration-150 hover:bg-[var(--fg-alert)]/15 hover:text-[var(--fg-alert)]"
+              className="rounded-[var(--radius)] p-1 text-[var(--fg-muted)] transition-colors duration-150 hover:bg-[var(--fg-alert)]/15 hover:text-[var(--fg-alert)]"
+              aria-label="Delete rule"
+              type="button"
             >
                 <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -194,4 +218,10 @@ function summarizeAction(action?: Rule["actions"][number]) {
     default:
       return "action";
   }
+}
+
+function formatTimestamp(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
