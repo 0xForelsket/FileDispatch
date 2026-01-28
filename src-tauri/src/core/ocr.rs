@@ -1,9 +1,12 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
 use image::{GrayImage, Luma, RgbImage};
 use imageproc::contrast::otsu_level;
+use once_cell::sync::Lazy;
 use oar_ocr::prelude::*;
 use tauri::{AppHandle, Manager};
 
@@ -60,6 +63,9 @@ pub struct OcrManager {
     engine_config: Option<ModelConfig>,
 }
 
+static CANCELLED_REQUESTS: Lazy<Mutex<HashSet<String>>> =
+    Lazy::new(|| Mutex::new(HashSet::new()));
+
 impl OcrManager {
     pub fn new_placeholder() -> Self {
         Self {
@@ -85,6 +91,19 @@ impl OcrManager {
 
     pub fn enabled(&self) -> bool {
         self.settings.content_enable_ocr
+    }
+
+    pub fn cancel_request(request_id: &str) {
+        if let Ok(mut cancelled) = CANCELLED_REQUESTS.lock() {
+            cancelled.insert(request_id.to_string());
+        }
+    }
+
+    pub fn take_cancelled(request_id: &str) -> bool {
+        CANCELLED_REQUESTS
+            .lock()
+            .map(|mut cancelled| cancelled.remove(request_id))
+            .unwrap_or(false)
     }
 
     pub fn recognize_path(&mut self, path: &Path, timeout: Duration) -> Result<String> {

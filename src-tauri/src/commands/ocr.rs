@@ -1,6 +1,7 @@
 use tauri::{AppHandle, State};
 
 use crate::core::model_manager::{InstalledLanguage, LanguageInfo, ModelManager};
+use crate::core::ocr::OcrManager;
 use crate::core::state::AppState;
 
 #[tauri::command]
@@ -63,6 +64,12 @@ pub async fn ocr_download_language(app: AppHandle, language_id: String) -> Resul
 #[tauri::command]
 pub async fn ocr_cancel_download(language_id: String) -> Result<(), String> {
     ModelManager::cancel_download(&language_id);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn ocr_cancel_request(request_id: String) -> Result<(), String> {
+    OcrManager::cancel_request(&request_id);
     Ok(())
 }
 

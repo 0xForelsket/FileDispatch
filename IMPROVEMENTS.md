@@ -119,10 +119,10 @@ src/components/folders/FolderItem.tsx:70 - icon-only “Run now” button missin
 
 ### Backend throughput & responsiveness (P1/P2)
 - [x] Expose engine metrics to the UI (queue length, last event, last error) so “Rule Status” is meaningful.
-- [ ] Make long operations cancelable:
+- [x] Make long operations cancelable:
   - [x] OCR downloads
   - [x] Preview scans
-  - [ ] PDF OCR runs (cancel button, timeouts surfaced in UI).
+  - [x] PDF OCR runs (cancel button, timeouts surfaced in UI).
 - [x] Add smarter event coalescing during bursts (many filesystem events in short windows) and surface “debounced” status in the log so users trust the system.
 
 ### Startup + memory (P2)

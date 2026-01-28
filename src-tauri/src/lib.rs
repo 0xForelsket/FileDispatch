@@ -11,8 +11,8 @@ use commands::folders::{
 };
 use commands::logs::{log_clear, log_list};
 use commands::ocr::{
-    ocr_cancel_download, ocr_delete_language, ocr_download_language, ocr_fetch_available_languages,
-    ocr_get_installed_languages,
+    ocr_cancel_download, ocr_cancel_request, ocr_delete_language, ocr_download_language,
+    ocr_fetch_available_languages, ocr_get_installed_languages,
 };
 use commands::presets::{preset_install, preset_read};
 use commands::preview::{preview_file, preview_rule, preview_rule_draft};
@@ -222,6 +222,7 @@ pub fn run() {
             ocr_get_installed_languages,
             ocr_download_language,
             ocr_cancel_download,
+            ocr_cancel_request,
             ocr_delete_language,
         ])
         .run(tauri::generate_context!())

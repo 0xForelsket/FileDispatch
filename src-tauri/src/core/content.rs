@@ -39,6 +39,7 @@ pub fn resolve_contents(
     ocr: &mut OcrManager,
     source: &ContentSource,
     cache: &mut ContentCache,
+    request_id: Option<&str>,
 ) -> Result<Option<String>> {
     match source {
         ContentSource::Text => {
@@ -54,7 +55,7 @@ pub fn resolve_contents(
             if cache.ocr_attempted {
                 return Ok(cache.ocr_text.clone());
             }
-            let text = extract_ocr_content(info, settings, ocr)?;
+            let text = extract_ocr_content(info, settings, ocr, request_id)?;
             cache.ocr_attempted = true;
             cache.ocr_text = text.clone();
             Ok(text)
@@ -73,7 +74,7 @@ pub fn resolve_contents(
             if cache.ocr_attempted {
                 return Ok(cache.ocr_text.clone());
             }
-            let text = extract_ocr_content(info, settings, ocr)?;
+            let text = extract_ocr_content(info, settings, ocr, request_id)?;
             cache.ocr_attempted = true;
             cache.ocr_text = text.clone();
             Ok(text)
@@ -91,6 +92,7 @@ pub fn make_pdf_searchable(
     output_path: &Path,
     settings: &Settings,
     ocr: &mut OcrManager,
+    request_id: Option<&str>,
     resource_dir: Option<PathBuf>,
     skip_if_text: bool,
 ) -> Result<MakePdfSearchableStatus> {
@@ -121,11 +123,18 @@ pub fn make_pdf_searchable(
         return Err(anyhow!("OCR is disabled in settings"));
     }
 
-    let pages = ocr_pdf_pages(&document, settings, ocr)?;
+    let pages = ocr_pdf_pages(&document, settings, ocr, request_id)?;
     if pages.is_empty() {
         return Err(anyhow!("No OCR text extracted"));
     }
-    add_text_layer_to_pdf(source_path, output_path, &pages, settings, resource_dir.as_deref())?;
+    add_text_layer_to_pdf(
+        source_path,
+        output_path,
+        &pages,
+        settings,
+        request_id,
+        resource_dir.as_deref(),
+    )?;
     Ok(MakePdfSearchableStatus::Completed)
 }
 
@@ -244,6 +253,7 @@ fn extract_ocr_content(
     info: &FileInfo,
     settings: &Settings,
     ocr: &mut OcrManager,
+    request_id: Option<&str>,
 ) -> Result<Option<String>> {
     if !settings.content_enable_ocr || !ocr.enabled() {
         return Ok(None);
@@ -269,9 +279,10 @@ fn extract_ocr_content(
                 return Ok(None);
             }
         }
+        check_ocr_cancel(request_id)?;
         let pdfium = load_pdfium()?;
         let document = pdfium.load_pdf_from_file(&info.path, None)?;
-        let pages = ocr_pdf_pages(&document, settings, ocr)?;
+        let pages = ocr_pdf_pages(&document, settings, ocr, request_id)?;
         let combined = pages
             .iter()
             .map(page_to_plain_text)
@@ -302,10 +313,20 @@ fn pdf_has_text(document: &PdfDocument<'_>, max_pages: u32) -> Result<bool> {
     Ok(false)
 }
 
+fn check_ocr_cancel(request_id: Option<&str>) -> Result<()> {
+    if let Some(id) = request_id {
+        if OcrManager::take_cancelled(id) {
+            return Err(anyhow!("OCR cancelled"));
+        }
+    }
+    Ok(())
+}
+
 fn ocr_pdf_pages(
     document: &PdfDocument<'_>,
     settings: &Settings,
     ocr: &mut OcrManager,
+    request_id: Option<&str>,
 ) -> Result<Vec<PageOcrResult>> {
     let mut output = Vec::new();
     let max_pages = settings.content_max_ocr_pdf_pages.max(1) as usize;
@@ -316,6 +337,7 @@ fn ocr_pdf_pages(
         if index >= max_pages {
             break;
         }
+        check_ocr_cancel(request_id)?;
         if Instant::now() > deadline {
             return Err(anyhow!("PDF OCR timed out"));
         }
@@ -328,6 +350,7 @@ fn ocr_pdf_pages(
             settings.content_ocr_timeout_image_ms.max(1),
         ));
         let words = ocr.recognize_image_word_boxes(image, page_timeout)?;
+        check_ocr_cancel(request_id)?;
         let lines = group_words_into_lines(words);
         output.push(PageOcrResult {
             page_index: index as u32,
@@ -357,6 +380,7 @@ fn add_text_layer_to_pdf(
     output_path: &Path,
     pages: &[PageOcrResult],
     settings: &Settings,
+    request_id: Option<&str>,
     resource_dir: Option<&Path>,
 ) -> Result<()> {
     let mut doc = lopdf::Document::load(source_path)?;
@@ -371,6 +395,7 @@ fn add_text_layer_to_pdf(
     if !use_mapped {
         let font_id = add_font(&mut doc);
         for (idx, (_page_number, page_id)) in page_map.iter().enumerate() {
+            check_ocr_cancel(request_id)?;
             let page = match pages.get(idx) {
                 Some(page) => page,
                 None => break,
@@ -414,6 +439,7 @@ fn add_text_layer_to_pdf(
     let mut fallback_font_id: Option<ObjectId> = None;
 
     for (idx, (_page_number, page_id)) in page_map.iter().enumerate() {
+        check_ocr_cancel(request_id)?;
         let page = match pages.get(idx) {
             Some(page) => page,
             None => break,
@@ -1128,6 +1154,7 @@ mod tests {
             &output_path,
             &[page],
             &settings,
+            None,
             Some(Path::new("resources")),
         )
         .unwrap();
@@ -1175,6 +1202,7 @@ mod tests {
             &output_path,
             &[page],
             &settings,
+            None,
             Some(Path::new("resources")),
         )
         .unwrap();
@@ -1212,6 +1240,7 @@ mod tests {
             &output_path,
             &[page],
             &settings,
+            None,
             Some(Path::new("resources")),
         )
         .unwrap();
@@ -1255,6 +1284,7 @@ mod tests {
             &output_path,
             &[page],
             &settings,
+            None,
             Some(Path::new("resources")),
         )
         .unwrap();
@@ -1301,6 +1331,7 @@ mod tests {
             &output_path,
             &[page],
             &settings,
+            None,
             Some(Path::new("resources")),
         )
         .unwrap();
@@ -1339,6 +1370,7 @@ mod tests {
             &output_path,
             &[page],
             &settings,
+            None,
             Some(Path::new("resources")),
         )
         .unwrap();

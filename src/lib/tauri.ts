@@ -68,13 +68,17 @@ export const enginePauseSet = (paused: boolean) =>
   invoke<boolean>("engine_pause_set", { paused });
 export const enginePauseToggle = () => invoke<boolean>("engine_pause_toggle");
 
-export const previewRule = (ruleId: string) =>
-  invoke<PreviewItem[]>("preview_rule", { ruleId });
-export const previewFile = (ruleId: string, filePath: string) =>
-  invoke<PreviewItem>("preview_file", { ruleId, filePath });
+export const previewRule = (ruleId: string, requestId?: string) =>
+  invoke<PreviewItem[]>("preview_rule", { ruleId, requestId });
+export const previewFile = (ruleId: string, filePath: string, requestId?: string) =>
+  invoke<PreviewItem>("preview_file", { ruleId, filePath, requestId });
 
-export const previewRuleDraft = (rule: Rule, maxFiles?: number, skipContent?: boolean) =>
-  invoke<PreviewItem[]>("preview_rule_draft", { rule, maxFiles, skipContent });
+export const previewRuleDraft = (
+  rule: Rule,
+  maxFiles?: number,
+  skipContent?: boolean,
+  requestId?: string,
+) => invoke<PreviewItem[]>("preview_rule_draft", { rule, maxFiles, skipContent, requestId });
 
 export const presetRead = (path: string) => invoke<Preset>("preset_read", { path });
 export const presetInstall = (
@@ -106,5 +110,7 @@ export const ocrDownloadLanguage = (languageId: string) =>
   invoke<void>("ocr_download_language", { languageId });
 export const ocrCancelDownload = (languageId: string) =>
   invoke<void>("ocr_cancel_download", { languageId });
+export const ocrCancelRequest = (requestId: string) =>
+  invoke<void>("ocr_cancel_request", { requestId });
 export const ocrDeleteLanguage = (languageId: string) =>
   invoke<void>("ocr_delete_language", { languageId });

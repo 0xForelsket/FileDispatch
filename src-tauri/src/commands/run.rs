@@ -129,7 +129,7 @@ pub async fn folder_run_now(
                 &info,
                 &settings_snapshot,
                 &mut ocr_guard,
-                EvaluationOptions::default(),
+                &EvaluationOptions::default(),
             ) {
                     Ok(eval) => eval,
                     Err(e) => {

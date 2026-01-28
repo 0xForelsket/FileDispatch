@@ -652,6 +652,7 @@ impl ActionExecutor {
             &output_path,
             &settings,
             &mut ocr,
+            None,
             resource_dir,
             action.skip_if_text,
         ) {

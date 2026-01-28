@@ -10,7 +10,7 @@ import { ConditionBuilder } from "@/components/rules/ConditionBuilder";
 import { PreviewPanel } from "@/components/preview/PreviewPanel";
 import { TemplateSaveDialog } from "@/components/templates/TemplateSaveDialog";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
-import { previewRuleDraft } from "@/lib/tauri";
+import { ocrCancelRequest, previewRuleDraft } from "@/lib/tauri";
 import { matchesShortcut } from "@/lib/shortcuts";
 import type { PreviewItem } from "@/types";
 import { describeCondition } from "@/lib/conditionLabels";
@@ -67,6 +67,8 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   const [livePreviewLoading, setLivePreviewLoading] = useState(false);
   const [livePreviewExpanded, setLivePreviewExpanded] = useState(false);
   const livePreviewTimeout = useRef<number | null>(null);
+  const previewTokenRef = useRef<string | null>(null);
+  const livePreviewTokenRef = useRef<string | null>(null);
 
   // Request ID for race condition prevention
   const previewRequestId = useRef(0);
@@ -154,13 +156,23 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   const handlePreview = useCallback(async () => {
     // Increment request ID to invalidate any pending requests
     const currentRequestId = ++previewRequestId.current;
+    if (previewTokenRef.current) {
+      void ocrCancelRequest(previewTokenRef.current);
+    }
+    const requestToken = `preview-${Date.now()}-${currentRequestId}`;
+    previewTokenRef.current = requestToken;
 
     setShowPreview(true);
     setLoadingPreview(true);
     setPreviewError(null);
     setPreviewResults([]);
     try {
-      const results = await previewRuleDraft({ ...draft, folderId }, previewMaxFiles);
+      const results = await previewRuleDraft(
+        { ...draft, folderId },
+        previewMaxFiles,
+        false,
+        requestToken,
+      );
       // Only update if this is still the latest request
       if (currentRequestId === previewRequestId.current) {
         setPreviewResults(results);
@@ -174,14 +186,21 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
       if (currentRequestId === previewRequestId.current) {
         setLoadingPreview(false);
       }
+      if (previewTokenRef.current === requestToken) {
+        previewTokenRef.current = null;
+      }
     }
-  }, [draft, folderId, previewMaxFiles]);
+  }, [draft, folderId, previewMaxFiles, ocrCancelRequest]);
 
   const handleCancelPreview = useCallback(() => {
     previewRequestId.current += 1;
+    if (previewTokenRef.current) {
+      void ocrCancelRequest(previewTokenRef.current);
+      previewTokenRef.current = null;
+    }
     setLoadingPreview(false);
     setPreviewError(null);
-  }, []);
+  }, [ocrCancelRequest]);
 
   // Live preview: debounced update when conditions change
   useEffect(() => {
@@ -202,6 +221,10 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
   // Live preview: debounced update when conditions change
   useEffect(() => {
     if (!isOpen || !livePreviewExpanded || draft.conditions.conditions.length === 0) {
+      if (livePreviewTokenRef.current) {
+        void ocrCancelRequest(livePreviewTokenRef.current);
+        livePreviewTokenRef.current = null;
+      }
       if (!isOpen || draft.conditions.conditions.length === 0) {
         setLivePreviewResults([]);
       }
@@ -216,6 +239,11 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
 
     // Increment request ID to invalidate any pending requests
     const currentRequestId = ++previewRequestId.current;
+    if (livePreviewTokenRef.current) {
+      void ocrCancelRequest(livePreviewTokenRef.current);
+    }
+    const requestToken = `live-${Date.now()}-${currentRequestId}`;
+    livePreviewTokenRef.current = requestToken;
 
     // Debounce the preview request
     livePreviewTimeout.current = window.setTimeout(async () => {
@@ -225,6 +253,7 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
           { ...draftRef.current, folderId },
           livePreviewMaxFiles,
           true,
+          requestToken,
         );
         // Only update if this is still the latest request
         if (currentRequestId === previewRequestId.current) {
@@ -239,6 +268,9 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
         if (currentRequestId === previewRequestId.current) {
           setLivePreviewLoading(false);
         }
+        if (livePreviewTokenRef.current === requestToken) {
+          livePreviewTokenRef.current = null;
+        }
       }
     }, 500);
 
@@ -246,8 +278,12 @@ export function RuleEditor({ mode, onClose, folderId, rule, onNewRule }: RuleEdi
       if (livePreviewTimeout.current) {
         window.clearTimeout(livePreviewTimeout.current);
       }
+      if (livePreviewTokenRef.current === requestToken) {
+        void ocrCancelRequest(requestToken);
+        livePreviewTokenRef.current = null;
+      }
     };
-  }, [draft.conditions, folderId, isOpen, livePreviewExpanded, livePreviewMaxFiles]);
+  }, [draft.conditions, folderId, isOpen, livePreviewExpanded, livePreviewMaxFiles, ocrCancelRequest]);
 
   useEffect(() => {
     if (!isOpen) return;

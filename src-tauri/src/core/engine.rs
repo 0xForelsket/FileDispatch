@@ -157,7 +157,7 @@ impl RuleEngine {
             // Acquire OCR lock only when evaluating conditions, release after
             let evaluation = {
                 let mut ocr = self.ocr.lock().unwrap();
-                evaluate_conditions(&rule, &info, &settings, &mut ocr, EvaluationOptions::default())?
+                evaluate_conditions(&rule, &info, &settings, &mut ocr, &EvaluationOptions::default())?
             };
             if !evaluation.matched {
                 continue;
@@ -255,9 +255,11 @@ pub(crate) struct EvaluationResult {
     pub captures: HashMap<String, String>,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Default)]
 pub(crate) struct EvaluationOptions {
     pub skip_content: bool,
+    pub surface_errors: bool,
+    pub ocr_request_id: Option<String>,
 }
 
 pub(crate) fn evaluate_conditions(
@@ -265,7 +267,7 @@ pub(crate) fn evaluate_conditions(
     info: &FileInfo,
     settings: &crate::models::Settings,
     ocr: &mut crate::core::ocr::OcrManager,
-    options: EvaluationOptions,
+    options: &EvaluationOptions,
 ) -> Result<EvaluationResult> {
     let mut cache = ContentCache::default();
     evaluate_group(&rule.conditions, info, settings, ocr, &mut cache, options)
@@ -277,7 +279,7 @@ pub(crate) fn evaluate_group(
     settings: &crate::models::Settings,
     ocr: &mut crate::core::ocr::OcrManager,
     cache: &mut ContentCache,
-    options: EvaluationOptions,
+    options: &EvaluationOptions,
 ) -> Result<EvaluationResult> {
     if options.skip_content
         && matches!(group.match_type, MatchType::None)
@@ -343,7 +345,7 @@ pub(crate) fn evaluate_condition(
     settings: &crate::models::Settings,
     ocr: &mut crate::core::ocr::OcrManager,
     cache: &mut ContentCache,
-    options: EvaluationOptions,
+    options: &EvaluationOptions,
 ) -> Result<EvaluationResult> {
     match condition {
         Condition::Name(cond) => evaluate_string(&info.name, cond),
@@ -356,9 +358,14 @@ pub(crate) fn evaluate_condition(
                     captures: HashMap::new(),
                 });
             }
-            let text = resolve_contents(info, settings, ocr, &cond.source, cache)
-                .unwrap_or_else(|_| None)
-                .unwrap_or_default();
+            let resolved =
+                resolve_contents(info, settings, ocr, &cond.source, cache, options.ocr_request_id.as_deref());
+            let text = if options.surface_errors {
+                resolved?
+            } else {
+                resolved.unwrap_or(None)
+            }
+            .unwrap_or_default();
             if text.is_empty() {
                 return Ok(EvaluationResult {
                     matched: false,
@@ -760,7 +767,7 @@ mod tests {
             &settings,
             &mut ocr,
             &mut cache,
-            super::EvaluationOptions::default(),
+            &super::EvaluationOptions::default(),
         )
     }
 
@@ -2075,7 +2082,7 @@ mod tests {
             &info,
             &settings,
             &mut ocr,
-            super::EvaluationOptions::default(),
+            &super::EvaluationOptions::default(),
         )
         .unwrap();
 
@@ -2113,7 +2120,7 @@ mod tests {
             &info,
             &settings,
             &mut ocr,
-            super::EvaluationOptions::default(),
+            &super::EvaluationOptions::default(),
         )
         .unwrap();
 
@@ -2173,7 +2180,7 @@ mod tests {
             &info,
             &settings,
             &mut ocr,
-            super::EvaluationOptions::default(),
+            &super::EvaluationOptions::default(),
         )
         .unwrap();
 
@@ -2250,7 +2257,7 @@ mod tests {
             &info,
             &settings,
             &mut ocr,
-            super::EvaluationOptions::default(),
+            &super::EvaluationOptions::default(),
         )
         .unwrap();
         assert!(result1.matched);
@@ -2270,7 +2277,7 @@ mod tests {
             &info,
             &settings,
             &mut ocr,
-            super::EvaluationOptions::default(),
+            &super::EvaluationOptions::default(),
         )
         .unwrap();
         assert!(result2.matched);
@@ -2312,7 +2319,7 @@ mod tests {
             &info,
             &settings,
             &mut ocr,
-            super::EvaluationOptions::default(),
+            &super::EvaluationOptions::default(),
         )
         .unwrap();
 
@@ -2365,7 +2372,7 @@ mod tests {
             &info,
             &settings,
             &mut ocr,
-            super::EvaluationOptions::default(),
+            &super::EvaluationOptions::default(),
         );
         assert!(result.is_ok());
         assert!(result.unwrap().matched);
@@ -2406,7 +2413,7 @@ mod tests {
             &info,
             &settings,
             &mut ocr,
-            super::EvaluationOptions::default(),
+            &super::EvaluationOptions::default(),
         )
         .unwrap();
 

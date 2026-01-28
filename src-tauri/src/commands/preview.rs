@@ -15,6 +15,7 @@ use crate::utils::file_info::FileInfo;
 pub fn preview_rule(
     state: State<'_, AppState>,
     rule_id: String,
+    request_id: Option<String>,
 ) -> Result<Vec<PreviewItem>, String> {
     let rule_repo = RuleRepository::new(state.db.clone());
     let folder_repo = FolderRepository::new(state.db.clone());
@@ -39,19 +40,37 @@ pub fn preview_rule(
     let mut ocr = state.ocr.lock().unwrap();
 
     let max_depth = folder.max_depth().unwrap_or(usize::MAX);
+    let request_id = request_id.as_deref();
+    let options = EvaluationOptions {
+        skip_content: false,
+        surface_errors: true,
+        ocr_request_id: request_id.map(str::to_string),
+    };
+
     for entry in walkdir::WalkDir::new(&folder.path)
         .max_depth(max_depth)
         .into_iter()
         .filter_map(Result::ok)
     {
+        check_cancel(request_id)?;
         if !entry.file_type().is_file() {
             continue;
         }
         let path = entry.path().to_path_buf();
-        if let Ok(item) =
-            preview_single(&rule, &path, &pattern_engine, &settings, &mut ocr, false)
-        {
-            results.push(item);
+        match preview_single(
+            &rule,
+            &path,
+            &pattern_engine,
+            &settings,
+            &mut ocr,
+            &options,
+        ) {
+            Ok(item) => results.push(item),
+            Err(err) => {
+                if options.surface_errors {
+                    return Err(err.to_string());
+                }
+            }
         }
     }
 
@@ -104,6 +123,7 @@ pub fn preview_rule_draft(
     rule: DraftRule,
     max_files: Option<usize>,
     skip_content: Option<bool>,
+    request_id: Option<String>,
 ) -> Result<Vec<PreviewItem>, String> {
     eprintln!("==== preview_rule_draft called ====");
     eprintln!("Rule folder_id: {}", rule.folder_id);
@@ -140,6 +160,7 @@ pub fn preview_rule_draft(
         .map(|s| s.clone())
         .unwrap_or_default();
     let mut ocr = state.ocr.lock().unwrap();
+    let request_id = request_id.as_deref();
 
     eprintln!("Starting directory walk...");
     let max_depth = folder.max_depth().unwrap_or(usize::MAX);
@@ -150,6 +171,12 @@ pub fn preview_rule_draft(
     let mut file_count = 0;
     let max_files = max_files.unwrap_or(100);
     let skip_content = skip_content.unwrap_or(false);
+
+    let options = EvaluationOptions {
+        skip_content,
+        surface_errors: !skip_content,
+        ocr_request_id: request_id.map(str::to_string),
+    };
 
     for entry in walker {
         // Check file count limit early
@@ -177,18 +204,22 @@ pub fn preview_rule_draft(
             eprintln!("Processing file #{}: {:?}", file_count, path);
         }
 
+        check_cancel(request_id)?;
         match preview_single(
             &rule,
             &path,
             &pattern_engine,
             &settings,
             &mut ocr,
-            skip_content,
+            &options,
         ) {
             Ok(item) => {
                 results.push(item);
             }
             Err(e) => {
+                if options.surface_errors {
+                    return Err(e.to_string());
+                }
                 eprintln!("Failed to preview file {:?}: {}", path, e);
             }
         }
@@ -208,6 +239,7 @@ pub fn preview_file(
     state: State<'_, AppState>,
     rule_id: String,
     file_path: String,
+    request_id: Option<String>,
 ) -> Result<PreviewItem, String> {
     let rule_repo = RuleRepository::new(state.db.clone());
     let rule = rule_repo.get(&rule_id).map_err(|e| e.to_string())?;
@@ -222,8 +254,22 @@ pub fn preview_file(
     let mut ocr = state.ocr.lock().unwrap();
     let path = PathBuf::from(file_path);
     let pattern_engine = PatternEngine::new();
-    preview_single(&rule, &path, &pattern_engine, &settings, &mut ocr, false)
+    let options = EvaluationOptions {
+        skip_content: false,
+        surface_errors: true,
+        ocr_request_id: request_id,
+    };
+    preview_single(&rule, &path, &pattern_engine, &settings, &mut ocr, &options)
         .map_err(|e| e.to_string())
+}
+
+fn check_cancel(request_id: Option<&str>) -> Result<(), String> {
+    if let Some(id) = request_id {
+        if crate::core::ocr::OcrManager::take_cancelled(id) {
+            return Err("OCR cancelled".to_string());
+        }
+    }
+    Ok(())
 }
 
 fn preview_single(
@@ -232,30 +278,17 @@ fn preview_single(
     pattern_engine: &PatternEngine,
     settings: &crate::models::Settings,
     ocr: &mut crate::core::ocr::OcrManager,
-    skip_content: bool,
+    options: &EvaluationOptions,
 ) -> anyhow::Result<PreviewItem> {
     let info = FileInfo::from_path(path)?;
-    let evaluation = evaluate_conditions(
-        rule,
-        &info,
-        settings,
-        ocr,
-        EvaluationOptions { skip_content },
-    )?;
+    let evaluation = evaluate_conditions(rule, &info, settings, ocr, options)?;
 
     let mut condition_results = Vec::new();
     let mut cache = ContentCache::default();
     for condition in &rule.conditions.conditions {
         condition_results.push(
-            evaluate_condition(
-                condition,
-                &info,
-                settings,
-                ocr,
-                &mut cache,
-                EvaluationOptions { skip_content },
-            )?
-            .matched,
+            evaluate_condition(condition, &info, settings, ocr, &mut cache, options)?
+                .matched,
         );
     }
 
