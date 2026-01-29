@@ -101,6 +101,7 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
             draggable
             onDragStart={(e) => {
               e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", String(index));
               handleDragStart(index);
             }}
             onDragOver={(e) => {

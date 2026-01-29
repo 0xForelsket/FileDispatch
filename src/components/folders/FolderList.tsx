@@ -163,6 +163,8 @@ export function FolderList() {
               ruleCount={node.folder.ruleCount ?? (node.folder.id === selectedFolderId ? rules.length : 0)}
               onSelect={() => selectFolder(node.folder.id)}
               onToggle={(enabled) => toggleFolder(node.folder.id, enabled)}
+              draggable
+              onDragStart={(e) => handleDragStart(e, node.folder.id)}
             />
           </div>
         </div>

@@ -65,6 +65,7 @@ export const RuleItem = memo(function RuleItem({
       draggable
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", rule.id);
         onDragStart(index);
       }}
       onDragOver={(e) => {
@@ -80,6 +81,7 @@ export const RuleItem = memo(function RuleItem({
       } ${!rule.enabled ? "opacity-50" : ""} ${isDragging ? "opacity-40 scale-[0.98] motion-reduce:transform-none" : ""} ${isDragOver ? "border-t-2 border-[var(--accent)]" : ""}`}
     >
       <div
+        draggable
         className="mt-0.5 cursor-grab active:cursor-grabbing text-[var(--fg-muted)] opacity-0 group-hover:opacity-100 transition-opacity duration-150"
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -108,6 +110,7 @@ export const RuleItem = memo(function RuleItem({
 
       <button
         type="button"
+        draggable
         onClick={() => onEdit(rule.id)}
         className="min-w-0 flex-1 flex flex-col gap-0.5 overflow-hidden text-left"
         aria-label={`Edit rule ${rule.name}`}

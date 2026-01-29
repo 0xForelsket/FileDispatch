@@ -13,6 +13,8 @@ interface FolderItemProps {
   ruleCount?: number;
   onSelect: () => void;
   onToggle: (enabled: boolean) => void;
+  draggable?: boolean;
+  onDragStart?: React.DragEventHandler<HTMLButtonElement>;
 }
 
 export function FolderItem({
@@ -21,6 +23,8 @@ export function FolderItem({
   ruleCount,
   onSelect,
   onToggle,
+  draggable = false,
+  onDragStart,
 }: FolderItemProps) {
   const [running, setRunning] = useState(false);
   const addToast = useToastStore((state) => state.addToast);
@@ -72,6 +76,8 @@ export function FolderItem({
     >
       <button
         type="button"
+        draggable={draggable}
+        onDragStart={onDragStart}
         onClick={onSelect}
         className="flex min-w-0 flex-1 items-center gap-2 text-left"
         aria-label={`Select folder ${folder.name}`}

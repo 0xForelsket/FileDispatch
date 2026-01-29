@@ -221,6 +221,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
               draggable
               onDragStart={(e) => {
                 e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", String(index));
                 handleDragStart(index);
               }}
               onDragOver={(e) => {
@@ -309,6 +310,7 @@ export function ConditionBuilder({ group, onChange, depth = 0 }: ConditionBuilde
             draggable
             onDragStart={(e) => {
               e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", String(index));
               handleDragStart(index);
             }}
             onDragOver={(e) => {
