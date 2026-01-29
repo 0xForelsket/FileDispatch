@@ -273,7 +273,7 @@ impl ActionExecutor {
     ) -> Option<PathBuf> {
         let resolved = self.pattern_engine.resolve(destination, info, captures);
         let mut dest_path = expand_tilde(&resolved);
-        if force_dir || dest_path.is_dir() {
+        if force_dir || dest_path.is_dir() || looks_like_directory(&dest_path) {
             dest_path = dest_path.join(&info.full_name);
         }
         if dest_path == source_path {
@@ -359,7 +359,7 @@ impl ActionExecutor {
     ) -> ActionOutcome {
         let resolved = self.pattern_engine.resolve(destination, info, captures);
         let mut dest_path = expand_tilde(&resolved);
-        if force_dir || dest_path.is_dir() {
+        if force_dir || dest_path.is_dir() || looks_like_directory(&dest_path) {
             dest_path = dest_path.join(&info.full_name);
         }
 
@@ -406,7 +406,7 @@ impl ActionExecutor {
     ) -> ActionOutcome {
         let resolved = self.pattern_engine.resolve(destination, info, captures);
         let mut dest_path = expand_tilde(&resolved);
-        if force_dir || dest_path.is_dir() {
+        if force_dir || dest_path.is_dir() || looks_like_directory(&dest_path) {
             dest_path = dest_path.join(&info.full_name);
         }
 
@@ -848,6 +848,20 @@ fn temp_rename(source: &Path, dest: &Path) -> Result<(), std::io::Error> {
     fs::rename(source, &temp_path)?;
     fs::rename(&temp_path, dest)?;
     Ok(())
+}
+
+/// Check if a path looks like a directory (has no file extension or ends with a separator).
+/// Used when the path doesn't exist yet but we need to determine if the user intended it
+/// to be a directory destination.
+fn looks_like_directory(path: &Path) -> bool {
+    // If it ends with a path separator, it's definitely meant to be a directory
+    let path_str = path.to_string_lossy();
+    if path_str.ends_with('/') || path_str.ends_with('\\') {
+        return true;
+    }
+    // If it has no extension, assume it's a directory
+    // (files usually have extensions, directories usually don't)
+    path.extension().is_none()
 }
 
 fn prepare_destination(
