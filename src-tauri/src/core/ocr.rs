@@ -9,6 +9,7 @@ use imageproc::contrast::otsu_level;
 use once_cell::sync::Lazy;
 use oar_ocr::prelude::*;
 use tauri::{AppHandle, Manager};
+use tracing::info;
 
 use crate::core::model_manager::ModelManager;
 use crate::core::ocr_geometry::{Rect, WordBox};
@@ -191,13 +192,43 @@ impl OcrManager {
         };
 
         if needs_reload {
+            info!(
+                "Loading OCR engine with models: det={}, rec={}, dict={}",
+                config.det_path.display(),
+                config.rec_path.display(),
+                config.dict_path.display()
+            );
+
+            // Verify model files exist before attempting to load
+            if !config.det_path.exists() {
+                return Err(anyhow!(
+                    "OCR detection model not found: {}",
+                    config.det_path.display()
+                ));
+            }
+            if !config.rec_path.exists() {
+                return Err(anyhow!(
+                    "OCR recognition model not found: {}",
+                    config.rec_path.display()
+                ));
+            }
+            if !config.dict_path.exists() {
+                return Err(anyhow!(
+                    "OCR dictionary not found: {}",
+                    config.dict_path.display()
+                ));
+            }
+
+            info!("All OCR model files verified, initializing ONNX runtime...");
             let engine = OAROCRBuilder::new(
                 config.det_path.clone(),
                 config.rec_path.clone(),
                 config.dict_path.clone(),
             )
             .return_word_box(true)
-            .build()?;
+            .build()
+            .map_err(|e| anyhow!("Failed to initialize OCR engine: {}", e))?;
+            info!("OCR engine initialized successfully");
             self.engine = Some(engine);
             self.engine_config = Some(config);
         }
